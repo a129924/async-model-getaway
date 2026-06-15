@@ -1,0 +1,28 @@
+[project]
+name = "async-model-gateway"
+version = "0.1.0"
+description = "Async-first foundation for a model gateway project."
+readme = "README.md"
+requires-python = ">=3.10,<3.11"
+dependencies = [
+    "typing_extensions>=4.0",
+    "aiofiles>=24.1.0",
+]
+
+[project.scripts]
+async-model-gateway = "async_model_gateway:main"
+
+[build-system]
+requires = ["uv_build>=0.9.2,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=5.0",
+    "ruff",
+    "pyright",
+    "tach",
+    "pre-commit",
+]
