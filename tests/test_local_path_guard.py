@@ -62,16 +62,13 @@ def test_scan_paths_ignores_clean_relative_content(tmp_path: Path) -> None:
     assert scan_paths([str(sample)]) == []
 
 
-def test_main_prints_filename_line_rule_and_match_for_violations(
-    tmp_path: Path, capsys
-) -> None:
+def test_main_prints_filename_line_rule_and_match_for_violations(tmp_path: Path, capsys) -> None:
     """CLI output should include the required violation details."""
     sample = tmp_path / "violations.md"
     users_path = _join("/", "Users/", "bob", "/project/file.txt")
     file_uri = _join("file", "://", "tmp/value")
     sample.write_text(
-        "first line\n"
-        f"contains {users_path} and {file_uri}\n",
+        f"first line\ncontains {users_path} and {file_uri}\n",
         encoding="utf-8",
     )
 

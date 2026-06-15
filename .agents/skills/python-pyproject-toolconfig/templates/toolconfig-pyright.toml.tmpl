@@ -1,0 +1,5 @@
+[tool.pyright]
+typeCheckingMode = "strict"
+pythonVersion = "${PYTHON_VERSION}"
+include = ["src/${PACKAGE_NAME}"]
+exclude = ["**/tests/**","**/__pycache__","**/node_modules","**/.*",".venv","**/dist","**/build","**/.eggs"]
