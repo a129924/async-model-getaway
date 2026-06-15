@@ -1,0 +1,63 @@
+# async-model-gateway
+
+`async-model-gateway` 是一個以 async-first、typed-first 為方向的 model gateway 專案基礎。
+
+## 專案目的
+
+這個專案目前聚焦在兩個目標：
+
+- 降低 model 使用成本
+- 降低 response 產生成本
+
+## 目前階段
+
+目前 repository 仍處於 project initialization 階段。
+
+在這個階段，repo 先建立後續工作的基線：
+
+- Python `3.10`
+- `uv` 專案與環境管理
+- async-first 專案方向
+- typed-first dependency baseline
+- packaged application scaffold
+- 最小 CLI entrypoint
+
+## 核心概念
+
+以下詞彙是目前專案共享的核心語彙：
+
+- `orchestrator`
+- `model-payload`
+- `features`
+- response cache
+- `runtime-model`
+- local / remote model source
+
+這些目前都屬於設計層級的概念，用來做規劃與對齊，還不是已實作的 Python type 或 runtime feature。
+
+## 責任摘要
+
+在高層概念上，gateway side 預期聚焦在 orchestration 與 cache-oriented decision；model side 預期負責提供 `runtime-model`，而這個 `runtime-model` 可以來自 local 或 remote model source。
+
+更詳細的說明整理在 [docs/architecture.md](docs/architecture.md)。
+
+## 尚未實作
+
+這個 repository 目前尚未實作：
+
+- gateway execution flow
+- model pool behavior
+- response cache logic
+- `runtime-model` acquisition
+- provider adapters
+- infrastructure components
+- framework-specific service surface
+
+## Roadmap
+
+接下來可能會處理的主題包含：
+
+- `pyproject.toml` settings
+- testing baseline
+- core abstractions
+- cache 與 model boundary
