@@ -133,7 +133,7 @@ Does the change involve any new public API, new behavior, or bug fixes?
 
 ### Example 5: Non-Trivial (Config + API Change)
 
-**Change**: 
+**Change**:
 - Add new config file `config.yaml` for database connection strings.
 - Change `get_user(id)` method signature: now accepts both `id: int` and `user_ref: UserRef`.
 

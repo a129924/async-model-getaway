@@ -46,7 +46,7 @@ def parse_steps(topic: str, plan_dir: Path = Path("plan")) -> list[Step]:
     if not step_file.exists():
         raise FileNotFoundError(f"File not found: {step_file}")
 
-    with open(step_file, "r", encoding="utf-8") as f:
+    with open(step_file, encoding="utf-8") as f:
         steps = _parse_step_lines(f.readlines())
 
     return steps
@@ -59,7 +59,7 @@ def parse_impl_steps(topic: str, plan_dir: Path = Path("plan")) -> list[Step]:
     if not step_file.exists():
         raise FileNotFoundError(f"File not found: {step_file}")
 
-    with open(step_file, "r", encoding="utf-8") as f:
+    with open(step_file, encoding="utf-8") as f:
         lines = f.readlines()
 
     impl_lines: list[str] = []
@@ -104,8 +104,12 @@ def _parse_step_lines(lines: list[str]) -> list[Step]:
                 )
             else:
                 status = "pending"
+                warning = (
+                    "Warning: Found unexpected bracket content "
+                    f"[{bracket_char}] at line {line_num}; treating as pending"
+                )
                 print(
-                    f"Warning: Found unexpected bracket content [{bracket_char}] at line {line_num}; treating as pending",
+                    warning,
                     file=sys.stderr,
                 )
 
@@ -217,21 +221,15 @@ def main() -> int:
     subparsers = parser.add_subparsers(dest="operation", required=True)
 
     # read_all
-    read_all_parser = subparsers.add_parser(
-        "read_all", help="Read all steps (pending and done)"
-    )
+    read_all_parser = subparsers.add_parser("read_all", help="Read all steps (pending and done)")
     read_all_parser.add_argument("topic", help="Topic name")
 
     # read_not_run
-    read_not_run_parser = subparsers.add_parser(
-        "read_not_run", help="Read only pending steps"
-    )
+    read_not_run_parser = subparsers.add_parser("read_not_run", help="Read only pending steps")
     read_not_run_parser.add_argument("topic", help="Topic name")
 
     # read_success
-    read_success_parser = subparsers.add_parser(
-        "read_success", help="Read only completed steps"
-    )
+    read_success_parser = subparsers.add_parser("read_success", help="Read only completed steps")
     read_success_parser.add_argument("topic", help="Topic name")
 
     # check_all_succeeded

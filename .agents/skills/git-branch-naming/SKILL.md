@@ -75,8 +75,8 @@ Do not use this skill when:
 3. **Current-state check** — determine whether the user needs a fresh branch, an in-place rename, or a branch move from the wrong starting point. Existing work on the current branch changes the recommended command path.
 4. **Conflict check** — if the preferred branch name already exists, verify whether it represents the same task lineage before recommending reuse.
 
-PASS: enough context exists to recommend a truthful branch name and the safest non-automated create / rename / rescue command.  
-SOFT FAIL: task type, namespace token, current branch state, or dominant scope is incomplete or ambiguous; continue with a best-effort recommendation, label the assumptions explicitly, and ask the user to confirm the missing signal.  
+PASS: enough context exists to recommend a truthful branch name and the safest non-automated create / rename / rescue command.
+SOFT FAIL: task type, namespace token, current branch state, or dominant scope is incomplete or ambiguous; continue with a best-effort recommendation, label the assumptions explicitly, and ask the user to confirm the missing signal.
 BLOCKED: the request is actually about release or hotfix branch policy, or the branch lineage/state is too unclear to choose between reuse, rename, or split guidance without misleading the user.
 
 # Failure Handling

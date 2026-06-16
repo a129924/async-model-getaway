@@ -1,12 +1,11 @@
 """Tests that existing tool sections are not overwritten."""
+
 import subprocess
 import tomllib
 from pathlib import Path
 
 
-SCRIPT_PATH = (
-    Path(__file__).parent.parent / "scripts" / "apply_toolconfig.py"
-)
+SCRIPT_PATH = Path(__file__).parent.parent / "scripts" / "apply_toolconfig.py"
 
 
 def test_existing_ruff_preserved(tmp_path: Path) -> None:

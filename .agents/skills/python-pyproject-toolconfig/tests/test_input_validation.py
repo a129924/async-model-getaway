@@ -1,17 +1,24 @@
 """Tests for --python-version and --package-name input validation."""
+
 import subprocess
 from pathlib import Path
 
-SCRIPT_PATH = (
-    Path(__file__).parent.parent / "scripts" / "apply_toolconfig.py"
-)
+SCRIPT_PATH = Path(__file__).parent.parent / "scripts" / "apply_toolconfig.py"
 
 
 def _run(tmp_path: Path, python_version: str, package_name: str) -> subprocess.CompletedProcess:
     pyproject = tmp_path / "pyproject.toml"
     pyproject.write_text('[project]\nname = "test"\n')
     return subprocess.run(
-        ["uv", "run", str(SCRIPT_PATH), "--python-version", python_version, "--package-name", package_name],
+        [
+            "uv",
+            "run",
+            str(SCRIPT_PATH),
+            "--python-version",
+            python_version,
+            "--package-name",
+            package_name,
+        ],
         capture_output=True,
         text=True,
         cwd=tmp_path,
@@ -46,9 +53,13 @@ def test_dry_run_does_not_modify_file(tmp_path: Path) -> None:
     pyproject.write_text(original)
     result = subprocess.run(
         [
-            "uv", "run", str(SCRIPT_PATH),
-            "--python-version", "3.10",
-            "--package-name", "mylib",
+            "uv",
+            "run",
+            str(SCRIPT_PATH),
+            "--python-version",
+            "3.10",
+            "--package-name",
+            "mylib",
             "--dry-run",
         ],
         capture_output=True,

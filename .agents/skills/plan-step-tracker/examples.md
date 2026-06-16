@@ -54,8 +54,8 @@ $ python skills/plan-step-tracker/scripts/step_tracker.py read_all my-feature
 [ ] 6. Integration tests
 ```
 
-**Output**: 11 lines (5 workflow stage + 6 implementation checkboxes)  
-**Exit code**: 0  
+**Output**: 11 lines (5 workflow stage + 6 implementation checkboxes)
+**Exit code**: 0
 **Note**: Lowercase `[x]` included; Agent should see the formatting inconsistency
 
 ### Grep Fallback
@@ -99,8 +99,8 @@ $ python skills/plan-step-tracker/scripts/step_tracker.py read_not_run my-featur
 Warning: Found lowercase [x] at line 25; treating as pending
 ```
 
-**Output**: 7 lines (3 pending workflow stages + 4 pending implementation steps)  
-**Exit code**: 0  
+**Output**: 7 lines (3 pending workflow stages + 4 pending implementation steps)
+**Exit code**: 0
 
 ### Grep Fallback
 
@@ -135,7 +135,7 @@ $ python skills/plan-step-tracker/scripts/step_tracker.py read_success my-featur
 [X] 3. Add basic tests
 ```
 
-**Output**: 4 lines (2 done workflow stages + 2 done implementation steps)  
+**Output**: 4 lines (2 done workflow stages + 2 done implementation steps)
 **Exit code**: 0
 
 ### Grep Fallback

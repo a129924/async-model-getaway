@@ -21,14 +21,14 @@ Use this checklist when authoring or reviewing RED tests for a Python implementa
   - Return types and return value contracts (not just "method runs").
   - Error types (all documented exceptions have test cases).
   - Documented side effects or state changes (database writes, cache updates, etc.).
-  
+
 - [ ] **5. Five test categories present**: Verify that test cases span all 5 categories:
   - (1) **Happy path**: Main success scenario; behavior works as documented.
   - (2) **Error/exception cases**: At least 2 tests for documented error conditions (ValueError, RuntimeError, custom exceptions).
   - (3) **Boundary/edge cases**: Limits, empty inputs, None, max/min values, boundary values (e.g., password exactly 8 chars).
   - (4) **State/side effects**: Tests that verify state is mutated correctly or side effects occur (database writes, file creation, cache updates).
   - (5) **Integration points**: If the code calls external services or collaborators, at least one mock/fake test to verify the contract.
-  
+
   Count: If fewer than 5 categories present → `needs-rework`.
 
 ---
@@ -40,14 +40,14 @@ Use this checklist when authoring or reviewing RED tests for a Python implementa
   - `pass`: Tests are written but already passing (pass_existing refactor case; run test suite to confirm).
   - `xfail`: Tests are marked `@pytest.mark.xfail` (advanced; only if plan explicitly requests this).
   - `skip`: Tests are marked `@pytest.mark.skip` (rare; only if plan explicitly requests this).
-  
+
   If status is unset or unclear → `needs-rework`.
 
 - [ ] **7. production_code_modified guard: FALSE**: Confirm that **NO production code has been modified**. Verification:
   - Check git status: `git diff src/` (or equivalent) should be empty or contain only test files.
   - Check git log: Last commit should not have modified any production code files.
   - Manual review: Scan the file list; only test files should be staged or modified.
-  
+
   If production code is modified → **ABORT immediately**. Return error: "Hard constraint violated: production_code_modified = true. Test authoring must happen first."
 
 ---
@@ -64,7 +64,7 @@ Use this checklist when authoring or reviewing RED tests for a Python implementa
     - `validation_checks` (object with all checks, including: d1_decision, behavior_contract_source, requirements_mapped, public_contract_coverage, test_categories_present, expected_initial_status, production_code_modified)
     - `issues` (list of strings; empty list if no issues)
     - `next_step` (string describing next action)
-  
+
   If YAML is missing keys or structure is incorrect → `needs-rework`.
 
 ---
@@ -77,7 +77,7 @@ Use this checklist when authoring or reviewing RED tests for a Python implementa
   - **Boundary 3 (Test mapping must be complete)**: Every requirement has at least one test. If not → `needs-rework`.
   - **Boundary 4 (expected_initial_status must be set)**: Verdict includes expected_initial_status. If missing → `needs-rework`.
   - **Boundary 5 (non-trivial requires spec.md)**: If D1 is `non-trivial` and `plan/<topic>/<topic>.spec.md` is missing, return `BLOCKED` and route to `python-plan-authoring`.
-  
+
   If any boundary is violated → reflect violation in verdict and issue list.
 
 ---

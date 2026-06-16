@@ -7,6 +7,7 @@ Detects existing [tool.*] sections via tomllib and appends only missing ones
 from the skill's templates directory. Directly modifies pyproject.toml by
 default; use --dry-run to preview changes without writing to disk.
 """
+
 import argparse
 import re
 import tomllib
@@ -90,7 +91,7 @@ def main() -> None:
         ("toolconfig-pytest.toml.tmpl", "pytest"),
     ]:
         if section_key in existing_tools:
-            print(f"ℹ️  [tool.{section_key}] already exists — skipping")
+            print(f"INFO: [tool.{section_key}] already exists - skipping")
             continue
 
         tmpl_path = templates_dir / tmpl_name
@@ -101,7 +102,7 @@ def main() -> None:
         print(f"✅ Will append [tool.{section_key}]")
 
     if not sections_to_append:
-        print("ℹ️  All tool sections already exist — nothing to append")
+        print("INFO: all tool sections already exist - nothing to append")
         return
 
     if args.dry_run:

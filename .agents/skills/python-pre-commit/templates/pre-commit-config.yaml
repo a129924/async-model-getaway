@@ -29,4 +29,3 @@ repos:
         stages: [manual]
         pass_filenames: false
         always_run: true
-

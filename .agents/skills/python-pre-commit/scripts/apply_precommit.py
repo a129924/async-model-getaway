@@ -7,6 +7,7 @@ Reads the canonical template from templates/pre-commit-config.yaml,
 substitutes RUFF_VERSION with the specified version string, and writes
 the result to .pre-commit-config.yaml in the current working directory.
 """
+
 import argparse
 import sys
 from pathlib import Path
@@ -15,14 +16,12 @@ DEFAULT_RUFF_VERSION = "v0.15.12"
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Apply pre-commit config from skill template"
-    )
+    parser = argparse.ArgumentParser(description="Apply pre-commit config from skill template")
     parser.add_argument(
         "--ruff-version",
         default=DEFAULT_RUFF_VERSION,
         help=f"ruff-pre-commit rev tag (default: {DEFAULT_RUFF_VERSION}). "
-             "Update manually from https://github.com/astral-sh/ruff-pre-commit/releases",
+        "Update manually from https://github.com/astral-sh/ruff-pre-commit/releases",
     )
     parser.add_argument(
         "--dry-run",

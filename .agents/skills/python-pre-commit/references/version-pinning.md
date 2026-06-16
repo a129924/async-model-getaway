@@ -9,7 +9,7 @@
 | Check ruff-pre-commit releases | Always | Authoritative source; requires a manual lookup step |
 | Pin to current latest stable | Greenfield project | Easy to set up; update when upgrading ruff |
 
-**Source of truth**: https://github.com/astral-sh/ruff-pre-commit/releases  
+**Source of truth**: https://github.com/astral-sh/ruff-pre-commit/releases
 The `rev` for `ruff-pre-commit` is independent of the ruff version resolved by `uv`. Always derive the rev tag from the ruff-pre-commit releases page, not from `pyproject.toml` or the locally-installed ruff version.
 
 **Updating** (when upgrading ruff):

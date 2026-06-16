@@ -1,4 +1,5 @@
 """Tests for section existence detection logic."""
+
 import tomllib
 from pathlib import Path
 

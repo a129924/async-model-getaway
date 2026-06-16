@@ -77,8 +77,8 @@ Main decision path:
 4. **Breaking change check** — if any public interface changes, require `!` marker and body explanation.
 5. **Quality gate check** — if type-check or test failures are known, include explicit warning in the draft output.
 
-PASS: staged changes form a coherent intent, type and subject are correctly assigned, any breaking change is marked.  
-SOFT FAIL: staging is partial or intent is ambiguous — continue with best-effort draft, flag the ambiguity explicitly, and ask the user to confirm scope.  
+PASS: staged changes form a coherent intent, type and subject are correctly assigned, any breaking change is marked.
+SOFT FAIL: staging is partial or intent is ambiguous — continue with best-effort draft, flag the ambiguity explicitly, and ask the user to confirm scope.
 BLOCKED: no staged changes exist AND the request is not a general commit-policy question AND no `--amend` candidate is identified.
 
 # Failure Handling

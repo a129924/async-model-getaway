@@ -1,13 +1,10 @@
 """Tests for apply_precommit.py script."""
+
 import subprocess
 from pathlib import Path
 
-SCRIPT_PATH = (
-    Path(__file__).parent.parent / "scripts" / "apply_precommit.py"
-)
-TEMPLATE_PATH = (
-    Path(__file__).parent.parent / "templates" / "pre-commit-config.yaml"
-)
+SCRIPT_PATH = Path(__file__).parent.parent / "scripts" / "apply_precommit.py"
+TEMPLATE_PATH = Path(__file__).parent.parent / "templates" / "pre-commit-config.yaml"
 
 
 def _run(tmp_path: Path, *extra_args: str) -> subprocess.CompletedProcess[str]:

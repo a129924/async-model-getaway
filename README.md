@@ -19,6 +19,7 @@
 - `uv` 專案與環境管理
 - async-first 專案方向
 - typed-first dependency baseline
+- GitHub Actions CI baseline
 - packaged application scaffold
 - 最小 CLI entrypoint
 
@@ -41,6 +42,8 @@
 
 更詳細的說明整理在 [docs/architecture.md](docs/architecture.md)。
 
+目前的 settings policy 邊界整理在 [docs/settings-policy.md](docs/settings-policy.md)。
+
 ## 尚未實作
 
 這個 repository 目前尚未實作：
@@ -57,7 +60,7 @@
 
 接下來可能會處理的主題包含：
 
-- `pyproject.toml` settings
-- testing baseline
+- settings baseline implementation
 - core abstractions
 - cache 與 model boundary
+- persistence boundary

@@ -1,4 +1,4 @@
-"""Tests for step_tracker.py"""
+"""Tests for step_tracker.py."""
 
 import pytest
 from pathlib import Path
@@ -63,7 +63,7 @@ created: 2025-01-15
 class TestParseStatus:
     """Test status parsing: [X] → done, [ ] → pending, [x] → pending+warning."""
 
-    def test_parse_uppercase_X_as_done(self, temp_plan_dir, capsys):
+    def test_parse_uppercase_x_as_done(self, temp_plan_dir):
         """Parse [X] as done status."""
         topic = "test-uppercase"
         topic_dir = temp_plan_dir / topic
@@ -438,9 +438,7 @@ topic: workflow-vs-impl
 class TestImplementationStepsGate:
     """Test implementation-only gate behavior."""
 
-    def test_parse_impl_steps_only_reads_implementation_section(
-        self, workflow_and_impl_step_file
-    ):
+    def test_parse_impl_steps_only_reads_implementation_section(self, workflow_and_impl_step_file):
         """Ignore workflow stage checkboxes when parsing implementation steps."""
         temp_plan_dir, topic = workflow_and_impl_step_file
         steps = parse_impl_steps(topic, temp_plan_dir)
@@ -462,9 +460,7 @@ class TestImplementationStepsGate:
         assert "SUCCESS" in captured.out
         assert "implementation steps complete" in captured.out
 
-    def test_check_impl_steps_succeeded_blocked_when_impl_pending(
-        self, temp_plan_dir, capsys
-    ):
+    def test_check_impl_steps_succeeded_blocked_when_impl_pending(self, temp_plan_dir, capsys):
         """Pending implementation items should block gate."""
         topic = "impl-pending"
         topic_dir = temp_plan_dir / topic

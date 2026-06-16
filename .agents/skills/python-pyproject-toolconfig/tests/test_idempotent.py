@@ -1,19 +1,22 @@
 """Tests for idempotent append behavior."""
+
 import tomllib
 import subprocess
 from pathlib import Path
 
 
-SCRIPT_PATH = (
-    Path(__file__).parent.parent / "scripts" / "apply_toolconfig.py"
-)
+SCRIPT_PATH = Path(__file__).parent.parent / "scripts" / "apply_toolconfig.py"
 
 
 def _run_script(tmp_path: Path, extra_args: list[str] | None = None) -> subprocess.CompletedProcess:
     args = [
-        "uv", "run", str(SCRIPT_PATH),
-        "--python-version", "3.10",
-        "--package-name", "mylib",
+        "uv",
+        "run",
+        str(SCRIPT_PATH),
+        "--python-version",
+        "3.10",
+        "--package-name",
+        "mylib",
     ]
     if extra_args:
         args.extend(extra_args)
