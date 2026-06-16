@@ -86,3 +86,5 @@ initialization 階段不包含：
 `README.md` 應維持為專案的第一讀摘要文件。
 
 這份文件則用來承接那些對 README 來說太深、但又足夠重要、必須在 initialization 階段保留下來的概念說明。
+
+若需要進一步閱讀 core abstractions 的文件化邊界，請再讀 [docs/specs/core-abstractions-boundary.md](specs/core-abstractions-boundary.md)。

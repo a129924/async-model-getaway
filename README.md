@@ -44,6 +44,8 @@
 
 目前的 settings policy 邊界整理在 [docs/settings-policy.md](docs/settings-policy.md)。
 
+core abstractions 的 boundary spec 入口整理在 [docs/specs/core-abstractions-boundary.md](docs/specs/core-abstractions-boundary.md)。
+
 ## 尚未實作
 
 這個 repository 目前尚未實作：
