@@ -10,9 +10,14 @@
 
 `orchestrator` 主要負責：
 
-- 接收 `model-payload` 與 `features`
+- 接收完整 canonical input：
+  - `model_name`
+  - `model_source_kind`
+  - `model-payload`
+  - `features`
 - 協調高層決策順序
 - 根據下游 authority 的結果推進 response generation
+- 維持統一 invocation boundary，而不是為不同能力暴露多個公開方法名
 
 ## 依賴的 Authority
 
@@ -33,9 +38,17 @@
 - 擁有 remote model side boundary
 - 擁有 cache identity authority
 - 擁有 persistence schema
+- 校正 `model_name`
+- 擴張 `model_source_kind`
+- 把 `features` 解讀成 provider contract 或 execution contract
+- 把能力差異外露成 `predict()` / `generate()` / `explain()` 等公開 method surface
 
 ## Boundary Position
 
 `orchestrator` 是高層 owner，但不是 owner 混合體。
 
 它的價值在於協調各邊界，而不是把所有業務責任集中在自己身上。
+
+在目前階段，`orchestrator` 不負責判斷 `local | remote` 的 authority；分流訊號來自 canonical input 中的 `model_source_kind`。
+
+能力差異目前由 `features` 表達，但 `orchestrator` 不因此承擔 provider-specific capability contract。

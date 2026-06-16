@@ -19,7 +19,10 @@
 
 這一組 spec 以以下詞彙作為正式共享語彙：
 
+- `model_name`
+- `model_source_kind`
 - `model-payload`
+- `model_artifact`
 - `features`
 - `orchestrator`
 - `ModelRegistry`
@@ -35,12 +38,21 @@
 
 高層依賴方向固定為：
 
-1. `canonical input boundary` 只定義 `model-payload` 與 `features`
+1. `canonical input boundary` 定義 `model_name`、`model_source_kind`、`model-payload`、`features`
 2. `orchestrator` 協調高層流程，但不擁有 hashing、lifecycle 或 cache identity authority
-3. `ModelRegistry` 擁有 `payload-hash` 與 freshness authority
+3. `ModelRegistry` 擁有 `payload-hash`、identity context 與 freshness authority
 4. `ModelPool` 擁有 local model runtime and lifecycle
-5. `ModelGateway` 擁有 remote model side boundary
-6. `ResponseCache` 依賴 `payload-hash + features`
+5. `LocalModelLoader` 作為 `ModelPool` 內部的 local acquisition sub-boundary，只消費 `model_artifact`
+6. `ModelGateway` 擁有 remote model side boundary
+7. `ResponseCache` 依賴 `payload-hash + features`
+
+在目前階段：
+
+- `model_source_kind` 只鎖 `local | remote`
+- local runtime taxonomy 留在 `ModelPool` 內部
+- local read contract 由 `model_artifact` 承擔
+- 對外能力邊界採統一入口
+- capability 差異先收斂在 `features`
 
 ## Deferred Items
 

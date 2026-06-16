@@ -10,10 +10,16 @@
 
 目前的 canonical input boundary 是：
 
+- `model_name`
+- `model_source_kind`
 - `model-payload`
 - `features`
 
 專案目前不定義原始 external request shape。未來任何外部 request，都預期先經過 normalization，再進入核心 orchestration boundary。
+
+在目前階段，`model_source_kind` 只鎖 `local | remote`；local runtime 的多樣性留在 model side 內部消化。對外能力差異則先收斂在 `features`，不先拆成多方法名公開介面。
+
+在 local path，除了 identity context 外，還需要一份獨立的 read contract 供 loader 使用；這條路徑不能把 `model-payload` 當成 loader 猜測依據。
 
 ## `orchestrator`
 
@@ -21,8 +27,8 @@
 
 高層預期 flow 如下：
 
-1. Receive `model-payload` and `features`
-2. Derive a payload-oriented identity from `model-payload`
+1. Receive `model_name`, `model_source_kind`, `model-payload`, and `features`
+2. Derive a payload-oriented identity from `model_name`, `model_source_kind`, and `model-payload`
 3. Derive a response-cache identity from payload identity and `features`
 4. Check response cache
 5. Return cached response on hit
@@ -57,6 +63,8 @@ local 與 remote 被視為 model-source concern，而不是不同的 gateway mod
 
 以下詞彙是目前專案共享語彙的一部分：
 
+- `model_name`
+- `model_source_kind`
 - `orchestrator`
 - `model-payload`
 - `features`

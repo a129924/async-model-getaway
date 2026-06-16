@@ -27,6 +27,8 @@
 
 以下詞彙是目前專案共享的核心語彙：
 
+- `model_name`
+- `model_source_kind`
 - `orchestrator`
 - `model-payload`
 - `features`
@@ -35,6 +37,8 @@
 - local / remote model source
 
 這些目前都屬於設計層級的概念，用來做規劃與對齊，還不是已實作的 Python type 或 runtime feature。
+
+在目前階段，`model_source_kind` 只鎖 `local | remote`，而 capability 差異先收斂在 `features`，不先拆成多方法名公開介面。
 
 ## 責任摘要
 

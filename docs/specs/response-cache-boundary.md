@@ -15,6 +15,12 @@
 
 也就是說，目前的 cache identity 概念固定為 `payload-hash + features`。
 
+`features` 參與 response reuse，但不參與 model identity。
+
+`model_name` 與 `model_source_kind` 不直接成為 cache identity owner。
+
+`features` 在這裡被視為 bounded capability vocabulary 的一部分，而不是任意 producer label。
+
 ## Owner Responsibility
 
 `ResponseCache` 負責：
