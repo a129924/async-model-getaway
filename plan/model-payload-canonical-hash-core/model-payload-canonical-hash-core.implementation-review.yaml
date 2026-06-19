@@ -1,0 +1,133 @@
+verdict: approved
+traceability_matrix:
+  - step: >-
+      Add bounded pytest coverage in
+      tests/model_registry/model_payload/test_canonical_hash.py for the happy
+      path: equal nested payload content with different dict insertion order
+      must hash to the same SHA-256 hex string, while preserving the public
+      import surface from async_model_gateway.model_registry.model_payload.
+    status: done
+    evidence: tests/model_registry/model_payload/test_canonical_hash.py:12
+  - step: >-
+      Extend tests/model_registry/model_payload/test_canonical_hash.py with
+      invalid, edge, regression, and backward-compatibility coverage:
+      unsupported nested types raise TypeError, nested non-str dict keys raise
+      TypeError, empty nested containers are accepted, list order affects the
+      hash, and scalar values such as 1 and 1.0 are not normalized to the same
+      digest.
+    status: done
+    evidence: tests/model_registry/model_payload/test_canonical_hash.py:57
+  - step: >-
+      Add src/async_model_gateway/model_registry/model_payload/canonical_hash.py
+      with the internal recursive canonicalization helper and the public
+      hash_model_payload function so the implementation accepts only dict[str,
+      JSONLike] at the top level, canonicalizes nested dicts recursively,
+      preserves list order, rejects unsupported types with TypeError, and
+      returns a SHA-256 hex digest.
+    status: done
+    evidence: src/async_model_gateway/model_registry/model_payload/canonical_hash.py:28
+  - step: >-
+      Add src/async_model_gateway/model_registry/model_payload/__init__.py and
+      src/async_model_gateway/model_registry/__init__.py so the allowed public
+      import surface is async_model_gateway.model_registry.model_payload,
+      model_payload/__init__.py may re-export hash_model_payload, and
+      model_registry/__init__.py does not re-export it.
+    status: done
+    evidence: src/async_model_gateway/model_registry/model_payload/__init__.py:3
+scope_creep_check:
+  - non_goal: >-
+      This topic does not wire payload hashing into registry freshness
+      decisions, cache identity, orchestrator flow, or runtime-model
+      acquisition.
+    violated: no
+    evidence: clean
+  - non_goal: >-
+      This topic does not introduce semantic equivalence rules, scalar
+      coercion, or loader inference from model-payload.
+    violated: no
+    evidence: src/async_model_gateway/model_registry/model_payload/canonical_hash.py:28
+  - non_goal: >-
+      This topic does not expose the canonicalization helper as a public
+      callable or broaden the public import surface beyond
+      async_model_gateway.model_registry.model_payload.
+    violated: no
+    evidence: src/async_model_gateway/model_registry/model_payload/__init__.py:3
+  - non_goal: >-
+      This topic does not add new dependencies, release metadata, or
+      documentation rewrites.
+    violated: no
+    evidence: clean
+contract_check:
+  - item: >-
+      async_model_gateway.model_registry.model_payload.hash_model_payload
+      signature stays def hash_model_payload(model_payload: dict[str, JSONLike])
+      -> str.
+    status: matches
+    detail: src/async_model_gateway/model_registry/model_payload/canonical_hash.py:53
+  - item: >-
+      Input contract requires a top-level dict[str, JSONLike], nested dict keys
+      must all be str, and values may contain only JSON-like scalar, list, or
+      dict content.
+    status: matches
+    detail: >-
+      Top-level dict validation at
+      src/async_model_gateway/model_registry/model_payload/canonical_hash.py:55;
+      nested key and value validation at
+      src/async_model_gateway/model_registry/model_payload/canonical_hash.py:36
+  - item: Output contract returns a SHA-256 lowercase hex string.
+    status: matches
+    detail: >-
+      SHA-256 hexdigest returned from
+      src/async_model_gateway/model_registry/model_payload/canonical_hash.py:66
+  - item: >-
+      Failure behavior raises TypeError when the payload tree contains an
+      unsupported type or a nested dict key that is not str.
+    status: matches
+    detail: >-
+      TypeError raised at
+      src/async_model_gateway/model_registry/model_payload/canonical_hash.py:40
+      and
+      src/async_model_gateway/model_registry/model_payload/canonical_hash.py:49
+  - item: >-
+      Stability contract keeps dict-order-insensitive recursive
+      canonicalization, preserves list order, and does not normalize scalar
+      representations.
+    status: matches
+    detail: >-
+      Recursive sorted-dict canonicalization at
+      src/async_model_gateway/model_registry/model_payload/canonical_hash.py:44;
+      list order preserved at
+      src/async_model_gateway/model_registry/model_payload/canonical_hash.py:33;
+      scalar values passed through unchanged at
+      src/async_model_gateway/model_registry/model_payload/canonical_hash.py:30
+  - item: No other public callable is added by this topic.
+    status: matches
+    detail: >-
+      model_payload package exports only hash_model_payload via
+      src/async_model_gateway/model_registry/model_payload/__init__.py:5
+  - item: >-
+      src/async_model_gateway/model_registry/model_payload/__init__.py may
+      re-export hash_model_payload for the allowed import surface.
+    status: matches
+    detail: src/async_model_gateway/model_registry/model_payload/__init__.py:3
+  - item: >-
+      src/async_model_gateway/model_registry/__init__.py must not re-export the
+      hashing callable.
+    status: matches
+    detail: src/async_model_gateway/model_registry/__init__.py:3
+test_plan_check:
+  - case_type: happy path
+    status: present
+    location: tests/model_registry/model_payload/test_canonical_hash.py:27
+  - case_type: invalid input
+    status: present
+    location: tests/model_registry/model_payload/test_canonical_hash.py:95
+  - case_type: edge case
+    status: present
+    location: tests/model_registry/model_payload/test_canonical_hash.py:64
+  - case_type: regression
+    status: present
+    location: tests/model_registry/model_payload/test_canonical_hash.py:57
+  - case_type: backward compatibility
+    status: present
+    location: tests/model_registry/model_payload/test_canonical_hash.py:12
