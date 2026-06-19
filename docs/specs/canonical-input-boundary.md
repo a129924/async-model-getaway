@@ -47,12 +47,13 @@ local 的多樣性不升成 canonical input vocabulary，而是留在 `ModelPool
 它只回答「這是不是同一個模型」，不負責告訴 loader 怎麼讀 artifact。
 
 目前 repo 已有最小 implementation core：
-`async_model_gateway.model_registry.model_payload.hash_model_payload`。
+`async_model_gateway.model_registry.model_payload.ModelPayloadHasher`。
 
-這個 callable 會對 `model-payload` 做 recursive canonicalization，再產生
-cross-process stable 的 SHA-256 hex digest。nested dict 會 canonicalize，
-list 順序保留，scalar 不做 normalization，unsupported type 直接
-`TypeError` fail closed。
+這個 public owner 的 method `hash_model_payload(...)` 會對
+`model-payload` 做 recursive canonicalization，再產生 cross-process
+stable 的 SHA-256 hex digest。nested dict 會 canonicalize，list 順序保留，
+scalar 不做 normalization，unsupported type 直接 `TypeError` fail
+closed。
 
 ## `features`
 

@@ -50,17 +50,20 @@ def _canonicalize_json_like(value: object) -> JSONLike:
     raise TypeError(msg)
 
 
-def hash_model_payload(model_payload: dict[str, JSONLike]) -> str:
-    """Return a deterministic SHA-256 hex digest for model-payload content."""
-    runtime_payload: object = model_payload
-    if not _is_json_dict(runtime_payload):
-        msg = "model_payload must be a dict[str, JSONLike]"
-        raise TypeError(msg)
+class ModelPayloadHasher:
+    """Hash model-payload identity material through a class-first public owner."""
 
-    canonical_payload = _canonicalize_json_like(runtime_payload)
-    serialized_payload = json.dumps(
-        canonical_payload,
-        ensure_ascii=False,
-        separators=(",", ":"),
-    )
-    return sha256(serialized_payload.encode("utf-8")).hexdigest()
+    def hash_model_payload(self, model_payload: dict[str, JSONLike]) -> str:
+        """Return a deterministic SHA-256 hex digest for model-payload content."""
+        runtime_payload: object = model_payload
+        if not _is_json_dict(runtime_payload):
+            msg = "model_payload must be a dict[str, JSONLike]"
+            raise TypeError(msg)
+
+        canonical_payload = _canonicalize_json_like(runtime_payload)
+        serialized_payload = json.dumps(
+            canonical_payload,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        return sha256(serialized_payload.encode("utf-8")).hexdigest()

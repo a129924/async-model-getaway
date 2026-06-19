@@ -1,0 +1,58 @@
+verdict: red-tests-ready
+d1_verdict:
+  verdict: non-trivial
+  reason: public-contract-change
+test_mapping:
+  - requirement_id: 1
+    test_case_name: test_model_payload_hasher_is_exposed_from_model_payload_public_surface
+    coverage_category: integration-points
+  - requirement_id: 2
+    test_case_name: test_model_payload_hasher_returns_same_hex_digest_for_equivalent_nested_payloads
+    coverage_category: happy-path
+  - requirement_id: 2
+    test_case_name: test_model_payload_hasher_matches_golden_digest_for_empty_payload
+    coverage_category: regression
+  - requirement_id: 3
+    test_case_name: test_model_payload_hasher_returns_same_hex_digest_for_equivalent_nested_payloads
+    coverage_category: happy-path
+  - requirement_id: 3
+    test_case_name: test_model_payload_hasher_preserves_list_order_in_the_digest
+    coverage_category: regression
+  - requirement_id: 3
+    test_case_name: test_model_payload_hasher_keeps_scalar_representations_distinct
+    coverage_category: backward-compatibility
+  - requirement_id: 4
+    test_case_name: test_model_payload_hasher_rejects_invalid_top_level_payload_types
+    coverage_category: error-exception
+  - requirement_id: 4
+    test_case_name: test_model_payload_hasher_rejects_nested_dict_keys_that_are_not_strings
+    coverage_category: error-exception
+  - requirement_id: 4
+    test_case_name: test_model_payload_hasher_rejects_unsupported_nested_value_types
+    coverage_category: error-exception
+  - requirement_id: 5
+    test_case_name: test_hash_model_payload_function_is_not_exposed_from_model_payload_public_surface
+    coverage_category: integration-points
+  - requirement_id: 6
+    test_case_name: test_model_registry_package_does_not_reexport_model_payload_hasher
+    coverage_category: state-side-effects
+  - requirement_id: 7
+    test_case_name: test_model_payload_hasher_is_exposed_from_model_payload_public_surface
+    coverage_category: integration-points
+validation_checks:
+  d1_decision: pass
+  behavior_contract_source: plan/model-payload-hasher-class-surface/model-payload-hasher-class-surface.spec.md
+  requirements_mapped: pass
+  public_contract_coverage: pass
+  test_categories_present:
+    - happy-path
+    - error-exception
+    - regression
+    - backward-compatibility
+    - state-side-effects
+    - integration-points
+  expected_initial_status: red
+  production_code_modified: false
+issues:
+  - "Requirement 7 includes repo-visible document alignment; runtime RED coverage focuses on the code-facing surface while document checks remain part of implementation validation."
+next_step: Run the updated pytest module in RED state before production-code edits.

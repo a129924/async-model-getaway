@@ -39,10 +39,10 @@
 這些目前都屬於設計層級的概念，用來做規劃與對齊，還不是已實作的 Python type 或 runtime feature。
 
 目前唯一已落地的最小核心，是
-`async_model_gateway.model_registry.model_payload.hash_model_payload`：
+`async_model_gateway.model_registry.model_payload.ModelPayloadHasher`：
 
-- 它負責把 `model-payload` 作 recursive canonicalization 後產生穩定的
-  SHA-256 hex digest
+- 它的 public method `hash_model_payload(...)` 負責把 `model-payload` 作
+  recursive canonicalization 後產生穩定的 SHA-256 hex digest
 - nested dict 會 canonicalize
 - list 順序保留
 - scalar 不做 normalization
