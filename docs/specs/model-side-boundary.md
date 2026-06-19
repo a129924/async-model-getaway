@@ -16,6 +16,13 @@
 
 `ModelRegistry` 是 identity context owner、`payload-hash` authority 與 freshness authority。
 
+目前 repo 只先落地了這個 boundary 的最小核心：
+`async_model_gateway.model_registry.model_payload.hash_model_payload`。
+
+也就是說，`payload-hash` 的 canonicalization 與 hashing callable 已存在；
+但完整 `ModelRegistry` owner object、freshness decision 與對
+`orchestrator` 的決策交付仍未實作。
+
 它負責：
 
 - 消費以下 identity context：
@@ -34,6 +41,9 @@
 - response cache persistence
 
 gateway / registry 不做語意等價判斷；只要 `model-payload` material 不同，就一律視為模型已更新。
+
+目前已落地的 hashing core 也遵守這個原則：dict key order 會被 canonicalize，
+但 list order 仍屬 identity material，`1` 與 `1.0` 也不會被視為同一份 payload。
 
 ## `ModelPool`
 

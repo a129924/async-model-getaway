@@ -46,6 +46,14 @@ local 的多樣性不升成 canonical input vocabulary，而是留在 `ModelPool
 
 它只回答「這是不是同一個模型」，不負責告訴 loader 怎麼讀 artifact。
 
+目前 repo 已有最小 implementation core：
+`async_model_gateway.model_registry.model_payload.hash_model_payload`。
+
+這個 callable 會對 `model-payload` 做 recursive canonicalization，再產生
+cross-process stable 的 SHA-256 hex digest。nested dict 會 canonicalize，
+list 順序保留，scalar 不做 normalization，unsupported type 直接
+`TypeError` fail closed。
+
 ## `features`
 
 `features` 是 bounded capability vocabulary 所構成的 capability / usage-mode request。
@@ -82,6 +90,10 @@ local 的多樣性不升成 canonical input vocabulary，而是留在 `ModelPool
 `orchestrator` 消費這一層提供的完整 canonical input。
 
 `ModelRegistry` 可以依賴 `model_name`、`model_source_kind` 與 `model-payload` 來產生 `payload-hash`，但 hashing authority 不屬於這一層。
+
+目前這個 authority 已先以 bounded callable 形式落地在
+`async_model_gateway.model_registry.model_payload`；但 registry freshness、
+cache identity wiring 與 orchestration flow 仍不屬於這份 spec 的實作範圍。
 
 `features` 在目前階段只參與 cache 邊界，不參與 model identity authority。
 

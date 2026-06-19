@@ -38,6 +38,16 @@
 
 這些目前都屬於設計層級的概念，用來做規劃與對齊，還不是已實作的 Python type 或 runtime feature。
 
+目前唯一已落地的最小核心，是
+`async_model_gateway.model_registry.model_payload.hash_model_payload`：
+
+- 它負責把 `model-payload` 作 recursive canonicalization 後產生穩定的
+  SHA-256 hex digest
+- nested dict 會 canonicalize
+- list 順序保留
+- scalar 不做 normalization
+- unsupported type 會 fail closed 並 raise `TypeError`
+
 在目前階段，`model_source_kind` 只鎖 `local | remote`，而 capability 差異先收斂在 `features`，不先拆成多方法名公開介面。
 
 ## 責任摘要
@@ -54,6 +64,7 @@ core abstractions 的 boundary spec 入口整理在 [docs/specs/core-abstraction
 
 這個 repository 目前尚未實作：
 
+- `ModelRegistry` 的 freshness decision 與完整 registry behavior
 - gateway execution flow
 - model pool behavior
 - response cache logic
