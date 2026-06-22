@@ -23,6 +23,9 @@
 - packaged application scaffold
 - 最小 CLI entrypoint
 
+目前 package version baseline 為 `0.3.0`，`model-payload` hashing 的 public
+owner 為 `ModelPayloadHasher`。
+
 ## 核心概念
 
 以下詞彙是目前專案共享的核心語彙：
