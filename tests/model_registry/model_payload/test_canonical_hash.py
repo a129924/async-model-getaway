@@ -1,4 +1,4 @@
-"""RED tests for the class-first canonical model-payload hashing contract."""
+"""Tests for the class-first canonical model-payload hashing contract."""
 
 from __future__ import annotations
 
