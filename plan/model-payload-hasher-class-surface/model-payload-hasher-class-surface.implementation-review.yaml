@@ -1,0 +1,63 @@
+verdict: approved
+
+traceability_matrix:
+  - step: "Update tests/model_registry/model_payload/test_canonical_hash.py and record plan/model-payload-hasher-class-surface/model-payload-hasher-class-surface.red-tests.yaml so the bounded pytest coverage targets ModelPayloadHasher, confirms the old public function is absent from the allowed import surface, preserves the existing hashing semantics, and keeps model_registry free of re-exports."
+    status: done
+    evidence: "tests/model_registry/model_payload/test_canonical_hash.py:12-133; plan/model-payload-hasher-class-surface/model-payload-hasher-class-surface.red-tests.yaml"
+  - step: "Update src/async_model_gateway/model_registry/model_payload/canonical_hash.py and src/async_model_gateway/model_registry/model_payload/__init__.py so ModelPayloadHasher becomes the only allowed public owner, the old standalone function is removed, and the internal canonicalization helper continues to enforce the existing runtime validation and digest behavior."
+    status: done
+    evidence: "src/async_model_gateway/model_registry/model_payload/canonical_hash.py:28-69; src/async_model_gateway/model_registry/model_payload/__init__.py:3-5"
+  - step: "Update README.md, docs/architecture.md, docs/specs/canonical-input-boundary.md, and docs/specs/model-side-boundary.md so every repo-visible description of the hashing core matches the class-first public contract without widening the architecture scope."
+    status: done
+    evidence: "README.md:41-49; docs/architecture.md:24-30; docs/specs/canonical-input-boundary.md:49-56; docs/specs/model-side-boundary.md:19-24"
+  - step: "Run bounded validation commands and prepare implementer-owned evidence before reviewer inspection."
+    status: done
+    evidence: ".venv/bin/pytest tests/model_registry/model_payload/test_canonical_hash.py -v --no-cov => 15 passed; .venv/bin/pyright => 0 errors, 0 warnings, 0 informations; .venv/bin/ruff check --no-cache README.md docs src tests plan/model-payload-hasher-class-surface => All checks passed"
+
+scope_creep_check:
+  - non_goal: "This topic does not introduce a compatibility wrapper or dual public owner."
+    violated: no
+    evidence: "src/async_model_gateway/model_registry/model_payload/canonical_hash.py:53-69; src/async_model_gateway/model_registry/model_payload/__init__.py:3-5"
+  - non_goal: "This topic does not modify hashing semantics, loader behavior, or registry freshness policy."
+    violated: no
+    evidence: "src/async_model_gateway/model_registry/model_payload/canonical_hash.py:28-50; tests/model_registry/model_payload/test_canonical_hash.py:34-106"
+  - non_goal: "This topic does not create a new repo-level workflow phase for create worktree."
+    violated: no
+    evidence: "clean"
+  - non_goal: "This topic does not add new dependencies or change the package entrypoint."
+    violated: no
+    evidence: "clean"
+
+contract_check:
+  - item: "Public owner: ModelPayloadHasher"
+    status: matches
+    detail: "Public export surface is reduced to ModelPayloadHasher only."
+  - item: "Public method: hash_model_payload(self, model_payload: dict[str, JSONLike]) -> str"
+    status: matches
+    detail: "ModelPayloadHasher defines hash_model_payload with the planned parameter and return type."
+  - item: "Compatibility policy: remove the standalone public function; no wrapper"
+    status: matches
+    detail: "Tests assert the old function is absent from the allowed import surface, and the package re-exports only ModelPayloadHasher."
+  - item: "Import policy: only async_model_gateway.model_registry.model_payload re-exports ModelPayloadHasher"
+    status: matches
+    detail: "tests/model_registry/model_payload/test_canonical_hash.py:27-31 confirms model_registry does not re-export it."
+  - item: "Error behavior: keep TypeError fail-closed behavior unchanged"
+    status: matches
+    detail: "Invalid top-level payloads, non-string nested keys, and unsupported nested values still raise TypeError."
+  - item: "Typing policy: keep strict typing with internal JSONScalar / JSONLike aliases"
+    status: matches
+    detail: "canonical_hash.py evidence shows the internal helper and class surface retain the planned typed aliases and no widened public typing contract."
+
+test_plan_check:
+  - case_type: "public surface import contract (ModelPayloadHasher exported, old function absent)"
+    status: present
+    location: "tests/model_registry/model_payload/test_canonical_hash.py:12-24"
+  - case_type: "module boundary contract (model_registry does not re-export hasher)"
+    status: present
+    location: "tests/model_registry/model_payload/test_canonical_hash.py:27-31"
+  - case_type: "hashing semantics stability (nested payload canonicalization, empty payloads, list-order sensitivity, scalar distinction)"
+    status: present
+    location: "tests/model_registry/model_payload/test_canonical_hash.py:34-106"
+  - case_type: "fail-closed validation (invalid top-level payloads, non-string nested keys, unsupported nested values raise TypeError)"
+    status: present
+    location: "tests/model_registry/model_payload/test_canonical_hash.py:109-133"

@@ -17,9 +17,9 @@
 `ModelRegistry` 是 identity context owner、`payload-hash` authority 與 freshness authority。
 
 目前 repo 只先落地了這個 boundary 的最小核心：
-`async_model_gateway.model_registry.model_payload.hash_model_payload`。
+`async_model_gateway.model_registry.model_payload.ModelPayloadHasher`。
 
-也就是說，`payload-hash` 的 canonicalization 與 hashing callable 已存在；
+也就是說，`payload-hash` 的 canonicalization 與 hashing owner 已存在；
 但完整 `ModelRegistry` owner object、freshness decision 與對
 `orchestrator` 的決策交付仍未實作。
 

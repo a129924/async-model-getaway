@@ -22,10 +22,11 @@
 在 local path，除了 identity context 外，還需要一份獨立的 read contract 供 loader 使用；這條路徑不能把 `model-payload` 當成 loader 猜測依據。
 
 目前 repo 已先落地一個最小實作：
-`async_model_gateway.model_registry.model_payload.hash_model_payload`。
+`async_model_gateway.model_registry.model_payload.ModelPayloadHasher`。
 
-它只負責 `model-payload` 的 recursive canonicalization 與穩定
-SHA-256 digest 產生；這不代表完整 `ModelRegistry`、freshness flow、
+它的 public method `hash_model_payload(...)` 只負責 `model-payload` 的
+recursive canonicalization 與穩定 SHA-256 digest 產生；這不代表完整
+`ModelRegistry`、freshness flow、
 `orchestrator` 或 `ResponseCache` 已經實作完成。
 
 ## `orchestrator`
