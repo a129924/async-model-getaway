@@ -47,7 +47,10 @@ local 的多樣性不升成 canonical input vocabulary，而是留在 `ModelPool
 它只回答「這是不是同一個模型」，不負責告訴 loader 怎麼讀 artifact。
 
 目前 repo 已有最小 implementation core：
-`async_model_gateway.model_registry.model_payload.ModelPayloadHasher`。
+`async_model_gateway.model_registry.ModelRegistry` 會消費
+`model_name`、`model_source_kind` 與 `model-payload`，而
+`async_model_gateway.model_registry.model_payload.ModelPayloadHasher`
+仍是 `payload-hash` 的 public owner。
 
 這個 public owner 的 method `hash_model_payload(...)` 會對
 `model-payload` 做 recursive canonicalization，再產生 cross-process
@@ -90,11 +93,15 @@ closed。
 
 `orchestrator` 消費這一層提供的完整 canonical input。
 
-`ModelRegistry` 可以依賴 `model_name`、`model_source_kind` 與 `model-payload` 來產生 `payload-hash`，但 hashing authority 不屬於這一層。
+`ModelRegistry` 可以依賴 `model_name`、`model_source_kind` 與
+`model-payload` 來產生 `payload-hash`，並以
+`model_name + model_source_kind` 作為 store lookup identity；但 hashing
+authority 不屬於這一層。
 
 目前這個 authority 已先以 bounded callable 形式落地在
-`async_model_gateway.model_registry.model_payload`；但 registry freshness、
-cache identity wiring 與 orchestration flow 仍不屬於這份 spec 的實作範圍。
+`async_model_gateway.model_registry.model_payload`；而最小 registry
+freshness boundary 也已存在，但 cache identity wiring 與 orchestration
+flow 仍不屬於這份 spec 的實作範圍。
 
 `features` 在目前階段只參與 cache 邊界，不參與 model identity authority。
 

@@ -16,12 +16,13 @@
 
 `ModelRegistry` 是 identity context owner、`payload-hash` authority 與 freshness authority。
 
-目前 repo 只先落地了這個 boundary 的最小核心：
-`async_model_gateway.model_registry.model_payload.ModelPayloadHasher`。
+目前 repo 已落地這個 boundary 的最小 class-first 版本：
+`async_model_gateway.model_registry.ModelRegistry`。
 
-也就是說，`payload-hash` 的 canonicalization 與 hashing owner 已存在；
-但完整 `ModelRegistry` owner object、freshness decision 與對
-`orchestrator` 的決策交付仍未實作。
+它透過位於 `async_model_gateway.model_registry.ports.store` 的 async-only
+`RegistryStore` 做 lookup 與條件式 persistence，並持續以既有的
+`async_model_gateway.model_registry.model_payload.ModelPayloadHasher`
+作為 `payload-hash` owner。
 
 它負責：
 
@@ -29,8 +30,10 @@
   - `model_name`
   - `model_source_kind`
   - `model-payload`
+- 以 `model_name + model_source_kind` 作為 store lookup identity
 - 從上述 identity context 派生穩定的 `payload-hash`
-- 判斷 registry state 是否需要更新
+- 交付受限的 freshness decision：`first-seen`、`unchanged`、`changed`
+- 在 freshness 不是 `unchanged` 時更新 registry state
 - 提供與 payload identity 相關的決策資訊給 `orchestrator`
 
 它不負責：
@@ -44,6 +47,9 @@ gateway / registry 不做語意等價判斷；只要 `model-payload` material �
 
 目前已落地的 hashing core 也遵守這個原則：dict key order 會被 canonicalize，
 但 list order 仍屬 identity material，`1` 與 `1.0` 也不會被視為同一份 payload。
+
+目前這個最小 boundary 仍不擴張到 cache wiring、runtime-model acquisition、
+`ModelPool`、`ModelGateway` 或更寬的 model-side orchestration。
 
 ## `ModelPool`
 

@@ -23,8 +23,10 @@
 - packaged application scaffold
 - 最小 CLI entrypoint
 
-目前 package version baseline 為 `0.3.0`，`model-payload` hashing 的 public
-owner 為 `ModelPayloadHasher`。
+目前 package version baseline 為 `0.3.0`。repo 也已落地最小
+`ModelRegistry` boundary：root package 只 re-export `ModelRegistry`，
+而 `model-payload` hashing 的 public owner 仍維持為
+`ModelPayloadHasher`。
 
 ## 核心概念
 
@@ -41,8 +43,12 @@ owner 為 `ModelPayloadHasher`。
 
 這些目前都屬於設計層級的概念，用來做規劃與對齊，還不是已實作的 Python type 或 runtime feature。
 
-目前唯一已落地的最小核心，是
-`async_model_gateway.model_registry.model_payload.ModelPayloadHasher`：
+目前已落地的最小 model-registry boundary 包含：
+
+- `async_model_gateway.model_registry.ModelRegistry`
+- `async_model_gateway.model_registry.model_payload.ModelPayloadHasher`
+
+其中 `ModelPayloadHasher`：
 
 - 它的 public method `hash_model_payload(...)` 負責把 `model-payload` 作
   recursive canonicalization 後產生穩定的 SHA-256 hex digest
@@ -67,7 +73,7 @@ core abstractions 的 boundary spec 入口整理在 [docs/specs/core-abstraction
 
 這個 repository 目前尚未實作：
 
-- `ModelRegistry` 的 freshness decision 與完整 registry behavior
+- 更寬的 model-side architecture 與任何超出最小 boundary 的 registry behavior
 - gateway execution flow
 - model pool behavior
 - response cache logic

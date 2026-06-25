@@ -1,0 +1,125 @@
+review_status: COMPLETE
+effective_verdict: approved
+
+topic: model-registry-minimal-boundary
+topic_ref: feat/andrew/model-registry-minimal-boundary
+
+preconditions:
+  current_branch:
+    status: yes
+    evidence: "`git branch --show-current` returned `feat/andrew/model-registry-minimal-boundary`."
+  plan_review_approved:
+    status: yes
+    evidence: "plan/model-registry-minimal-boundary/model-registry-minimal-boundary.plan-review.json:2 records verdict approved."
+  implementation_present:
+    status: yes
+    evidence:
+      - "src/async_model_gateway/model_registry/registry.py:1 is present."
+      - "src/async_model_gateway/model_registry/entry.py:1 is present."
+      - "src/async_model_gateway/model_registry/freshness_policy.py:1 is present."
+      - "src/async_model_gateway/model_registry/freshness_result.py:1 is present."
+      - "src/async_model_gateway/model_registry/ports/__init__.py:1 is present."
+      - "src/async_model_gateway/model_registry/ports/store.py:1 is present."
+      - "tests/model_registry/test_package_surface.py:1 is present."
+      - "tests/model_registry/test_registry.py:1 is present."
+      - "tests/model_registry/test_freshness_policy.py:1 is present."
+      - "plan/model-registry-minimal-boundary/model-registry-minimal-boundary.red-tests.yaml:1 is present."
+
+step_gate:
+  status: passed
+  evidence:
+    - "plan/model-registry-minimal-boundary/model-registry-minimal-boundary.step.md:18-31 marks `implementation-review` as `[X]` while keeping Implementation Steps 1-4 marked `[X]`."
+    - "plan/model-registry-minimal-boundary/model-registry-minimal-boundary.step.md:24-28 records reviewer verdict approved, human check passed, and the updated selected-pytest validation contract."
+    - "Re-ran `uv run pytest tests/model_registry/test_package_surface.py tests/model_registry/test_registry.py tests/model_registry/test_freshness_policy.py tests/model_registry/model_payload/test_canonical_hash.py tests/test_package_entrypoint.py tests/test_local_path_guard.py -v`: the selected validation suite passed and aligned with the repo-wide coverage source."
+    - "Re-ran `uv run ruff check README.md docs src tests plan/model-registry-minimal-boundary`: all checks passed."
+    - "Re-ran `uv run pyright`: 0 errors, 0 warnings, 0 informations."
+
+traceability_matrix:
+  - step: "1. 在 tests/model_registry/test_package_surface.py、tests/model_registry/test_registry.py 與 tests/model_registry/test_freshness_policy.py 新增 async RED coverage，並記錄 plan/model-registry-minimal-boundary/model-registry-minimal-boundary.red-tests.yaml。"
+    status: done
+    evidence:
+      - "tests/model_registry/test_package_surface.py:9"
+      - "tests/model_registry/test_registry.py:61"
+      - "tests/model_registry/test_freshness_policy.py:25"
+      - "plan/model-registry-minimal-boundary/model-registry-minimal-boundary.red-tests.yaml:1"
+  - step: "2. 新增 registry source files 與 ports/store.py，並更新 model_registry/__init__.py，維持單一概念模組、唯一 abstract collaborator、唯一 root re-export，且沿用既有 ModelPayloadHasher。"
+    status: done
+    evidence:
+      - "src/async_model_gateway/model_registry/__init__.py:1"
+      - "src/async_model_gateway/model_registry/registry.py:14"
+      - "src/async_model_gateway/model_registry/entry.py:10"
+      - "src/async_model_gateway/model_registry/freshness_policy.py:11"
+      - "src/async_model_gateway/model_registry/freshness_result.py:13"
+      - "src/async_model_gateway/model_registry/ports/__init__.py:1"
+      - "src/async_model_gateway/model_registry/ports/store.py:12"
+  - step: "3. 更新 README.md、docs/architecture.md、docs/specs/canonical-input-boundary.md 與 docs/specs/model-side-boundary.md，使 repo-visible wording 正確反映最小 async-only boundary。"
+    status: done
+    evidence:
+      - "README.md:27"
+      - "README.md:48"
+      - "docs/architecture.md:25"
+      - "docs/architecture.md:51"
+      - "docs/specs/canonical-input-boundary.md:50"
+      - "docs/specs/canonical-input-boundary.md:96"
+      - "docs/specs/model-side-boundary.md:17"
+  - step: "4. 執行 targeted pytest、ruff、pyright，並更新 step.md 反映 implementer-owned work 完成。"
+    status: done
+    evidence:
+      - "plan/model-registry-minimal-boundary/model-registry-minimal-boundary.step.md:28"
+      - "Validation reruns recorded under step_gate.evidence."
+
+scope_creep_check:
+  - non_goal: "不得重新打開 ModelPayloadHasher.hash_model_payload(...) 的 owner、signature 或 hashing semantics。"
+    violated: no
+    evidence: "clean; src/async_model_gateway/model_registry/registry.py:44 delegates to ModelPayloadHasher as-is, and tests/model_registry/test_registry.py:214 verifies direct delegation."
+  - non_goal: "不得引入額外 abstract collaborator、service/repository layering、sync-compatible registry surface。"
+    violated: no
+    evidence: "clean; src/async_model_gateway/model_registry/ports/store.py:12 is the only abstract collaborator, and src/async_model_gateway/model_registry/registry.py:29 keeps the public boundary async-only."
+  - non_goal: "不得超出 plan 鎖定的 exact artifact paths。"
+    violated: no
+    evidence: "clean; plan/model-registry-minimal-boundary/model-registry-minimal-boundary.plan.md:77 locks human decision A, :147 lists `uv.lock` as the allowed Dependency lockfile path, and :161 reiterates that `uv.lock` is in scope. The current `uv.lock:16` change therefore stays within the topic's allowed artifact paths."
+
+contract_check:
+  - item: "async_model_gateway.model_registry.ModelRegistry constructor and resolve_freshness signature."
+    status: matches
+    detail: "Constructor and async resolve_freshness signature match the plan, including keyword-only model_name, model_source_kind, and model_payload in src/async_model_gateway/model_registry/registry.py:17 and src/async_model_gateway/model_registry/registry.py:29."
+  - item: "RegistryStore async lookup/upsert contract keyed by model_name + model_source_kind."
+    status: matches
+    detail: "RegistryStore exposes only async get_entry(..., model_name, model_source_kind) and async upsert_entry(entry) in src/async_model_gateway/model_registry/ports/store.py:16 and src/async_model_gateway/model_registry/ports/store.py:25."
+  - item: "RegistryEntry and RegistryFreshnessResult concrete value surfaces."
+    status: matches
+    detail: "RegistryEntry remains model_name + model_source_kind + payload_hash in src/async_model_gateway/model_registry/entry.py:13, and RegistryFreshnessResult remains decision + entry + previous_payload_hash in src/async_model_gateway/model_registry/freshness_result.py:13."
+  - item: "model_source_kind typing stays locked to Literal[\"local\", \"remote\"]."
+    status: matches
+    detail: "ModelSourceKind is defined once in src/async_model_gateway/model_registry/entry.py:10 and consumed by src/async_model_gateway/model_registry/registry.py:5 and src/async_model_gateway/model_registry/ports/store.py:7."
+  - item: "Behavior contract for lookup, hashing, decision, and conditional persistence."
+    status: matches
+    detail: "ModelRegistry still awaits store lookup before hashing, evaluates freshness, and only upserts on non-unchanged decisions in src/async_model_gateway/model_registry/registry.py:37."
+
+test_plan_check:
+  - case_type: "happy path"
+    status: present
+    location: "tests/model_registry/test_registry.py:96"
+  - case_type: "invalid input"
+    status: present
+    location: "tests/model_registry/test_registry.py:241"
+  - case_type: "edge case"
+    status: present
+    location: "tests/model_registry/test_freshness_policy.py:74"
+  - case_type: "regression"
+    status: present
+    location: "tests/model_registry/test_package_surface.py:9"
+  - case_type: "backward compatibility"
+    status: present
+    location: "tests/model_registry/test_registry.py:214"
+
+coverage_caveat:
+  evaluated: yes
+  blocker: no
+  detail: "The validation contract now uses a selected pytest suite that includes the existing coverage-bearing tests for model-payload, the package entrypoint, and the local-path guard, so the command aligns with the repository-wide coverage source instead of relying on a non-blocking fail-under caveat."
+
+blocking_issues: []
+
+routing:
+  next_review_stage: python-code-review
+  action_required: "Implementation review is now green for model-registry-minimal-boundary. Preserve the existing targeted-pytest coverage caveat as non-blocking and route to python-code-review only if broader code-quality review is needed."

@@ -1,3 +1,5 @@
 """Model registry package boundary."""
 
-__all__: list[str] = []
+from .registry import ModelRegistry
+
+__all__ = ["ModelRegistry"]
