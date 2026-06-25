@@ -25,8 +25,8 @@
     與 repo-visible 文件更新；範圍限於
     `src/async_model_gateway/model_registry/`、
     `tests/model_registry/`、`README.md`、`docs/architecture.md`、
-    `docs/specs/canonical-input-boundary.md` 與
-    `docs/specs/model-side-boundary.md`。
+    `docs/specs/canonical-input-boundary.md`、
+    `docs/specs/model-side-boundary.md` 與 `uv.lock`。
   - 將 `model-registry-class-first-boundary` 退役，不再作為 canonical
     topic contract。
 
@@ -74,6 +74,9 @@
   freshness material 參與判斷，而不是 store lookup key。
 - `ModelPayloadHasher.hash_model_payload(...) -> str` 的 signature、owner 與
   hashing semantics 都保持不變。
+- Human decision `A` 已鎖定：`uv.lock` 是此 topic 的合法 repo-visible artifact
+  path；僅允許承載此 topic implementation 所需的最小 lockfile 變更，不得藉此
+  擴張成額外 dependency topic。
 - 此 topic 會影響 repo-visible first-read 文字，因此 stable-library
   metadata 於下方宣告。此 topic 不需要 release workflow，也不需要
   VERSION bump。
@@ -141,6 +144,7 @@ Routing notes:
 | Architecture summary | `docs/architecture.md` | Implementer | 與最小 async-only registry boundary 對齊的 architecture summary |
 | Canonical input boundary spec | `docs/specs/canonical-input-boundary.md` | Implementer | 必須描述 `ModelRegistry` 消費 `model_name`、`model_source_kind` 與 `model-payload`，同時維持 hasher ownership 不變的 spec |
 | Model side boundary spec | `docs/specs/model-side-boundary.md` | Implementer | 必須準確描述最小 class-first registry owner、async store boundary 與受限 freshness decision 的 spec |
+| Dependency lockfile | `uv.lock` | Implementer | 合法的 repo-visible lockfile artifact path；僅允許承載此 topic implementation 所需的最小 dependency resolution 變更 |
 | Model registry package root | `src/async_model_gateway/model_registry/__init__.py` | Implementer | 只能 re-export `ModelRegistry` 的 root import surface |
 | Model registry boundary owner | `src/async_model_gateway/model_registry/registry.py` | Implementer | 負責 lookup、hashing、decision 與條件式 persistence orchestration 的 async `ModelRegistry` owner |
 | Registry entry value object | `src/async_model_gateway/model_registry/entry.py` | Implementer | 單一概念的 concrete registry entry surface |
@@ -154,7 +158,7 @@ Routing notes:
 
 Artifact path notes:
 
-- `README.md` 屬於此 topic 範圍；`VERSION` 與
+- `README.md` 與 `uv.lock` 屬於此 topic 範圍；`VERSION` 與
   `.github/copilot-instructions.md` 不在 scope 內。
 - `src/async_model_gateway/model_registry/model_payload/__init__.py` 與
   `src/async_model_gateway/model_registry/model_payload/canonical_hash.py`
@@ -202,7 +206,7 @@ Artifact path notes:
    freshness flow，且不擴張到 cache、gateway、pool 或 orchestrator
    implementation work。
 4. 執行
-   `uv run pytest tests/model_registry/test_package_surface.py tests/model_registry/test_registry.py tests/model_registry/test_freshness_policy.py -v`、
+   `uv run pytest tests/model_registry/test_package_surface.py tests/model_registry/test_registry.py tests/model_registry/test_freshness_policy.py tests/model_registry/model_payload/test_canonical_hash.py tests/test_package_entrypoint.py tests/test_local_path_guard.py -v`、
    `uv run ruff check README.md docs src tests plan/model-registry-minimal-boundary`
    與 `uv run pyright`，然後再更新
    `plan/model-registry-minimal-boundary/model-registry-minimal-boundary.step.md`
@@ -488,7 +492,7 @@ Test cases:
 ## Validation Commands
 
 ```text
-uv run pytest tests/model_registry/test_package_surface.py tests/model_registry/test_registry.py tests/model_registry/test_freshness_policy.py -v
+uv run pytest tests/model_registry/test_package_surface.py tests/model_registry/test_registry.py tests/model_registry/test_freshness_policy.py tests/model_registry/model_payload/test_canonical_hash.py tests/test_package_entrypoint.py tests/test_local_path_guard.py -v
 uv run ruff check README.md docs src tests plan/model-registry-minimal-boundary
 uv run pyright
 ```

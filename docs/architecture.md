@@ -21,13 +21,16 @@
 
 在 local path，除了 identity context 外，還需要一份獨立的 read contract 供 loader 使用；這條路徑不能把 `model-payload` 當成 loader 猜測依據。
 
-目前 repo 已先落地一個最小實作：
-`async_model_gateway.model_registry.model_payload.ModelPayloadHasher`。
+目前 repo 已落地一個最小的 model-registry boundary：
+`async_model_gateway.model_registry.ModelRegistry` 會先以
+`model_name + model_source_kind` 做 store lookup，再透過既有的
+`async_model_gateway.model_registry.model_payload.ModelPayloadHasher`
+產生 `payload-hash`，最後交付受限的 freshness decision。
 
-它的 public method `hash_model_payload(...)` 只負責 `model-payload` 的
-recursive canonicalization 與穩定 SHA-256 digest 產生；這不代表完整
-`ModelRegistry`、freshness flow、
-`orchestrator` 或 `ResponseCache` 已經實作完成。
+其中 `ModelPayloadHasher.hash_model_payload(...)` 仍只負責
+`model-payload` 的 recursive canonicalization 與穩定 SHA-256 digest
+產生；這不代表完整 `orchestrator`、`ResponseCache` 或
+`runtime-model` acquisition flow 已經實作完成。
 
 ## `orchestrator`
 
@@ -45,9 +48,9 @@ recursive canonicalization 與穩定 SHA-256 digest 產生；這不代表完整
 8. Persist the generated response into response cache
 9. Return the response
 
-這裡描述的是高層概念 flow。除了 `model-payload` hashing core 已有最小實作外，
-其餘 orchestration、freshness、cache 與 runtime acquisition flow 仍未在
-repository 中落地。
+這裡描述的是高層概念 flow。除了最小 `ModelRegistry` boundary 與
+`model-payload` hashing core 已落地外，其餘 orchestration、cache 與
+runtime acquisition flow 仍未在 repository 中落地。
 
 ## Responsibility Boundaries
 
@@ -84,8 +87,8 @@ local 與 remote 被視為 model-source concern，而不是不同的 gateway mod
 - remote model source
 
 這些詞彙大多仍維持在概念層，還不對應到最終定案的 Python class、protocol
-或 API schema；目前唯一已落地的狹義實作，是
-`model-payload` 的 canonical hashing core。
+或 API schema；目前已落地的狹義實作，限於最小 `ModelRegistry`
+boundary 與 `model-payload` 的 canonical hashing core。
 
 ## Initialization 階段的 Out Of Scope
 

@@ -1,0 +1,65 @@
+verdict: red-tests-ready
+d1_verdict:
+  verdict: non-trivial
+  reason: api_change
+test_mapping:
+  - requirement_id: 1
+    test_case_name: test_model_registry_public_contract_is_async_only
+    coverage_category: boundary-edge
+  - requirement_id: 1
+    test_case_name: test_model_registry_first_seen_payload_upserts_candidate_entry
+    coverage_category: happy-path
+  - requirement_id: 1
+    test_case_name: test_model_registry_unchanged_payload_skips_upsert
+    coverage_category: state-side-effects
+  - requirement_id: 1
+    test_case_name: test_model_registry_changed_payload_returns_previous_hash_and_upserts
+    coverage_category: state-side-effects
+  - requirement_id: 2
+    test_case_name: test_registry_store_lookup_contract_is_async_only_and_ignores_payload_hash
+    coverage_category: integration-points
+  - requirement_id: 2
+    test_case_name: test_model_registry_lookup_identity_ignores_payload_hash
+    coverage_category: integration-points
+  - requirement_id: 3
+    test_case_name: test_registry_freshness_result_shape_is_locked_to_three_fields
+    coverage_category: boundary-edge
+  - requirement_id: 3
+    test_case_name: test_registry_freshness_policy_returns_changed_with_previous_payload_hash
+    coverage_category: happy-path
+  - requirement_id: 4
+    test_case_name: test_registry_store_port_stays_under_ports_modules
+    coverage_category: integration-points
+  - requirement_id: 4
+    test_case_name: test_registry_supporting_surfaces_stay_in_single_concept_modules
+    coverage_category: regression
+  - requirement_id: 5
+    test_case_name: test_model_registry_package_reexports_only_model_registry
+    coverage_category: regression
+  - requirement_id: 6
+    test_case_name: test_model_registry_uses_model_payload_hasher_contract_without_wrapping
+    coverage_category: backward-compatibility
+  - requirement_id: 6
+    test_case_name: test_model_registry_invalid_payload_raises_type_error_before_write
+    coverage_category: error-exception
+  - requirement_id: 7
+    test_case_name: test_registry_supporting_surfaces_stay_in_single_concept_modules
+    coverage_category: regression
+validation_checks:
+  d1_decision: pass
+  behavior_contract_source: plan/model-registry-minimal-boundary/model-registry-minimal-boundary.spec.md
+  requirements_mapped: pass
+  public_contract_coverage: pass
+  test_categories_present:
+    - happy-path
+    - error-exception
+    - boundary-edge
+    - state-side-effects
+    - integration-points
+    - regression
+    - backward-compatibility
+  expected_initial_status: red
+  production_code_modified: false
+issues:
+  - "Requirement 7 is only partially runtime-testable; module-placement and package-surface assertions cover the observable boundary, while exact artifact-path governance remains an implementation-review concern."
+next_step: Run the selected pytest suite for the topic, model-payload, entrypoint, and local-path-guard surfaces so RED validation stays aligned with the repository-wide coverage source before any src implementation work begins.
