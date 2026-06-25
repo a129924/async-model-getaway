@@ -28,7 +28,7 @@ preconditions:
 step_gate:
   status: passed
   evidence:
-    - "plan/model-registry-minimal-boundary/model-registry-minimal-boundary.step.md:18-31 keeps `implementation-review` pending while marking Implementation Steps 1-4 as `[X]`."
+    - "plan/model-registry-minimal-boundary/model-registry-minimal-boundary.step.md:18-31 marks `implementation-review` as `[X]` while keeping Implementation Steps 1-4 marked `[X]`."
     - "plan/model-registry-minimal-boundary/model-registry-minimal-boundary.step.md:24-28 records reviewer verdict approved, human check passed, and the updated selected-pytest validation contract."
     - "Re-ran `uv run pytest tests/model_registry/test_package_surface.py tests/model_registry/test_registry.py tests/model_registry/test_freshness_policy.py tests/model_registry/model_payload/test_canonical_hash.py tests/test_package_entrypoint.py tests/test_local_path_guard.py -v`: the selected validation suite passed and aligned with the repo-wide coverage source."
     - "Re-ran `uv run ruff check README.md docs src tests plan/model-registry-minimal-boundary`: all checks passed."
