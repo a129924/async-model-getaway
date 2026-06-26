@@ -23,7 +23,7 @@
 - packaged application scaffold
 - 最小 CLI entrypoint
 
-目前 package version baseline 為 `0.4.0`。repo 也已落地最小
+目前 package version baseline 為 `0.4.1`。repo 也已落地最小
 `ModelRegistry` boundary：root package 只 re-export `ModelRegistry`，
 而 `model-payload` hashing 的 public owner 仍維持為
 `ModelPayloadHasher`。
