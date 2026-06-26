@@ -16,7 +16,7 @@ created: 2026-06-26
 ## Workflow Stages
 
 - [X] plan-authoring
-- [ ] plan-review
+- [X] plan-review
 - [ ] implementation
 - [ ] reviewer-follow-up
 
