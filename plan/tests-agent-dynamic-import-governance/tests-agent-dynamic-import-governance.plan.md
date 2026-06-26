@@ -94,9 +94,15 @@
 Routing notes:
 
 - `approved` requires both the repo-visible plan-review artifact with an
-  `approved` verdict and an explicit repo-visible `human check`.
-- Until plan review and `human check` both pass, this topic must not enter
-  `implement-plan`.
+  `approved` verdict and the human-owned gate evidence at
+  `plan/tests-agent-dynamic-import-governance/tests-agent-dynamic-import-governance.human-check.json`.
+- The `human check` gate is satisfied only when that repo-visible
+  `*.human-check.json` artifact explicitly records that the approved plan is
+  cleared for `implement-plan`.
+- Until both
+  `tests-agent-dynamic-import-governance.plan-review.json`
+  and `tests-agent-dynamic-import-governance.human-check.json` pass their
+  respective gates, this topic must not enter `implement-plan`.
 - The reviewer gate for this topic must reject new or expanded dynamic module
   loading in `tests/` unless the topic plan names the exception and why it is
   necessary.
@@ -110,6 +116,7 @@ Routing notes:
 | Topic plan | `plan/tests-agent-dynamic-import-governance/tests-agent-dynamic-import-governance.plan.md` | Planning actor | Repo-visible execution contract for this topic |
 | Topic step tracking | `plan/tests-agent-dynamic-import-governance/tests-agent-dynamic-import-governance.step.md` | Planning actor | Repo-visible implementation-progress companion artifact |
 | Plan review artifact | `plan/tests-agent-dynamic-import-governance/tests-agent-dynamic-import-governance.plan-review.json` | Reviewer | Repo-visible planning gate verdict |
+| Human check gate evidence | `plan/tests-agent-dynamic-import-governance/tests-agent-dynamic-import-governance.human-check.json` | Human | Human-owned repo-visible gate evidence that clears the approved plan for `implement-plan` |
 | Root agent governance surface | `AGENTS.md` | Implementer | Formal control-plane policy for agent behavior in `tests/` |
 | Reviewer gate surface | `.codex/agents/reviewer.toml` | Implementer | Repo-local reviewer instruction surface that enforces the topic-plan exception rule for dynamic module loading in `tests/` |
 
@@ -117,6 +124,9 @@ Artifact path notes:
 
 - This topic does not modify `README.md`, `VERSION`, workflow-contract files,
   `src/`, `tests/`, or `docs/`.
+- `tests-agent-dynamic-import-governance.human-check.json` is human-owned gate
+  evidence; planning, implementer, and reviewer work must not pre-fill it on
+  behalf of Human.
 - Do not create or rely on `tests/AGENTS.md` as a governance artifact under
   this topic.
 - Treat listed paths as an executable contract.
@@ -149,6 +159,10 @@ Artifact path notes:
 - `Artifact Paths` stay exact and limited to the declared planning/governance
   surfaces; no `src/`, `tests/`, `docs/`, `README.md`, or workflow-contract
   path is added under this topic.
+- `tests-agent-dynamic-import-governance.human-check.json` is declared as the
+  human-owned repo-visible gate evidence for `human check`, and
+  `implement-plan` entry remains blocked until it explicitly clears the
+  approved plan for implementation.
 - Stable-library intent remains explicitly absent and `Post-merge / release
   actions` continues to say no release workflow is required.
 - `tests/AGENTS.md` is excluded from the formal control plane and is not
