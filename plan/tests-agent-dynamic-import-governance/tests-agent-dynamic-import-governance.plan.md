@@ -72,7 +72,7 @@
 
 ## Status / Allowed Transitions
 
-- **Current**: `review-ready`
+- **Current**: `reviewer-in-progress`
 - **Execution model**: follow
   `spec-and-plan-finalization -> implement-plan -> pr-comment -> pr-comment-review-pr-comments-and-fix`;
   stop at `merged` because this topic does not use the conditional `release`
@@ -178,8 +178,8 @@ Artifact path notes:
   implementation step and does not pre-fill plan review, human check, or
   implementation completion before those workflow events actually occur.
 - `tests-agent-dynamic-import-governance.plan-review.json` exists as a
-  reviewer-owned initial handoff skeleton and does not claim a completed review
-  gate.
+  reviewer-owned repo-visible artifact and currently records an `approved`
+  review verdict.
 
 ## Reviewer Handoff
 
