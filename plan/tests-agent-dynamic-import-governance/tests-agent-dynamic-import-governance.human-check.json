@@ -1,0 +1,11 @@
+{
+  "topic": "tests-agent-dynamic-import-governance",
+  "gate": "human-check",
+  "decision": null,
+  "status": "pending",
+  "plan_review_verdict": "approved",
+  "cleared_for": null,
+  "cleared": false,
+  "recorded_on": null,
+  "summary": "Human check is pending. The approved plan-review verdict does not clear this topic for implement-plan until a human records that gate decision."
+}

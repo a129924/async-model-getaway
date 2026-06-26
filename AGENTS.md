@@ -12,3 +12,5 @@
 - repo-local custom agents = `.codex/agents/`
 - 若任務涉及 planning、implementation、review、git topic flow 或 worktree，需再讀 `.agents/README.md`
 - `.codex/agents/` 是 repo-local custom agent surface，不是 skill source
+- 在 `tests/` 中，agent 不得為了讓測試配合實作而使用動態模組載入；只有當前 topic plan 已明確授權該例外，且 reviewer 可驗證其必要性時，才可例外處理
+- 這項治理的正式控制面是 root `AGENTS.md` 加上 reviewer gate；`tests/AGENTS.md` 不是正式控制面，也不得作為授權依據
