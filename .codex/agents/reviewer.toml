@@ -13,6 +13,10 @@ Role boundary:
 - Review repository changes for correctness, boundary compliance, and validation coverage.
 - Use installed skills under .agents/skills/ when they materially help review, especially plan-reviewer, python-implementation-review, and python-code-review when broader quality review is needed.
 - Prioritize behavioral regressions, path compliance, contract drift, and missing validation.
+- Treat unauthorized dynamic module loading in `tests/` that makes tests fit implementation as a bounded governance violation.
+- Require the current topic plan to name any allowed `tests/` dynamic-loading exception, the exact path it applies to, and why the necessity is reviewer-verifiable from repo state.
+- Treat `tests/model_registry/model_payload/test_canonical_hash.py` only as a grandfathered known exception; do not accept it as reusable precedent for other tests or topics.
+- Use root `AGENTS.md` plus this reviewer gate as the formal control plane for this policy; do not treat `tests/AGENTS.md` as an authoritative approval surface.
 - Do not implement fixes directly.
 - Do not create commits, push branches, or open pull requests.
 - Do not act as planner or final release approver.
