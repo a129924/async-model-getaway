@@ -4,13 +4,14 @@
 
 這份文件定義 model side 的正式共享詞彙與責任邊界。
 
-目前 model side 固定由三個業務名詞構成：
+目前 model side 固定由四個業務名詞構成：
 
 - `ModelRegistry`
 - `ModelPool`
 - `ModelGateway`
+- `ModelExecution`
 
-`runtime-model` 則是 model side 對外暴露的 consumption boundary。
+`runtime-model` 則是 provider boundary 與 execution boundary 之間的 unified consumption surface。
 
 ## `ModelRegistry`
 
@@ -53,12 +54,13 @@ gateway / registry 不做語意等價判斷；只要 `model-payload` material �
 
 ## `ModelPool`
 
-`ModelPool` 是 local model runtime and lifecycle owner。
+`ModelPool` 是 local `runtime-model` provider / lifecycle owner。
 
 它只屬於 `local` 路徑。
 
 它負責：
 
+- local `runtime-model` provider
 - local model availability
 - local model 上下架
 - local `runtime-model` 的取得與生命週期責任
@@ -67,6 +69,7 @@ gateway / registry 不做語意等價判斷；只要 `model-payload` material �
 
 它不負責：
 
+- execution policy 或 invocation semantics
 - `payload-hash` authority
 - registry freshness authority
 - remote model side boundary
@@ -103,23 +106,54 @@ gateway / registry 不做語意等價判斷；只要 `model-payload` material �
 
 ## `ModelGateway`
 
-`ModelGateway` 是 remote model side boundary。
+`ModelGateway` 是 remote `runtime-model` provider / access boundary。
 
 它只屬於 `remote` 路徑。
 
 它負責：
 
 - remote model source 路徑
-- remote model side 的接取責任
-- 對 `orchestrator` 暴露 remote path 可消費的 model-side boundary
+- remote `runtime-model` provider / access
+- 對上層邊界交付可消費的 remote `runtime-model`
 
 remote 目前只有單一實際需求，不需要先做更細 provider 分類。
 
 它與 `ModelPool` 並列，而不是被 `ModelPool` 吞進去。
 
+它不負責：
+
+- execution policy 或 invocation semantics
+- local model runtime lifecycle
+- `payload-hash` authority
+
+## `ModelExecution`
+
+`ModelExecution` 是 model side 的 invocation semantics owner。
+
+它與 `ModelPool` / `ModelGateway` 並列，是 sibling boundary，不是 provider
+boundary 的 child concern。
+
+它負責：
+
+- 消費統一的 `runtime-model` surface
+- 擁有 model invocation semantics
+- 作為 `orchestrator` 委派 execution 的正式 boundary
+- 在 execution 階段承接 local / remote provider 之後的統一消費責任
+
+它不負責：
+
+- local `runtime-model` provider / lifecycle
+- remote `runtime-model` provider / access
+- `payload-hash` authority 或 registry freshness authority
+- response cache identity authority
+- 把 `features` 升格成 provider-specific execution contract
+
 ## `runtime-model`
 
-`runtime-model` 是 model side 對外暴露的 consumption boundary。
+`runtime-model` 是 `ModelPool` / `ModelGateway` 與 `ModelExecution` 之間的
+unified consumption surface。
+
+它不是 system-level execution owner。
 
 目前只固定其邊界角色，不定義最終 class、protocol 或 provider contract。
 

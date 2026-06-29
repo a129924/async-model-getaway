@@ -11,8 +11,8 @@
 建議依照以下順序閱讀：
 
 1. [canonical-input-boundary.md](canonical-input-boundary.md)
-2. [orchestrator-boundary.md](orchestrator-boundary.md)
-3. [model-side-boundary.md](model-side-boundary.md)
+2. [model-side-boundary.md](model-side-boundary.md)
+3. [orchestrator-boundary.md](orchestrator-boundary.md)
 4. [response-cache-boundary.md](response-cache-boundary.md)
 
 ## 共享詞彙
@@ -28,6 +28,7 @@
 - `ModelRegistry`
 - `ModelPool`
 - `ModelGateway`
+- `ModelExecution`
 - `ResponseCache`
 - `runtime-model`
 - `payload-hash`
@@ -39,19 +40,22 @@
 高層依賴方向固定為：
 
 1. `canonical input boundary` 定義 `model_name`、`model_source_kind`、`model-payload`、`features`
-2. `orchestrator` 協調高層流程，但不擁有 hashing、lifecycle 或 cache identity authority
-3. `ModelRegistry` 擁有 `payload-hash`、identity context 與 freshness authority
-4. `ModelPool` 擁有 local model runtime and lifecycle
-5. `LocalModelLoader` 作為 `ModelPool` 內部的 local acquisition sub-boundary，只消費 `model_artifact`
-6. `ModelGateway` 擁有 remote model side boundary
-7. `ResponseCache` 依賴 `payload-hash + features`
+2. `ModelRegistry` 擁有 `payload-hash`、identity context 與 freshness authority
+3. `ModelPool` 擁有 local `runtime-model` provider / lifecycle
+4. `LocalModelLoader` 作為 `ModelPool` 內部的 local acquisition sub-boundary，只消費 `model_artifact`
+5. `ModelGateway` 擁有 remote `runtime-model` provider / access boundary
+6. `runtime-model` 是 provider boundary 交付給 `ModelExecution` 的 unified consumption surface
+7. `ModelExecution` 擁有 `runtime-model` invocation semantics
+8. `ResponseCache` 依賴 `payload-hash + features`
+9. `orchestrator` 協調 registry、provider、execution 與 cache boundary，但不直接 execute model
 
 在目前階段：
 
 - `model_source_kind` 只鎖 `local | remote`
 - local runtime taxonomy 留在 `ModelPool` 內部
 - local read contract 由 `model_artifact` 承擔
-- 對外能力邊界採統一入口
+- `runtime-model` 維持統一 consumption surface
+- provider acquisition 與 invocation semantics 維持分離 boundary
 - capability 差異先收斂在 `features`
 
 ## Deferred Items

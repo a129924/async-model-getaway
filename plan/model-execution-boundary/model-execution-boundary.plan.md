@@ -79,7 +79,7 @@
 
 ## Status / Allowed Transitions
 
-- **Current**: `review-ready`
+- **Current**: `publish-in-progress`
 - **Execution model**: follow
   `spec-and-plan-finalization -> implement-plan -> pr-comment -> pr-comment-review-pr-comments-and-fix`；
   此 topic 不使用條件式 `release` workflow，於 `merged` 停止。
@@ -99,10 +99,26 @@
 
 Routing notes:
 
-- 目前只完成 plan/spec/step authoring；不得把這次 authoring 視為 plan review、
-  `approved`、`human check` 或 `implement-plan` 入口。
-- `approved` 仍需後續 repo-visible `plan-review.json` verdict 與明確的
-  repo-visible `human check`；兩者目前都尚未發生。
+- 獨立 reviewer 工作已完成，且 repo-visible plan-review artifact 已記錄
+  `approved` verdict；這是 `spec-and-plan-finalization` 的歷史 review evidence，
+  不是目前 post-implement state 的直接錨點。
+- 依 repo contract，`approved` 必須同時具備
+  `plan/model-execution-boundary/model-execution-boundary.plan-review.json`
+  的 `approved` verdict，與 human-owned gate evidence
+  `plan/model-execution-boundary/model-execution-boundary.human-check.json`。
+- `plan/model-execution-boundary/model-execution-boundary.human-check.json`
+  是此 topic 的 exact `human check` evidence path；它記錄的是
+  `approved` topic 被清除為可進入 `implement-plan` 的歷史 gate pass，
+  不是目前 workflow state。
+- 上述 exact `human check` artifact 已於 `2026-06-26` 記錄為通過，因此
+  `spec-and-plan-finalization` 已完成，且此 topic 曾合法進入
+  `implement-plan`。
+- `plan/model-execution-boundary/model-execution-boundary.step.md` 與本輪
+  docs correction 已一致記錄：`implement-plan` 內的文件修正與 bounded
+  validation 已完成，因此目前 canonical post-implement state 為
+  `publish-in-progress`。
+- `pr-comment` 與後續 workflow 仍未開始；若需進入 PR review / merge flow，
+  必須依既有 workflow gate 繼續推進。
 - analysis layer 缺少 `requirements.md` 與 `technical-spec.md`，已以上方
   semantic warning 明示；此 topic 仍以已鎖定的 human decisions 與 repo-visible
   docs boundary 為唯一 scope 來源，不得在 reviewer 或 implementer 階段自行重開
@@ -119,6 +135,7 @@ Routing notes:
 | Topic step tracking | `plan/model-execution-boundary/model-execution-boundary.step.md` | Implementer | repo-visible implementation progress / gate-tracking companion artifact |
 | Topic wording spec | `plan/model-execution-boundary/model-execution-boundary.spec.md` | Planning actor | 凍結 cross-doc wording 與 acceptance contract 的 companion artifact |
 | Plan review artifact | `plan/model-execution-boundary/model-execution-boundary.plan-review.json` | Reviewer | repo-visible planning gate verdict |
+| Human check gate evidence | `plan/model-execution-boundary/model-execution-boundary.human-check.json` | Human | human-owned repo-visible gate evidence that clears the approved plan for `implement-plan` |
 | Architecture summary | `docs/architecture.md` | Implementer | 對齊高層 responsibility summary、runtime-model surface 與 orchestrator / execution 分界 |
 | Core abstractions boundary spec | `docs/specs/core-abstractions-boundary.md` | Implementer | 對齊共享詞彙、閱讀順序與依賴方向摘要，使 `ModelExecution` 成為正式 sibling boundary |
 | Model side boundary spec | `docs/specs/model-side-boundary.md` | Implementer | 對齊 `ModelExecution`、`ModelPool`、`ModelGateway` 與 `runtime-model` 的正式責任切分 |
@@ -128,8 +145,10 @@ Routing notes:
 Artifact path notes:
 
 - 本 topic 不修改 `README.md`、`VERSION`、`docs/settings-policy.md`、其他既有
-  `plan/` artifacts、任何 source/tests path，或任何 review artifact 以外的 gate
-  artifact。
+  `plan/` artifacts、任何 source/tests path，或任何與本輪 docs correction
+  無關的 review / gate artifact。
+- `model-execution-boundary.human-check.json` 是 human-owned gate evidence；
+  planning actor、implementer 與 reviewer 不得代 Human 預填或改寫此 gate。
 - `docs/specs/canonical-input-boundary.md` 是 conditional path：只有在不修改它就
   會導致 cross-doc wording 衝突時才可編輯；若能維持一致則保持不變。
 - 上述 paths 是可執行合約；若後續修正需要超出這些精確 paths，必須停止並返回
@@ -167,8 +186,9 @@ Artifact path notes:
   shape 必須持續符合 `plan/topic-plan-contract.md` 與
   `plan/agent-handoff-workflow.md`。
 - `plan/model-execution-boundary/model-execution-boundary.step.md` 必須鏡像每個
-  編號的 implementation step，且目前只能標記 `plan-authoring` 完成；不得預填
-  plan review、`human check`、implementation 或 merge 相關完成狀態。
+  編號的 implementation step 與實際 workflow stage；本輪 docs correction
+  完成後，`plan-authoring`、`plan-review`、`implementation` 與
+  `validation` 的完成狀態必須與 repo-visible docs 變更保持一致。
 - `plan/model-execution-boundary/model-execution-boundary.spec.md` 必須存在，並把
   cross-doc wording contract 凍結為 reviewer 與 implementer 可檢查的 acceptance
   criteria。
