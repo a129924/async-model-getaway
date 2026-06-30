@@ -41,8 +41,13 @@
   - 任何把 `model-payload` 改寫成 inference payload 的文件或設計變更。
   - 任何重新打開 response cache、registry、freshness、artifact loading、
     local loader、release 或 stable-library metadata 的 topic。
-  - 任何 review artifact authoring、commit、push、plan review、planner
-    final gate、`human check` 或 `human merge`。
+  - 任何新增或改寫既有 gate artifacts、後續額外 gate state 變更、commit、
+    push、`human merge` 或其他超出本輪 bounded fix 的 PR 操作。
+    `plan/model-execution-boundary/model-execution-boundary.plan-review.json`
+    與
+    `plan/model-execution-boundary/model-execution-boundary.human-check.json`
+    僅作為既有 repo-visible evidence 引用，不是本輪 implementer 可改寫的
+    target。
 
 ## Locked Decisions
 
@@ -79,7 +84,7 @@
 
 ## Status / Allowed Transitions
 
-- **Current**: `publish-in-progress`
+- **Current**: `pr-open`
 - **Execution model**: follow
   `spec-and-plan-finalization -> implement-plan -> pr-comment -> pr-comment-review-pr-comments-and-fix`；
   此 topic 不使用條件式 `release` workflow，於 `merged` 停止。
@@ -115,10 +120,15 @@ Routing notes:
   `implement-plan`。
 - `plan/model-execution-boundary/model-execution-boundary.step.md` 與本輪
   docs correction 已一致記錄：`implement-plan` 內的文件修正與 bounded
-  validation 已完成，因此目前 canonical post-implement state 為
-  `publish-in-progress`。
-- `pr-comment` 與後續 workflow 仍未開始；若需進入 PR review / merge flow，
-  必須依既有 workflow gate 繼續推進。
+  validation 已完成；此 topic 其後已依 workflow 從
+  `publish-in-progress` 進入 `pr-open`。
+- PR `#5` 已於 `2026-06-30` 開啟，代表 `pr-comment` surface 已存在。
+- 同一日已出現 1 筆 actionable review finding，指出 `## Scope` 的
+  `Out of scope` wording 與既有 gate artifacts 的 repo-visible evidence
+  關係不夠清楚；因此目前 active workflow position 是
+  `pr-comment-review-pr-comments-and-fix`，且 bounded fix 僅限於收斂
+  `plan.md` / `step.md` 的 current-state 與 wording，不改寫既有 gate
+  artifacts。
 - analysis layer 缺少 `requirements.md` 與 `technical-spec.md`，已以上方
   semantic warning 明示；此 topic 仍以已鎖定的 human decisions 與 repo-visible
   docs boundary 為唯一 scope 來源，不得在 reviewer 或 implementer 階段自行重開

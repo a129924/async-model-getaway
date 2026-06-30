@@ -1,6 +1,6 @@
 ---
 topic: model-execution-boundary
-phase: publish-in-progress
+phase: pr-open
 created: 2026-06-26
 ---
 
@@ -24,8 +24,14 @@ created: 2026-06-26
   `approved` -> `implement-plan` 的歷史 gate evidence，不是目前 current state
   錨點
 - Current workflow position: `implement-plan` 的 docs correction 與 bounded
-  validation 已完成；目前 canonical post-implement state 為
-  `publish-in-progress`，尚未進入 `pr-comment`
+  validation 已完成，且後續已依 workflow 從 `publish-in-progress` 進入
+  `pr-open`；PR `#5` 已於 `2026-06-30` 開啟，因此 `pr-comment` surface
+  已存在。
+- Active review/fix loop: `2026-06-30` 已出現 1 筆 actionable review
+  finding，指出 `plan.md` 的 `## Scope` / `Out of scope` wording 需要明確
+  表達既有 gate artifacts 只是 repo-visible evidence、不是本輪 implementer
+  可改寫的 target；因此目前 workflow 位於
+  `pr-comment-review-pr-comments-and-fix`
 - Analysis layer: 缺少
   `analysis/model-execution-boundary/requirements.md` 與
   `analysis/model-execution-boundary/technical-spec.md`
