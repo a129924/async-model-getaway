@@ -35,6 +35,7 @@
 ## `orchestrator`
 
 目前 `orchestrator` 的概念角色，是圍繞 canonical input 來協調 response generation。
+它負責推進高層順序，但不直接 execute model。
 
 高層預期 flow 如下：
 
@@ -43,8 +44,8 @@
 3. Derive a response-cache identity from payload identity and `features`
 4. Check response cache
 5. Return cached response on hit
-6. Request a `runtime-model` on miss
-7. Use that `runtime-model` for response generation
+6. Acquire a `runtime-model` from `ModelPool` or `ModelGateway` on miss
+7. Delegate invocation of that `runtime-model` to `ModelExecution`
 8. Persist the generated response into response cache
 9. Return the response
 
@@ -61,14 +62,18 @@ runtime acquisition flow 仍未在 repository 中落地。
 - orchestration-oriented decisions
 - response cache participation
 - canonical input handling after normalization
+- coordination across provider, execution, and cache boundaries
+
+但 gateway side 不直接擁有 model invocation semantics。
 
 ### Model Side
 
 目前 model side 被理解為負責：
 
-- provision of a `runtime-model`
-- local or remote model source selection
-- model-side concerns behind the `runtime-model` boundary
+- `ModelPool` 作為 local `runtime-model` provider / lifecycle owner
+- `ModelGateway` 作為 remote `runtime-model` provider / access boundary
+- `ModelExecution` 作為 `runtime-model` invocation semantics owner
+- `runtime-model` 作為 provider boundary 與 execution boundary 之間的 unified consumption surface
 
 local 與 remote 被視為 model-source concern，而不是不同的 gateway mode。
 
@@ -81,6 +86,9 @@ local 與 remote 被視為 model-source concern，而不是不同的 gateway mod
 - `orchestrator`
 - `model-payload`
 - `features`
+- `ModelPool`
+- `ModelGateway`
+- `ModelExecution`
 - response cache
 - `runtime-model`
 - local model source
