@@ -8,12 +8,15 @@ preconditions:
   current_branch:
     status: yes
     evidence: "`git branch --show-current` returned `feat/andrew/model-registry-in-memory-store`."
+  snapshot_commit:
+    status: yes
+    evidence: "`git rev-parse HEAD` returned `c51dc397ca9cb0e1aa79520d0e018003db35fd92`."
   plan_review_approved:
     status: yes
     evidence: "plan/model-registry-in-memory-store/model-registry-in-memory-store.plan-review.json:2 records verdict approved."
   human_check_cleared:
     status: yes
-    evidence: "plan/model-registry-in-memory-store/model-registry-in-memory-store.human-check.json:1 records `decision: approved`, `status: cleared`, and `cleared_for: implement-plan`."
+    evidence: "plan/model-registry-in-memory-store/model-registry-in-memory-store.human-check.json:4-8 records `decision: approved`, `status: cleared`, and `cleared_for: implement-plan`."
   implementation_present:
     status: yes
     evidence:
@@ -22,29 +25,37 @@ preconditions:
       - "tests/model_registry/stores/test_in_memory.py:1 is present."
       - "tests/model_registry/stores/test_stores_package_surface.py:1 is present."
       - "tests/model_registry/test_package_surface.py:1 is present."
+      - "tests/model_registry/test_registry.py:1 is present."
       - "plan/model-registry-in-memory-store/model-registry-in-memory-store.red-tests.yaml:1 is present."
-      - "README.md:26 records the new release-facing summary."
-      - "src/async_model_gateway/__version__.py:3 and pyproject.toml:3 record the patch bump to 0.4.2."
+      - "README.md:26 records the release-facing summary for the new store surface."
+      - "src/async_model_gateway/__version__.py:3, pyproject.toml:3, and uv.lock:16 record the patch bump to 0.4.2."
 
 step_gate:
   status: passed
   evidence:
-    - "plan/model-registry-in-memory-store/model-registry-in-memory-store.step.md:15-21 marks Implementation Steps 1-6 as `[X]`."
-    - "plan/model-registry-in-memory-store/model-registry-in-memory-store.step.md:11-16 still leaves `implementation-review` and `code-review` unchecked, so this YAML is the missing reviewer-owned gate artifact rather than an implementer-owned stage flip."
-    - "Validation evidence records the actual `uv run pytest` topic suite result instead of the narrower standalone pytest command listed in the plan, because the repository coverage gate would fail that narrower command in isolation."
+    - "plan/model-registry-in-memory-store/model-registry-in-memory-store.step.md:24-29 marks Implementation Steps 1-6 as `[X]`."
+    - "plan/model-registry-in-memory-store/model-registry-in-memory-store.step.md:15-20 marks workflow through `implementation-review` as `[X]` while leaving only `code-review` unchecked."
+    - "Re-ran `uv run pytest`: 50 passed, coverage 99.48%."
+    - "Re-ran `uv run ruff check`: passed."
+    - "Re-ran `uv run pyright`: 0 errors."
+    - "Re-ran `uv lock --check`: passed."
 
 validation_evidence:
   - command: "uv run pytest"
     status: passed
-    result: "49 passed"
+    result: "50 passed"
     coverage: "99.48%"
-    note: "Recorded as the actual full related suite result accepted by the approved implementation review."
   - command: "uv run ruff check"
     status: passed
     result: "passed"
+    note: "`All checks passed!`"
   - command: "uv run pyright"
     status: passed
     result: "0 errors"
+  - command: "uv lock --check"
+    status: passed
+    result: "passed"
+    note: "`Resolved 40 packages in 3ms`"
 
 traceability_matrix:
   - step: "1. 在 `tests/model_registry/stores/test_in_memory.py` 撰寫 RED coverage，鎖定 `InMemoryRegistryStore` 的 empty-only constructor、`model_name + model_source_kind` lookup identity、first upsert / overwrite behavior、missing-entry return path，以及相同 instance 上以單一 `asyncio.Lock` 序列化讀寫的 contract。"
@@ -56,23 +67,24 @@ traceability_matrix:
       - "tests/model_registry/stores/test_in_memory.py:83"
       - "tests/model_registry/stores/test_in_memory.py:143"
       - "plan/model-registry-in-memory-store/model-registry-in-memory-store.red-tests.yaml:1"
-  - step: "2. 在 `tests/model_registry/stores/test_stores_package_surface.py` 與 `tests/model_registry/test_package_surface.py` 撰寫或更新 package-surface coverage，鎖定 store 只透過 `model_registry.stores` submodule public surface 暴露，且 `async_model_gateway.model_registry` root package 不得 re-export `InMemoryRegistryStore`。"
+  - step: "2. 在 `tests/model_registry/stores/test_stores_package_surface.py`、`tests/model_registry/test_package_surface.py` 與 `tests/model_registry/test_registry.py` 撰寫或更新 bounded coverage，分別鎖定 store submodule public surface、root package 非 re-export contract，以及 `ModelRegistry(store=InMemoryRegistryStore())` 的端對端 regression path。"
     status: done
     evidence:
       - "tests/model_registry/stores/test_stores_package_surface.py:11"
       - "tests/model_registry/stores/test_stores_package_surface.py:23"
       - "tests/model_registry/test_package_surface.py:14"
-      - "tests/model_registry/test_package_surface.py:19"
+      - "tests/model_registry/test_package_surface.py:39"
+      - "tests/model_registry/test_registry.py:203"
   - step: "3. 新增 `src/async_model_gateway/model_registry/stores/in_memory.py` 與 `src/async_model_gateway/model_registry/stores/__init__.py`，讓 `InMemoryRegistryStore` 成為 `RegistryStore` concrete subclass，維持 empty-only `__init__()`、單一 `asyncio.Lock`、以及 `typing_extensions.override` 標註的 async `get_entry()` / `upsert_entry()`。"
     status: done
     evidence:
       - "src/async_model_gateway/model_registry/stores/in_memory.py:15"
       - "src/async_model_gateway/model_registry/stores/in_memory.py:18"
-      - "src/async_model_gateway/model_registry/stores/in_memory.py:21"
       - "src/async_model_gateway/model_registry/stores/in_memory.py:23"
       - "src/async_model_gateway/model_registry/stores/in_memory.py:34"
       - "src/async_model_gateway/model_registry/stores/__init__.py:3"
-      - "src/async_model_gateway/model_registry/stores/__init__.py:5"
+      - "tests/model_registry/stores/test_in_memory.py:21"
+      - "tests/model_registry/stores/test_in_memory.py:35"
   - step: "4. 更新 `README.md`、`docs/specs/model-side-boundary.md`、`docs/specs/canonical-input-boundary.md` 與 `docs/specs/core-abstractions-boundary.md`，以最小必要 wording 反映新的 in-memory store、submodule public surface、以及未變更的 lookup identity boundary。"
     status: done
     evidence:
@@ -80,21 +92,22 @@ traceability_matrix:
       - "README.md:49"
       - "docs/specs/model-side-boundary.md:23"
       - "docs/specs/model-side-boundary.md:39"
-      - "docs/specs/canonical-input-boundary.md:96"
       - "docs/specs/canonical-input-boundary.md:101"
       - "docs/specs/core-abstractions-boundary.md:57"
-  - step: "5. 在 `src/async_model_gateway/__version__.py` 與 `pyproject.toml` 規劃並實作 patch bump，讓 release-facing metadata 與 topic scope 對齊；不得擴張成 major/minor release work。"
+  - step: "5. 在 `src/async_model_gateway/__version__.py`、`pyproject.toml` 與 `uv.lock` 規劃並實作 patch bump sync，讓 release-facing metadata 與 editable package version 對齊；不得擴張成 major/minor release work。"
     status: done
     evidence:
       - "src/async_model_gateway/__version__.py:3"
       - "pyproject.toml:3"
-      - "README.md:26"
+      - "uv.lock:15"
+      - "uv.lock:16"
+      - "validation_evidence records the passing `uv lock --check` result."
   - step: "6. 執行本 topic 的 bounded validation，更新 `plan/model-registry-in-memory-store/model-registry-in-memory-store.step.md`，並在後續 workflow 需要時產出 implementer-owned 的 `model-registry-in-memory-store.red-tests.yaml` 與其他 implementer-owned bounded evidence，確認本 topic 的 repo-visible validation evidence 已完成並可供後續 gate 檢查。"
     status: done
     evidence:
-      - "plan/model-registry-in-memory-store/model-registry-in-memory-store.step.md:15"
+      - "plan/model-registry-in-memory-store/model-registry-in-memory-store.step.md:24"
       - "plan/model-registry-in-memory-store/model-registry-in-memory-store.red-tests.yaml:1"
-      - "validation_evidence records the accepted `uv run pytest`, `uv run ruff check`, and `uv run pyright` results."
+      - "validation_evidence records `uv run pytest`, `uv run ruff check`, `uv run pyright`, and `uv lock --check` as passed."
 
 scope_creep_check:
   - non_goal: "本 topic 不新增 sync wrapper、sync facade 或 test-only sync helper。"
@@ -111,7 +124,7 @@ scope_creep_check:
     evidence: "clean; src/async_model_gateway/model_registry/__init__.py:3-5 keeps `__all__ = [\"ModelRegistry\"]`, and tests/model_registry/stores/test_stores_package_surface.py:23-30 re-checks the root non-re-export boundary."
   - non_goal: "本 topic 不做 full docs sweep、minor/major version bump 或 release automation overhaul。"
     violated: no
-    evidence: "clean; README.md:26-30, docs/specs/model-side-boundary.md:23-26, docs/specs/canonical-input-boundary.md:101-104, docs/specs/core-abstractions-boundary.md:57-59, src/async_model_gateway/__version__.py:3, and pyproject.toml:3 show bounded wording updates plus a patch bump only."
+    evidence: "clean; README.md:26-30, docs/specs/model-side-boundary.md:23-26, docs/specs/canonical-input-boundary.md:101-104, docs/specs/core-abstractions-boundary.md:57-59, src/async_model_gateway/__version__.py:3, pyproject.toml:3, and uv.lock:15-16 show bounded wording updates plus a patch bump only."
 
 contract_check:
   - item: "New public class: `async_model_gateway.model_registry.stores.InMemoryRegistryStore`"
@@ -125,10 +138,10 @@ contract_check:
     detail: "`src/async_model_gateway/model_registry/stores/in_memory.py:23-38` implements the planned async methods, and tests/model_registry/stores/test_in_memory.py:18-36 checks keyword-only lookup parameters plus `__override__` markers."
   - item: "Backward compatibility: 既有 `ModelRegistry` root import surface 與 `RegistryStore` abstract port signature 不變，且 `payload_hash` 不參與 lookup identity。"
     status: matches
-    detail: "`src/async_model_gateway/model_registry/__init__.py:3-5` preserves the root package surface, `src/async_model_gateway/model_registry/ports/store.py:12-25` preserves the abstract port signature, tests/model_registry/test_package_surface.py:39-59 verifies `payload_hash` is absent from lookup parameters, and src/async_model_gateway/model_registry/stores/in_memory.py:20-38 keys storage by `(model_name, model_source_kind)` only."
+    detail: "`src/async_model_gateway/model_registry/__init__.py:3-5` preserves the root package surface, `src/async_model_gateway/model_registry/ports/store.py:12-25` preserves the abstract port signature, `tests/model_registry/test_package_surface.py:39-59` verifies `payload_hash` is absent from lookup parameters, and `src/async_model_gateway/model_registry/stores/in_memory.py:20-38` keys storage by `(model_name, model_source_kind)` only."
   - item: "Exceptions: 本 topic 不新增 public custom exceptions；缺失 key 以 `None` 表示。"
     status: matches
-    detail: "tests/model_registry/stores/test_in_memory.py:40-51 verifies missing lookups return `None`, and no new public exception surface is introduced by `src/async_model_gateway/model_registry/stores/in_memory.py:23-38`."
+    detail: "`tests/model_registry/stores/test_in_memory.py:40-51` verifies missing lookups return `None`, and no new public exception surface is introduced by `src/async_model_gateway/model_registry/stores/in_memory.py:23-38`."
 
 test_plan_check:
   - case_type: "happy path"
@@ -136,7 +149,7 @@ test_plan_check:
     location: "tests/model_registry/stores/test_in_memory.py:55"
   - case_type: "invalid input"
     status: present
-    location: "tests/model_registry/stores/test_stores_package_surface.py:23; tests/model_registry/test_package_surface.py:19"
+    location: "tests/model_registry/stores/test_stores_package_surface.py:23; tests/model_registry/test_package_surface.py:14"
   - case_type: "edge case"
     status: present
     location: "tests/model_registry/stores/test_in_memory.py:40; tests/model_registry/stores/test_in_memory.py:83"
@@ -153,11 +166,11 @@ test_plan_check:
 coverage_caveat:
   evaluated: yes
   blocker: no
-  detail: "This reviewer artifact intentionally records the actual `uv run pytest` full related suite result (`49 passed`, coverage `99.48%`) rather than the narrower standalone pytest command listed in the plan, because the repository coverage gate would fail that standalone command in isolation."
+  detail: "The reviewer evidence now records the full `uv run pytest` repository suite result (`50 passed`, coverage `99.48%`) together with `uv run ruff check`, `uv run pyright`, and `uv lock --check`, so the release-facing validation set is complete for this snapshot."
 
 blocking_issues: []
 
 routing:
-  next_review_stage: python-code-review
+  next_review_stage: pr-routing
   pr_routing_ready: yes
-  action_required: "Implementation-review gate is green. Route to python-code-review if this topic still requires a separate broader quality review; otherwise it is ready for PR routing with this artifact as the reviewer-owned evidence."
+  action_required: "Implementation-review gate is green and this reviewer-owned artifact is current for commit `c51dc397ca9cb0e1aa79520d0e018003db35fd92`. No blocking issues remain before PR routing."
