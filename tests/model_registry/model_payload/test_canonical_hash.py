@@ -2,32 +2,27 @@
 
 from __future__ import annotations
 
-from importlib import import_module
 import re
 
 import pytest
+import async_model_gateway.model_registry as model_registry_module
+import async_model_gateway.model_registry.model_payload as model_payload_module
 from async_model_gateway.model_registry.model_payload import ModelPayloadHasher
 
 
 def test_model_payload_hasher_is_exposed_from_model_payload_public_surface() -> None:
     """The topic-local public package should expose the hashing owner."""
-    model_payload_module = import_module("async_model_gateway.model_registry.model_payload")
-
     assert hasattr(model_payload_module, "ModelPayloadHasher")
     assert model_payload_module.ModelPayloadHasher is ModelPayloadHasher
 
 
 def test_hash_model_payload_function_is_not_exposed_from_model_payload_public_surface() -> None:
     """The old function-first public surface should no longer exist."""
-    model_payload_module = import_module("async_model_gateway.model_registry.model_payload")
-
     assert not hasattr(model_payload_module, "hash_model_payload")
 
 
 def test_model_registry_package_does_not_reexport_model_payload_hasher() -> None:
     """The broader model_registry package must not become a re-export surface."""
-    model_registry_module = import_module("async_model_gateway.model_registry")
-
     assert not hasattr(model_registry_module, "ModelPayloadHasher")
 
 
