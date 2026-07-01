@@ -10,7 +10,7 @@ preconditions:
     evidence: "`git branch --show-current` returned `feat/andrew/model-registry-in-memory-store`."
   snapshot_commit:
     status: yes
-    evidence: "`git rev-parse HEAD` returned `c51dc397ca9cb0e1aa79520d0e018003db35fd92`."
+    evidence: "`git rev-parse HEAD` returned `c46fb11428ded8432f68462da1724ff7ebbed934`."
   plan_review_approved:
     status: yes
     evidence: "plan/model-registry-in-memory-store/model-registry-in-memory-store.plan-review.json:2 records verdict approved."
@@ -173,4 +173,4 @@ blocking_issues: []
 routing:
   next_review_stage: pr-routing
   pr_routing_ready: yes
-  action_required: "Implementation-review gate is green and this reviewer-owned artifact is current for commit `c51dc397ca9cb0e1aa79520d0e018003db35fd92`. No blocking issues remain before PR routing."
+  action_required: "Implementation-review gate is green and this reviewer-owned artifact is current for commit `c46fb11428ded8432f68462da1724ff7ebbed934`. No blocking issues remain before PR routing."
