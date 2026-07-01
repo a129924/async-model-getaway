@@ -30,11 +30,15 @@
   - 維持 store lookup identity 為 `model_name + model_source_kind`。
   - 規劃 store tests、store package-surface tests，與 model-registry package
     surface tests 的必要更新。
+  - 規劃使用 `ModelRegistry(store=InMemoryRegistryStore())` 的端對端 regression
+    test，並沿用既有 `tests/model_registry/test_registry.py` 測試面。
   - 規劃 `README.md`、`docs/specs/model-side-boundary.md`、
     `docs/specs/canonical-input-boundary.md`、
     `docs/specs/core-abstractions-boundary.md` 的最小必要更新。
   - 將 `src/async_model_gateway/__version__.py` 與 `pyproject.toml` 納入
     release-facing artifact paths，並鎖定 patch bump。
+  - 將 `uv.lock` 納入 release-facing artifact paths，確保 editable package
+    version 會隨 patch bump 同步。
 
 - **Out of scope**:
   - 任何 sync API 或 dual sync/async surface。
@@ -73,12 +77,15 @@
 - `README.md`、`docs/specs/model-side-boundary.md`、
   `docs/specs/canonical-input-boundary.md`、
   `docs/specs/core-abstractions-boundary.md`、
-  `src/async_model_gateway/__version__.py`、`pyproject.toml`
+  `src/async_model_gateway/__version__.py`、`pyproject.toml`、`uv.lock`
   都必須列入 implement lifecycle artifact paths。
 - stores package-surface test artifact path 固定為
   `tests/model_registry/stores/test_stores_package_surface.py`，以避免在既有
   pytest import contract 下與 `tests/model_registry/test_package_surface.py`
   發生 basename collision；此 topic 不調整 repo-wide pytest import mode。
+- 端對端 registry/store regression test artifact path 固定為
+  `tests/model_registry/test_registry.py`；此 topic 只在既有 registry 測試面補上
+  `ModelRegistry(store=InMemoryRegistryStore())` coverage，不擴張成新的測試矩陣。
 - Non-goal 固定為：不得把本 topic 擴張成 persistence abstraction、broader
   architecture、full docs sweep 或 major release work。
 
@@ -126,6 +133,11 @@ Routing notes:
 - 此 topic 會宣告 `*.red-tests.yaml` 與
   `*.implementation-review.yaml` companion paths 供後續 workflow 使用；宣告
   path 不代表 artifact 已存在或 gate 已通過。
+- 此次 planning repair 已變更 executable artifact paths；既有
+  `model-registry-in-memory-store.plan-review.json` 與
+  `model-registry-in-memory-store.human-check.json` 僅能視為 repair 前的歷史
+  gate evidence，後續必須依更新後的 plan 重新經過 reviewer verdict 與
+  explicit human check，才能再次進入 `implement-plan`。
 - 任何對 class name、constructor shape、override policy、single-lock
   concurrency、public surface、artifact paths、README/VERSION timing 或 bump
   direction 的變更，都必須回到 `spec-and-plan-finalization`。
@@ -146,12 +158,14 @@ Routing notes:
 | Store behavior tests | `tests/model_registry/stores/test_in_memory.py` | Implementer | async behavior coverage for lookup, upsert, concurrency, and identity rules |
 | Stores package-surface tests | `tests/model_registry/stores/test_stores_package_surface.py` | Implementer | verifies submodule public exposure without root re-export while keeping a unique pytest basename |
 | Model-registry package-surface tests | `tests/model_registry/test_package_surface.py` | Implementer | guards root package non-re-export contract against store leakage |
+| Model-registry end-to-end regression tests | `tests/model_registry/test_registry.py` | Implementer | verifies `ModelRegistry(store=InMemoryRegistryStore())` against the bounded registry/store integration path |
 | Project summary | `README.md` | Implementer | minimal first-read update for new in-memory store availability |
 | Model side boundary spec | `docs/specs/model-side-boundary.md` | Implementer | aligns model-side wording with concrete in-memory registry store availability |
 | Canonical input boundary spec | `docs/specs/canonical-input-boundary.md` | Implementer | preserves `model_name + model_source_kind` lookup identity wording |
 | Core abstractions boundary spec | `docs/specs/core-abstractions-boundary.md` | Implementer | keeps boundary index and cross-reference wording consistent |
 | Package version source | `src/async_model_gateway/__version__.py` | Implementer | repo-visible package version bump source for patch release |
 | Packaging metadata | `pyproject.toml` | Implementer | package version metadata bump aligned to patch release |
+| Lockfile metadata | `uv.lock` | Implementer | lockfile sync required so editable package version matches the declared patch bump |
 
 Artifact path notes:
 
@@ -183,11 +197,11 @@ Artifact path notes:
    model_source_kind` lookup identity、first upsert / overwrite behavior、
    missing-entry return path，以及相同 instance 上以單一 `asyncio.Lock`
    序列化讀寫的 contract。
-2. 在 `tests/model_registry/stores/test_stores_package_surface.py` 與
-   `tests/model_registry/test_package_surface.py` 撰寫或更新 package-surface
-   coverage，鎖定 store 只透過 `model_registry.stores` submodule public surface
-   暴露，且 `async_model_gateway.model_registry` root package 不得 re-export
-   `InMemoryRegistryStore`。
+2. 在 `tests/model_registry/stores/test_stores_package_surface.py`、
+   `tests/model_registry/test_package_surface.py` 與
+   `tests/model_registry/test_registry.py` 撰寫或更新 bounded coverage，分別鎖定
+   store submodule public surface、root package 非 re-export contract，以及
+   `ModelRegistry(store=InMemoryRegistryStore())` 的端對端 regression path。
 3. 新增 `src/async_model_gateway/model_registry/stores/in_memory.py` 與
    `src/async_model_gateway/model_registry/stores/__init__.py`，讓
    `InMemoryRegistryStore` 成為 `RegistryStore` concrete subclass，維持
@@ -199,9 +213,9 @@ Artifact path notes:
    `docs/specs/core-abstractions-boundary.md`，以最小必要 wording 反映新的
    in-memory store、submodule public surface、以及未變更的 lookup identity
    boundary。
-5. 在 `src/async_model_gateway/__version__.py` 與 `pyproject.toml` 規劃並實作
-   patch bump，讓 release-facing metadata 與 topic scope 對齊；不得擴張成
-   major/minor release work。
+5. 在 `src/async_model_gateway/__version__.py`、`pyproject.toml` 與 `uv.lock`
+   規劃並實作 patch bump sync，讓 release-facing metadata 與 editable package
+   version 對齊；不得擴張成 major/minor release work。
 6. 執行本 topic 的 bounded validation，更新
    `plan/model-registry-in-memory-store/model-registry-in-memory-store.step.md`，
    並在後續 workflow 需要時產出 implementer-owned 的
@@ -230,11 +244,15 @@ Artifact path notes:
 - Validation 必須證明 `InMemoryRegistryStore` 可由
   `async_model_gateway.model_registry.stores` 取得，但不會從
   `async_model_gateway.model_registry` root package 洩漏。
+- Validation 必須證明 `tests/model_registry/test_registry.py` 內存在
+  `ModelRegistry(store=InMemoryRegistryStore())` 的 bounded regression
+  coverage，且不額外擴張新的 registry 測試矩陣。
 - Validation 必須證明 stores package-surface test path 維持 unique basename，
   不與 `tests/model_registry/test_package_surface.py` 在既有 pytest import
   contract 下產生 collision。
-- Validation 必須證明 `README.md`、docs/specs、`__version__.py` 與
-  `pyproject.toml` 的 release-facing changes 與 patch bump 一致，且不擴張成
+- Validation 必須證明 `README.md`、docs/specs、`__version__.py`、
+  `pyproject.toml` 與 `uv.lock` 的 release-facing changes 與 patch bump 一致，
+  且 `uv lock --check` 不因 editable package version 落後而失敗，同時不擴張成
   full docs sweep 或 major release work。
 
 ## Reviewer Handoff

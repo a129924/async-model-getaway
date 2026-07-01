@@ -54,6 +54,9 @@
 - `model_source_kind` 只鎖 `local | remote`
 - local runtime taxonomy 留在 `ModelPool` 內部
 - local read contract 由 `model_artifact` 承擔
+- `async_model_gateway.model_registry.stores.InMemoryRegistryStore` 已作為
+  process-local concrete store 提供，但不改變 `model_registry` root package
+  的 re-export boundary
 - `runtime-model` 維持統一 consumption surface
 - provider acquisition 與 invocation semantics 維持分離 boundary
 - capability 差異先收斂在 `features`

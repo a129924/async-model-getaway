@@ -17,6 +17,7 @@ def test_model_registry_package_reexports_only_model_registry() -> None:
     assert hasattr(model_registry_module, "ModelRegistry")
 
     for attr_name in (
+        "InMemoryRegistryStore",
         "RegistryStore",
         "RegistryEntry",
         "RegistryFreshnessPolicy",

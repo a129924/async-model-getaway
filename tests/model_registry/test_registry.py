@@ -12,6 +12,7 @@ from async_model_gateway.model_registry.freshness_result import RegistryFreshnes
 from async_model_gateway.model_registry.model_payload import ModelPayloadHasher
 from async_model_gateway.model_registry.entry import RegistryEntry
 from async_model_gateway.model_registry.ports.store import RegistryStore
+from async_model_gateway.model_registry.stores import InMemoryRegistryStore
 
 
 class RecordingStore(RegistryStore):
@@ -196,6 +197,53 @@ async def test_model_registry_lookup_identity_ignores_payload_hash() -> None:
         {"model_name": "demo", "model_source_kind": ModelSourceKind.REMOTE},
     ]
     assert len(store.upserted_entries) == 2
+
+
+@pytest.mark.asyncio
+async def test_model_registry_works_end_to_end_with_in_memory_store() -> None:
+    """The concrete in-memory store should satisfy the minimal registry flow."""
+    store = InMemoryRegistryStore()
+    registry = ModelRegistry(store=store)
+    initial_payload = {"config": {"revision": 1}}
+    changed_payload = {"config": {"revision": 2}}
+
+    first_result = await registry.resolve_freshness(
+        model_name="demo",
+        model_source_kind=ModelSourceKind.LOCAL,
+        model_payload=initial_payload,
+    )
+    unchanged_result = await registry.resolve_freshness(
+        model_name="demo",
+        model_source_kind=ModelSourceKind.LOCAL,
+        model_payload=initial_payload,
+    )
+    changed_result = await registry.resolve_freshness(
+        model_name="demo",
+        model_source_kind=ModelSourceKind.LOCAL,
+        model_payload=changed_payload,
+    )
+    remote_result = await registry.resolve_freshness(
+        model_name="demo",
+        model_source_kind=ModelSourceKind.REMOTE,
+        model_payload=initial_payload,
+    )
+
+    stored_local_entry = await store.get_entry(
+        model_name="demo",
+        model_source_kind=ModelSourceKind.LOCAL,
+    )
+    stored_remote_entry = await store.get_entry(
+        model_name="demo",
+        model_source_kind=ModelSourceKind.REMOTE,
+    )
+
+    assert first_result.decision is RegistryFreshnessDecision.FIRST_SEEN
+    assert unchanged_result.decision is RegistryFreshnessDecision.UNCHANGED
+    assert changed_result.decision is RegistryFreshnessDecision.CHANGED
+    assert remote_result.decision is RegistryFreshnessDecision.FIRST_SEEN
+    assert changed_result.previous_payload_hash == first_result.entry.payload_hash
+    assert stored_local_entry == changed_result.entry
+    assert stored_remote_entry == remote_result.entry
 
 
 @pytest.mark.asyncio

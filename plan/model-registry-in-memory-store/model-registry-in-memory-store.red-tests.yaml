@@ -1,0 +1,55 @@
+verdict: red-tests-ready
+d1_verdict:
+  verdict: non-trivial
+  reason: feature
+test_mapping:
+  - requirement_id: 1
+    test_case_name: test_in_memory_registry_store_public_contract_is_bounded
+    coverage_category: boundary-edge
+  - requirement_id: 2
+    test_case_name: test_in_memory_registry_store_public_contract_is_bounded
+    coverage_category: boundary-edge
+  - requirement_id: 2
+    test_case_name: test_in_memory_registry_store_returns_none_for_missing_lookup
+    coverage_category: error-exception
+  - requirement_id: 3
+    test_case_name: test_in_memory_registry_store_public_contract_is_bounded
+    coverage_category: integration-points
+  - requirement_id: 4
+    test_case_name: test_in_memory_registry_store_serializes_reads_and_writes_with_one_lock
+    coverage_category: state-side-effects
+  - requirement_id: 5
+    test_case_name: test_in_memory_registry_store_upsert_overwrites_same_lookup_identity
+    coverage_category: happy-path
+  - requirement_id: 5
+    test_case_name: test_in_memory_registry_store_distinguishes_source_kind_for_same_model_name
+    coverage_category: boundary-edge
+  - requirement_id: 6
+    test_case_name: test_model_registry_root_package_does_not_reexport_in_memory_store
+    coverage_category: regression
+  - requirement_id: 6
+    test_case_name: test_model_registry_package_reexports_only_model_registry
+    coverage_category: regression
+  - requirement_id: 6
+    test_case_name: test_model_registry_stores_package_reexports_in_memory_store
+    coverage_category: integration-points
+  - requirement_id: 7
+    test_case_name: test_model_registry_works_end_to_end_with_in_memory_store
+    coverage_category: integration-points
+validation_checks:
+  d1_decision: pass
+  behavior_contract_source: plan/model-registry-in-memory-store/model-registry-in-memory-store.spec.md
+  requirements_mapped: pass
+  public_contract_coverage: pass
+  test_categories_present:
+    - happy-path
+    - error-exception
+    - boundary-edge
+    - state-side-effects
+    - integration-points
+    - regression
+  expected_initial_status: red
+  production_code_modified: false
+issues:
+  - "Acceptance criteria 8 and 9 are only partially runtime-testable at the RED-test stage; the exact docs wording and patch-bump sync remain implementation-validation concerns."
+next_step: Proceed to implementation under the locked artifact paths, including the concrete store regression path in `tests/model_registry/test_registry.py` and the later patch-bump sync across `__version__.py`, `pyproject.toml`, and `uv.lock`.
