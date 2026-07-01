@@ -23,9 +23,10 @@
 - packaged application scaffold
 - 最小 CLI entrypoint
 
-目前 package version baseline 為 `0.4.1`。repo 也已落地最小
+目前 package version baseline 為 `0.4.2`。repo 也已落地最小
 `ModelRegistry` boundary：root package 只 re-export `ModelRegistry`，
-而 `model-payload` hashing 的 public owner 仍維持為
+`async_model_gateway.model_registry.stores` 提供 submodule public 的
+`InMemoryRegistryStore`，而 `model-payload` hashing 的 public owner 仍維持為
 `ModelPayloadHasher`。
 
 ## 核心概念
@@ -46,6 +47,7 @@
 目前已落地的最小 model-registry boundary 包含：
 
 - `async_model_gateway.model_registry.ModelRegistry`
+- `async_model_gateway.model_registry.stores.InMemoryRegistryStore`
 - `async_model_gateway.model_registry.model_payload.ModelPayloadHasher`
 
 其中 `ModelPayloadHasher`：

@@ -1,11 +1,11 @@
 [project]
 name = "async-model-gateway"
-version = "0.4.1"
+version = "0.4.2"
 description = "Async-first foundation for a model gateway project."
 readme = "README.md"
 requires-python = ">=3.10,<3.11"
 dependencies = [
-    "typing_extensions>=4.0",
+    "typing_extensions>=4.5",
     "aiofiles>=24.1.0",
 ]
 

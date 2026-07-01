@@ -98,6 +98,11 @@ closed。
 `model_name + model_source_kind` 作為 store lookup identity；但 hashing
 authority 不屬於這一層。
 
+目前唯一已落地的 concrete store 是
+`async_model_gateway.model_registry.stores.InMemoryRegistryStore`；它同樣只以
+`model_name + model_source_kind` 做 lookup，不把 `payload-hash` 升格成
+store key。
+
 目前這個 authority 已先以 bounded callable 形式落地在
 `async_model_gateway.model_registry.model_payload`；而最小 registry
 freshness boundary 也已存在，但 cache identity wiring 與 orchestration

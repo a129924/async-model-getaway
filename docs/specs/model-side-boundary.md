@@ -20,6 +20,11 @@
 目前 repo 已落地這個 boundary 的最小 class-first 版本：
 `async_model_gateway.model_registry.ModelRegistry`。
 
+對應的 process-local concrete store 目前則以 submodule public surface 形式提供：
+`async_model_gateway.model_registry.stores.InMemoryRegistryStore`。它維持
+async-only `RegistryStore` contract、empty-only constructor，以及同一 instance
+上的單一 in-memory state 與 serialized read/write policy。
+
 它透過位於 `async_model_gateway.model_registry.ports.store` 的 async-only
 `RegistryStore` 做 lookup 與條件式 persistence，並持續以既有的
 `async_model_gateway.model_registry.model_payload.ModelPayloadHasher`

@@ -30,9 +30,7 @@ def test_registry_freshness_policy_evaluate_is_sync_only() -> None:
         "candidate_entry",
         "stored_entry",
     )
-    assert evaluate_signature.parameters["candidate_entry"].kind is (
-        inspect.Parameter.KEYWORD_ONLY
-    )
+    assert evaluate_signature.parameters["candidate_entry"].kind is (inspect.Parameter.KEYWORD_ONLY)
     assert evaluate_signature.parameters["stored_entry"].kind is inspect.Parameter.KEYWORD_ONLY
 
 

@@ -24,13 +24,9 @@ class ModelRegistry:
         """Bind the concrete registry owner to its single abstract collaborator."""
         self._store = store
         self._freshness_policy = (
-            RegistryFreshnessPolicy()
-            if freshness_policy is None
-            else freshness_policy
+            RegistryFreshnessPolicy() if freshness_policy is None else freshness_policy
         )
-        self._payload_hasher = (
-            ModelPayloadHasher() if payload_hasher is None else payload_hasher
-        )
+        self._payload_hasher = ModelPayloadHasher() if payload_hasher is None else payload_hasher
 
     async def resolve_freshness(
         self,

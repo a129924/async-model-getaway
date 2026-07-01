@@ -13,7 +13,7 @@ wheels = [
 
 [[package]]
 name = "async-model-gateway"
-version = "0.4.0"
+version = "0.4.2"
 source = { editable = "." }
 dependencies = [
     { name = "aiofiles" },
@@ -34,7 +34,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aiofiles", specifier = ">=24.1.0" },
-    { name = "typing-extensions", specifier = ">=4.0" },
+    { name = "typing-extensions", specifier = ">=4.5" },
 ]
 
 [package.metadata.requires-dev]
