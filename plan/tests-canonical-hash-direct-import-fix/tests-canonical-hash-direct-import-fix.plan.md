@@ -177,12 +177,15 @@ Artifact path notes:
   `tests/model_registry/model_payload/test_canonical_hash.py` is modified.
 - The bounded validation commands for `ruff` and `pytest` pass against the
   declared test file.
-- `tests-canonical-hash-direct-import-fix.step.md` mirrors every numbered
-  implementation step as pending items and does not pre-fill implementer
-  completion.
-- `tests-canonical-hash-direct-import-fix.human-check.json` exists in
-  `pending` state, and `implement-plan` remains blocked until both reviewer
-  approval and explicit human clearance exist repo-visibly.
+- `tests-canonical-hash-direct-import-fix.step.md` remains the
+  implementer-owned companion artifact, mirrors every numbered
+  implementation step one-for-one, and records check states that match the
+  repo-visible implementation progress truthfully.
+- `tests-canonical-hash-direct-import-fix.human-check.json` remains the
+  required repo-visible human-gate artifact for `implement-plan`, and the
+  topic may enter or be recorded as having entered `implement-plan` only when
+  both reviewer approval and explicit human clearance are present
+  repo-visibly.
 
 ## Reviewer Handoff
 
