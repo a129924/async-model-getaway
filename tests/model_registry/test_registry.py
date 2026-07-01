@@ -64,9 +64,7 @@ def test_model_registry_public_contract_is_async_only() -> None:
         "freshness_policy",
         "payload_hasher",
     )
-    assert init_signature.parameters["freshness_policy"].kind is (
-        inspect.Parameter.KEYWORD_ONLY
-    )
+    assert init_signature.parameters["freshness_policy"].kind is (inspect.Parameter.KEYWORD_ONLY)
     assert init_signature.parameters["payload_hasher"].kind is inspect.Parameter.KEYWORD_ONLY
 
     assert inspect.iscoroutinefunction(ModelRegistry.resolve_freshness)
@@ -80,9 +78,7 @@ def test_model_registry_public_contract_is_async_only() -> None:
     assert resolve_signature.parameters["model_source_kind"].kind is (
         inspect.Parameter.KEYWORD_ONLY
     )
-    assert resolve_signature.parameters["model_payload"].kind is (
-        inspect.Parameter.KEYWORD_ONLY
-    )
+    assert resolve_signature.parameters["model_payload"].kind is (inspect.Parameter.KEYWORD_ONLY)
 
 
 @pytest.mark.asyncio

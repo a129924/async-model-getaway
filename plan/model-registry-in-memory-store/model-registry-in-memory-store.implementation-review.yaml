@@ -34,7 +34,7 @@ step_gate:
   status: passed
   evidence:
     - "plan/model-registry-in-memory-store/model-registry-in-memory-store.step.md:24-29 marks Implementation Steps 1-6 as `[X]`."
-    - "plan/model-registry-in-memory-store/model-registry-in-memory-store.step.md:15-20 marks workflow through `implementation-review` as `[X]` while leaving only `code-review` unchecked."
+    - "plan/model-registry-in-memory-store/model-registry-in-memory-store.step.md:15-20 marks workflow through `code-review` as `[X]`, matching the ready-for-PR gate state."
     - "Re-ran `uv run pytest`: 50 passed, coverage 99.48%."
     - "Re-ran `uv run ruff check`: passed."
     - "Re-ran `uv run pyright`: 0 errors."
