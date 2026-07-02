@@ -33,8 +33,7 @@
 - `ResponseCacheKeyFactory` 必須：
   - 在建構時持有 `FeatureHasher`
   - 在 `build(...)` 中顯式接收 `namespace`
-  - 在 `build(...)` 中顯式接收 `payload_hasher: ModelPayloadHasher`
-  - 在 `build(...)` 中顯式接收 `payload`
+  - 在 `build(...)` 中顯式接收 `model_payload_hash: str`
   - 在 `build(...)` 中顯式接收 `features: Mapping[str, str]`
 - `features` 在此 topic 中凍結為 `Mapping[str, str]`。
 - 此 topic 不引入 operational `ResponseCache` storage API，因為 store/backend/schema/TTL/eviction 明確不在範圍內。source-level minimum 只包含 key/factory/port package split，以及約束未來 cache ownership 的 docs。
@@ -90,7 +89,7 @@ Routing notes:
 | Response-cache boundary spec | `docs/specs/response-cache-boundary.md` | Implementer | 將 repo-visible cache-boundary wording 對齊 `ResponseCacheKey` 與 factory ownership |
 | Response-cache package root | `src/async_model_gateway/response_cache/__init__.py` | Implementer | 最小 keyed response-cache package 的 root import surface |
 | Response-cache key value surface | `src/async_model_gateway/response_cache/key.py` | Implementer | concrete `ResponseCacheKey` value object |
-| Response-cache key factory | `src/async_model_gateway/response_cache/key_factory.py` | Implementer | 委派 payload 與 feature hashing 的 concrete `ResponseCacheKeyFactory` |
+| Response-cache key factory | `src/async_model_gateway/response_cache/key_factory.py` | Implementer | 消費顯式 payload hash 並委派 feature hashing 的 concrete `ResponseCacheKeyFactory` |
 | Response-cache ports package root | `src/async_model_gateway/response_cache/ports/__init__.py` | Implementer | bounded response-cache abstract collaborators 的 package surface |
 | Feature hasher port | `src/async_model_gateway/response_cache/ports/feature_hasher.py` | Implementer | 此 topic 中 keyed boundary 擁有的唯一 abstract collaborator |
 | Response-cache package-surface tests | `tests/response_cache/test_package_surface.py` | Implementer | 驗證 root export policy 與 bounded submodule exposure |
@@ -118,7 +117,7 @@ Artifact path notes:
 - `response-cache-keyed-minimal-boundary.step.md` 必須 mirror 每個編號 implementation step，且在實際到達後續 phases 前，不得預先完成後續 workflow stages。
 - 不得有任何 artifact path 或 implementation step 引入 store、backend、schema、TTL、eviction、broader feature-hash authority 或 orchestrator wiring。
 - pytest validation evidence 必須使用已宣告的 selected suite，並在 repository coverage gate 下通過；不得以未回寫到 creator-owned contract 的替代命令取代。
-- validation evidence 必須證明 `ResponseCacheKeyFactory` 接受 `features: Mapping[str, str]`、將 payload hashing 委派給顯式 `ModelPayloadHasher`、將 feature hashing 委派給持有的 `FeatureHasher`，且不會在任何未來 `ResponseCache` runtime owner 內自行計算 hashes。
+- validation evidence 必須證明 `ResponseCacheKeyFactory` 接受 `model_payload_hash: str` 與 `features: Mapping[str, str]`、將 feature hashing 委派給持有的 `FeatureHasher`，且不會在 factory 或任何未來 `ResponseCache` runtime owner 內自行計算 payload hash。
 - package-surface validation 必須證明 root exports 仍限於最小 keyed package surface，而 `FeatureHasher` port 維持在 package root 之外。
 
 ## Reviewer Handoff
@@ -163,8 +162,8 @@ Artifact path notes:
 
 1. 此 topic 的 package root 必須暴露一個最小 keyed response-cache surface，使 downstream code 可以 import，而不需觸及未來 backend 或 orchestration concerns。
 2. `ResponseCacheKey` 必須只包含 `namespace`、`model_payload_hash` 與 `feature_hash`，且三者型別都為 `str`。
-3. `ResponseCacheKeyFactory` 必須要求顯式 `namespace`、顯式 `ModelPayloadHasher`、顯式 payload input 與顯式 `features: Mapping[str, str]`，且在建構時持有 `FeatureHasher`。
-4. Payload hashing authority 必須維持在既有 `ModelPayloadHasher`；feature hashing authority 必須維持在 bounded `FeatureHasher` collaborator；factory 只負責協調這些 inputs。
+3. `ResponseCacheKeyFactory` 必須要求顯式 `namespace`、顯式 `model_payload_hash: str` 與顯式 `features: Mapping[str, str]`，且在建構時持有 `FeatureHasher`。
+4. Payload hashing authority 必須維持在既有 `ModelPayloadHasher` 的 upstream owner；feature hashing authority 必須維持在 bounded `FeatureHasher` collaborator；factory 只負責協調這些 inputs。
 5. 此 topic 必須維持在此 plan 宣告的精確 docs、source、test 與 planning paths 之內。
 6. 此 topic 不得引入 store、backend、schema、TTL、eviction、runtime cache-value semantics 或 orchestrator integration。
 7. 在 implementation 開始前，此 topic 必須提供可供 review 的 Python companion artifacts 與 validation commands。
@@ -176,9 +175,9 @@ Artifact path notes:
 - New public API: yes — 此 topic 在 package root 新增 `ResponseCacheKey` 與 `ResponseCacheKeyFactory`，且只新增這兩個 public surfaces。
 - Interface changes: yes — `async_model_gateway.response_cache` 會成為真實 package root，而 `FeatureHasher` 保持為 `response_cache.ports` 下的 submodule-public surface。
 - Breaking changes allowed: no — 此 topic 只新增 bounded surfaces 與 docs alignment；不修改既有 public contracts。
-- New dependencies: no — 重用現有 repository toolchain 與既有 `ModelPayloadHasher`。
-- Error handling strategy: payload hashing 與 feature hashing failures 原樣傳播；不新增 fallback coercion、normalization 或新的 exception taxonomy。
-- Typing strategy: 在 repository 的 strict baseline 下完整型別化；`features` 使用 `Mapping[str, str]`，payload typing 重用 `ModelPayloadHasher` 既有 inputs，避免 `Any`。
+- New dependencies: no — 重用現有 repository toolchain 與既有 upstream payload-hash contract。
+- Error handling strategy: feature hashing failures原樣傳播；factory 不新增 fallback coercion、normalization 或新的 exception taxonomy，upstream payload hashing failure 仍由既有 owner 負責。
+- Typing strategy: 在 repository 的 strict baseline 下完整型別化；`features` 使用 `Mapping[str, str]`，`model_payload_hash` 凍結為 `str`。
 
 ## Public Contract / API Changes
 
@@ -193,9 +192,9 @@ Artifact path notes:
   - Constructor:
     `def __init__(self, feature_hasher: FeatureHasher) -> None`
   - Public method:
-    `def build(self, *, namespace: str, payload_hasher: ModelPayloadHasher, payload: dict[str, JSONLike], features: Mapping[str, str]) -> ResponseCacheKey`
+    `def build(self, *, namespace: str, model_payload_hash: str, features: Mapping[str, str]) -> ResponseCacheKey`
   - Contract:
-    將 payload hashing 委派給顯式 `payload_hasher`，將 feature hashing 委派給持有的 `feature_hasher`，並回傳 `ResponseCacheKey`；任何 cache owner 都不得在自身內部自行計算 hashes。
+    將 feature hashing 委派給持有的 `feature_hasher`，並回傳 `ResponseCacheKey`；payload hashing 保持在 factory 外部的 upstream owner，任何 cache owner 都不得在自身內部自行計算 hashes。
 - `async_model_gateway.response_cache.ports.feature_hasher.FeatureHasher`
   - Abstract method:
     `def hash_features(self, features: Mapping[str, str]) -> str`
@@ -235,15 +234,15 @@ Test files:
 
 Test cases:
 - Happy path:
-  `tests/response_cache/test_key_factory.py` 驗證 `build(...)` 會回傳一個 `ResponseCacheKey`，其三個欄位分別是 literal `namespace` input，以及 explicit payload 與 feature hash owners 回傳的兩個 hash。
+  `tests/response_cache/test_key_factory.py` 驗證 `build(...)` 會回傳一個 `ResponseCacheKey`，其三個欄位分別是 literal `namespace` input、顯式 `model_payload_hash`，以及持有的 feature hash owner 回傳的 digest。
 - Invalid input:
-  `tests/response_cache/test_key_factory.py` 驗證不支援的 payload content 仍會透過既有 payload-hash owner 直接 raise，且不產生 key。
+  `tests/response_cache/test_key_factory.py` 驗證 feature hashing failure 會原樣往外傳播，且不產生 key。
 - Edge case:
   `tests/response_cache/test_key.py` 驗證 key surface 只維持三個字串欄位，沒有 hidden defaults 或額外 metadata。
 - Regression:
   `tests/response_cache/test_package_surface.py` 驗證 package root 只 export `ResponseCacheKey` 與 `ResponseCacheKeyFactory`，而 `FeatureHasher` 仍只在 submodule-public。
 - Backward compatibility:
-  `tests/response_cache/test_key_factory.py` 驗證 `features` 會以 `Mapping[str, str]` 原樣交給持有的 `FeatureHasher`，且 factory 不會 mutate 或擴張 feature input semantics。
+  `tests/response_cache/test_key_factory.py` 驗證 `features` 會以 `Mapping[str, str]` 原樣交給持有的 `FeatureHasher`，且 factory 不會 mutate 或擴張 feature input semantics；`model_payload_hash` 會作為 literal upstream identity material 被保留。
 - Validation-only selected suite support:
   為了符合 repo-wide coverage gate，validation command 另外固定重跑 `tests/model_registry/model_payload/test_canonical_hash.py`、`tests/model_registry/stores/test_in_memory.py`、`tests/model_registry/stores/test_stores_package_surface.py`、`tests/model_registry/test_freshness_policy.py`、`tests/model_registry/test_registry.py`、`tests/test_package_entrypoint.py` 與 `tests/test_local_path_guard.py`；這些額外測試只用於 repo-consistent validation，並不擴張此 topic 的 source、docs 或 behavior scope。
 

@@ -24,8 +24,8 @@
    Acceptance signal：planning artifacts 與 downstream technical spec 都必須明確寫出 hash authority 位於 `ResponseCache` 之外。
 2. `ResponseCacheKey` 必須固定為三個欄位：`namespace: str`、`model_payload_hash: str`、`feature_hash: str`。  
    Acceptance signal：technical spec 與 topic plan 都只描述這三個欄位，不得出現額外 key material。
-3. `ResponseCacheKeyFactory` 必須在建構時持有 `FeatureHasher`，並暴露一個 `build(...)` 路徑，明確接收 `namespace`、`payload_hasher: ModelPayloadHasher`、`payload` 與 `features: Mapping[str, str]`。  
-   Acceptance signal：technical spec 與 topic plan 都必須凍結這些輸入，不得改成 hidden defaults 或更寬的 feature types。
+3. `ResponseCacheKeyFactory` 必須在建構時持有 `FeatureHasher`，並暴露一個 `build(...)` 路徑，明確接收 `namespace`、`model_payload_hash: str` 與 `features: Mapping[str, str]`。  
+   Acceptance signal：technical spec 與 topic plan 都必須凍結這些輸入，並明確寫出 payload hashing 發生在 factory 外部的 upstream owner。
 4. 此 topic 的 feature input 必須凍結為 `Mapping[str, str]`。  
    Acceptance signal：所有 creator-owned artifacts 都必須使用這個精確型別，不得擴張成任意 mappings、settings objects 或 provider labels。
 5. 此最小 keyed boundary 必須與 cache backend、persistence schema、TTL、eviction 與 orchestrator wiring 決策保持分離。  

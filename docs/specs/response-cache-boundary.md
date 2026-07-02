@@ -25,7 +25,8 @@
 在這個最小 boundary 中：
 
 - `ResponseCacheKeyFactory` 顯式接收 `namespace`
-- payload hashing 仍由既有 `ModelPayloadHasher` 擁有
+- `ResponseCacheKeyFactory` 顯式接收 `model_payload_hash`
+- payload hashing 仍由既有 `ModelPayloadHasher` 擁有，但發生在 factory 外部
 - feature hashing 仍由 `response_cache.ports.FeatureHasher` 擁有
 - factory 只負責協調上述 inputs 並回傳 `ResponseCacheKey`
 
