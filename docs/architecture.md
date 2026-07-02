@@ -41,7 +41,7 @@
 
 1. Receive `model_name`, `model_source_kind`, `model-payload`, and `features`
 2. Derive a payload-oriented identity from `model_name`, `model_source_kind`, and `model-payload`
-3. Derive a response-cache identity from payload identity and `features`
+3. Derive a `ResponseCacheKey` from payload identity and `features`
 4. Check response cache
 5. Return cached response on hit
 6. Acquire a `runtime-model` from `ModelPool` or `ModelGateway` on miss
@@ -49,9 +49,10 @@
 8. Persist the generated response into response cache
 9. Return the response
 
-這裡描述的是高層概念 flow。除了最小 `ModelRegistry` boundary 與
-`model-payload` hashing core 已落地外，其餘 orchestration、cache 與
-runtime acquisition flow 仍未在 repository 中落地。
+這裡描述的是高層概念 flow。除了最小 `ModelRegistry` boundary、`model-payload`
+hashing core，以及最小 keyed `response_cache` boundary 已落地外，其餘
+orchestration、operational cache 與 runtime acquisition flow 仍未在
+repository 中落地。
 
 ## Responsibility Boundaries
 
@@ -63,6 +64,12 @@ runtime acquisition flow 仍未在 repository 中落地。
 - response cache participation
 - canonical input handling after normalization
 - coordination across provider, execution, and cache boundaries
+
+在目前 repo 已落地的最小 cache boundary 中，gateway side 只先準備
+`ResponseCacheKey`：它由 literal `namespace`、既有 `ModelPayloadHasher`
+產生的 `model_payload_hash`，以及 `FeatureHasher` 產生的 `feature_hash`
+組成。未來任何 operational `ResponseCache` owner 都應消費這個 key，
+而不是自行計算 hashes。
 
 但 gateway side 不直接擁有 model invocation semantics。
 
