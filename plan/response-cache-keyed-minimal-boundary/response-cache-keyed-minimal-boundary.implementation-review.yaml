@@ -1,0 +1,137 @@
+review_status: COMPLETE
+verdict: approved
+artifact_written: yes
+blocking_issues_count: 0
+short_summary: "PR comments 要求將 repo-visible contract 對齊目前已落地的 `model_payload_hash` public signature。analysis、docs、plan、red-tests 與 step/implementation-review artifacts 已同步修正，且既有 response-cache source boundary 維持不變。"
+
+topic: response-cache-keyed-minimal-boundary
+
+review_scope:
+  focus: "post-PR-comment alignment of repo-visible contracts to the existing `ResponseCacheKeyFactory.build(..., model_payload_hash, ...)` signature"
+  plan_contract_changed: yes
+  unchanged_contract_surfaces_rechecked:
+    - "src/async_model_gateway/response_cache/__init__.py:3"
+    - "src/async_model_gateway/response_cache/key.py:10"
+    - "src/async_model_gateway/response_cache/key_factory.py:20"
+    - "src/async_model_gateway/response_cache/ports/feature_hasher.py:11"
+    - "docs/architecture.md:68"
+    - "docs/specs/response-cache-boundary.md:13"
+
+preconditions:
+  plan_review_approved:
+    status: yes
+    evidence: "plan/response-cache-keyed-minimal-boundary/response-cache-keyed-minimal-boundary.plan-review.json:2 records `approved`."
+  implementation_present:
+    status: yes
+    evidence:
+      - "src/async_model_gateway/response_cache/key_factory.py:20 defines the current keyword-only build signature with `namespace`, `model_payload_hash`, and `features`."
+      - "tests/response_cache/test_key_factory.py:96 verifies the factory does not import `async_model_gateway.model_registry.model_payload`."
+
+step_gate:
+  status: passed
+  evidence:
+    - "plan/response-cache-keyed-minimal-boundary/response-cache-keyed-minimal-boundary.step.md records all four implementation steps as complete."
+    - "plan/response-cache-keyed-minimal-boundary/response-cache-keyed-minimal-boundary.step.md records `implementation-review` as complete and places the topic in `pr-comment-review-pr-comments-and-fix`."
+
+validation_evidence:
+  reused_from_existing_topic_evidence:
+    - command: "uv run pytest tests/response_cache/test_package_surface.py tests/response_cache/test_key.py tests/response_cache/test_key_factory.py tests/model_registry/model_payload/test_canonical_hash.py tests/model_registry/stores/test_in_memory.py tests/model_registry/stores/test_stores_package_surface.py tests/model_registry/test_freshness_policy.py tests/model_registry/test_registry.py tests/test_package_entrypoint.py tests/test_local_path_guard.py -v"
+      status: passed
+      result: "55 passed, coverage 99.56%"
+      evidence: "plan/response-cache-keyed-minimal-boundary/response-cache-keyed-minimal-boundary.step.md:33"
+    - command: "uv run ruff check docs src tests plan/response-cache-keyed-minimal-boundary"
+      status: passed
+      result: "All checks passed."
+      evidence: "plan/response-cache-keyed-minimal-boundary/response-cache-keyed-minimal-boundary.step.md:33"
+    - command: "uv run pyright"
+      status: passed
+      result: "0 errors, 0 warnings, 0 informations."
+      evidence: "plan/response-cache-keyed-minimal-boundary/response-cache-keyed-minimal-boundary.step.md:33"
+  pr_comment_alignment_check:
+    - command: "rg -n \"payload_hasher|ModelPayloadHasher|explicit_hashing_owners|payload_hash_failures|uses_existing_model_payload_hasher|尚未開始\" analysis/response-cache-keyed-minimal-boundary docs/specs/response-cache-boundary.md plan/response-cache-keyed-minimal-boundary"
+      status: passed
+      result: "no stale contract wording remains in creator-owned response-cache topic artifacts"
+
+traceability_matrix:
+  - step: "1. 在 `tests/response_cache/test_package_surface.py`、`tests/response_cache/test_key.py` 與 `tests/response_cache/test_key_factory.py` 補上 bounded RED coverage，並記錄 `plan/response-cache-keyed-minimal-boundary/response-cache-keyed-minimal-boundary.red-tests.yaml`，使 keyed boundary 在 source edits 前先被鎖定。"
+    status: done
+    evidence:
+      - "tests/response_cache/test_package_surface.py:11"
+      - "tests/response_cache/test_key.py:11"
+      - "tests/response_cache/test_key_factory.py:28"
+      - "tests/response_cache/test_key_factory.py:96"
+      - "plan/response-cache-keyed-minimal-boundary/response-cache-keyed-minimal-boundary.red-tests.yaml:1"
+  - step: "2. 新增 `src/async_model_gateway/response_cache/__init__.py`、`src/async_model_gateway/response_cache/key.py`、`src/async_model_gateway/response_cache/key_factory.py`、`src/async_model_gateway/response_cache/ports/__init__.py` 與 `src/async_model_gateway/response_cache/ports/feature_hasher.py`，使 package 只暴露最小 keyed boundary，並將抽象 hashing authority 維持在 `ports/`。"
+    status: done
+    evidence:
+      - "src/async_model_gateway/response_cache/__init__.py:3"
+      - "src/async_model_gateway/response_cache/key.py:10"
+      - "src/async_model_gateway/response_cache/key_factory.py:14"
+      - "src/async_model_gateway/response_cache/key_factory.py:25"
+      - "src/async_model_gateway/response_cache/ports/feature_hasher.py:11"
+  - step: "3. 更新 `docs/architecture.md` 與 `docs/specs/response-cache-boundary.md`，使 repo-visible wording 反映 keyed cache identity 目前透過 `ResponseCacheKey` 與 `ResponseCacheKeyFactory` 準備，而 operational cache storage 仍維持 deferred。"
+    status: done
+    evidence:
+      - "docs/architecture.md:44"
+      - "docs/architecture.md:68"
+      - "docs/specs/response-cache-boundary.md:13"
+      - "docs/specs/response-cache-boundary.md:27"
+      - "docs/specs/response-cache-boundary.md:40"
+  - step: "4. 執行 repo-consistent 的 selected pytest suite：`uv run pytest tests/response_cache/test_package_surface.py tests/response_cache/test_key.py tests/response_cache/test_key_factory.py tests/model_registry/model_payload/test_canonical_hash.py tests/model_registry/stores/test_in_memory.py tests/model_registry/stores/test_stores_package_surface.py tests/model_registry/test_freshness_policy.py tests/model_registry/test_registry.py tests/test_package_entrypoint.py tests/test_local_path_guard.py -v`，再執行 `uv run ruff check docs src tests plan/response-cache-keyed-minimal-boundary` 與 `uv run pyright`，然後更新 `plan/response-cache-keyed-minimal-boundary/response-cache-keyed-minimal-boundary.step.md`，再把 topic 交給 reviewer workflows。"
+    status: done
+    evidence:
+      - "plan/response-cache-keyed-minimal-boundary/response-cache-keyed-minimal-boundary.step.md:33"
+      - "PR comment alignment updated the repo-visible contract artifacts without widening source scope."
+
+scope_creep_check:
+  - non_goal: "此 topic 不引入 runtime cache backend 或 cache-value storage semantics。"
+    violated: no
+    evidence: "clean; current response-cache source remains limited to key, factory, and feature-hasher boundary surfaces."
+  - non_goal: "此 topic 不加入 `ResponseCache` 的 orchestrator wiring 或 hit/miss runtime flow。"
+    violated: no
+    evidence: "clean; docs still describe only key preparation and deferred operational ownership at `docs/architecture.md:68` and `docs/specs/response-cache-boundary.md:40`."
+  - non_goal: "此 topic 不將 `features` 擴張超出 `Mapping[str, str]`。"
+    violated: no
+    evidence: "clean; `src/async_model_gateway/response_cache/key_factory.py:25` and `src/async_model_gateway/response_cache/ports/feature_hasher.py:15` retain `Mapping[str, str]`."
+  - non_goal: "此 topic 不重新打開 `ModelPayloadHasher` ownership 或 hashing semantics。"
+    violated: no
+    evidence: "clean; `src/async_model_gateway/response_cache/key_factory.py:24` consumes an upstream `model_payload_hash: str`, while `docs/architecture.md:68` and `docs/specs/response-cache-boundary.md:28` keep payload hashing ownership outside the factory."
+  - non_goal: "此 topic 不在同一 slug 下建立更寬的 `feature-hash` authority topic。"
+    violated: no
+    evidence: "clean; `src/async_model_gateway/response_cache/ports/feature_hasher.py:11` remains the only abstract feature-hash collaborator."
+
+contract_check:
+  - item: "`async_model_gateway.response_cache.ResponseCacheKey` with only `namespace: str`, `model_payload_hash: str`, and `feature_hash: str`."
+    status: matches
+    detail: "`src/async_model_gateway/response_cache/key.py:10` defines a frozen dataclass with exactly the three planned string fields."
+  - item: "`async_model_gateway.response_cache.ResponseCacheKeyFactory.__init__(feature_hasher: FeatureHasher) -> None`."
+    status: matches
+    detail: "`src/async_model_gateway/response_cache/key_factory.py:16` stores one `FeatureHasher` collaborator exactly as approved."
+  - item: "`ResponseCacheKeyFactory.build(*, namespace: str, model_payload_hash: str, features: Mapping[str, str]) -> ResponseCacheKey`."
+    status: matches
+    detail: "`src/async_model_gateway/response_cache/key_factory.py:20` keeps the approved keyword-only signature and return type while leaving payload hashing outside the factory boundary."
+  - item: "`async_model_gateway.response_cache.ports.feature_hasher.FeatureHasher.hash_features(features: Mapping[str, str]) -> str`."
+    status: matches
+    detail: "`src/async_model_gateway/response_cache/ports/feature_hasher.py:15` defines the abstract method exactly as approved."
+  - item: "Backward compatibility: package root only re-exports `ResponseCacheKey` and `ResponseCacheKeyFactory`; no operational `ResponseCache` API is introduced."
+    status: matches
+    detail: "`src/async_model_gateway/response_cache/__init__.py:6` exports only the two planned names, and `tests/response_cache/test_package_surface.py:21` verifies `FeatureHasher` stays outside the package root."
+
+test_plan_check:
+  - case_type: "happy path"
+    status: present
+    location: "tests/response_cache/test_key_factory.py:28"
+  - case_type: "invalid input"
+    status: present
+    location: "tests/response_cache/test_key_factory.py:48"
+  - case_type: "edge case"
+    status: present
+    location: "tests/response_cache/test_key.py:11"
+  - case_type: "regression"
+    status: present
+    location: "tests/response_cache/test_package_surface.py:11"
+  - case_type: "backward compatibility"
+    status: present
+    location: "tests/response_cache/test_key_factory.py:80"
+
+blocking_issues: []

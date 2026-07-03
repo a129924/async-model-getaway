@@ -1,0 +1,56 @@
+verdict: red-tests-ready
+d1_verdict:
+  verdict: non-trivial
+  reason: "新增 public response-cache key/factory/port surface，需跨多檔 source、tests 與 docs。"
+test_mapping:
+  - requirement_id: "AC1"
+    test_case_name: "test_response_cache_package_reexports_only_minimal_key_surfaces"
+    coverage_category: "regression"
+  - requirement_id: "AC1"
+    test_case_name: "test_response_cache_package_does_not_reexport_feature_hasher_port"
+    coverage_category: "boundary"
+  - requirement_id: "AC1"
+    test_case_name: "test_response_cache_ports_package_exposes_feature_hasher"
+    coverage_category: "integration"
+  - requirement_id: "AC2"
+    test_case_name: "test_response_cache_key_is_a_frozen_dataclass_with_three_string_fields"
+    coverage_category: "boundary"
+  - requirement_id: "AC2"
+    test_case_name: "test_response_cache_key_preserves_literal_identity_material"
+    coverage_category: "state"
+  - requirement_id: "AC3"
+    test_case_name: "test_build_returns_response_cache_key_from_explicit_hash_input"
+    coverage_category: "happy-path"
+  - requirement_id: "AC4"
+    test_case_name: "test_build_returns_response_cache_key_from_explicit_hash_input"
+    coverage_category: "integration"
+  - requirement_id: "AC4"
+    test_case_name: "test_build_preserves_literal_model_payload_hash_without_normalization"
+    coverage_category: "state"
+  - requirement_id: "AC4"
+    test_case_name: "test_build_propagates_feature_hash_failures_without_wrapping"
+    coverage_category: "error"
+  - requirement_id: "AC5"
+    test_case_name: "test_build_passes_features_mapping_through_without_mutation"
+    coverage_category: "state"
+  - requirement_id: "AC6"
+    test_case_name: "test_response_cache_package_reexports_only_minimal_key_surfaces"
+    coverage_category: "regression"
+  - requirement_id: "AC7"
+    test_case_name: "test_key_factory_does_not_import_model_registry_boundary"
+    coverage_category: "integration"
+validation_checks:
+  d1_decision: "non-trivial"
+  behavior_contract_source: "plan/response-cache-keyed-minimal-boundary/response-cache-keyed-minimal-boundary.spec.md"
+  requirements_mapped: true
+  public_contract_coverage: true
+  test_categories_present:
+    - happy-path
+    - error
+    - boundary
+    - state
+    - integration
+  expected_initial_status: red
+  production_code_modified: false
+issues: []
+next_step: "Run the new response_cache pytest subset to confirm RED, then implement the bounded source and docs changes."
