@@ -35,7 +35,7 @@ step_gate:
 
 validation_evidence:
   reused_from_existing_topic_evidence:
-    - command: "uv run pytest tests/response_cache/test_package_surface.py tests/response_cache/test_key.py tests/response_cache/test_key_factory.py tests/model_registry/model_payload/test_canonical_hash.py tests/model_registry/stores/test_in_memory.py tests/model_registry/stores/test_stores_package_surface.py tests/model_registry/test_freshness_policy.py tests/model_registry/test_registry.py tests/test_package_entrypoint.py tests/test_local_path_guard.py -v"
+    - command: "uv run pytest tests/response_cache/test_response_cache_package_surface.py tests/response_cache/test_key.py tests/response_cache/test_key_factory.py tests/model_registry/model_payload/test_canonical_hash.py tests/model_registry/stores/test_in_memory.py tests/model_registry/stores/test_stores_package_surface.py tests/model_registry/test_freshness_policy.py tests/model_registry/test_registry.py tests/test_package_entrypoint.py tests/test_local_path_guard.py -v"
       status: passed
       result: "55 passed, coverage 99.56%"
       evidence: "plan/response-cache-keyed-minimal-boundary/response-cache-keyed-minimal-boundary.step.md:33"
@@ -53,10 +53,10 @@ validation_evidence:
       result: "no stale contract wording remains in creator-owned response-cache topic artifacts"
 
 traceability_matrix:
-  - step: "1. 在 `tests/response_cache/test_package_surface.py`、`tests/response_cache/test_key.py` 與 `tests/response_cache/test_key_factory.py` 補上 bounded RED coverage，並記錄 `plan/response-cache-keyed-minimal-boundary/response-cache-keyed-minimal-boundary.red-tests.yaml`，使 keyed boundary 在 source edits 前先被鎖定。"
+  - step: "1. 在 `tests/response_cache/test_response_cache_package_surface.py`、`tests/response_cache/test_key.py` 與 `tests/response_cache/test_key_factory.py` 補上 bounded RED coverage，並記錄 `plan/response-cache-keyed-minimal-boundary/response-cache-keyed-minimal-boundary.red-tests.yaml`，使 keyed boundary 在 source edits 前先被鎖定。"
     status: done
     evidence:
-      - "tests/response_cache/test_package_surface.py:11"
+      - "tests/response_cache/test_response_cache_package_surface.py:11"
       - "tests/response_cache/test_key.py:11"
       - "tests/response_cache/test_key_factory.py:28"
       - "tests/response_cache/test_key_factory.py:96"
@@ -77,7 +77,7 @@ traceability_matrix:
       - "docs/specs/response-cache-boundary.md:13"
       - "docs/specs/response-cache-boundary.md:27"
       - "docs/specs/response-cache-boundary.md:40"
-  - step: "4. 執行 repo-consistent 的 selected pytest suite：`uv run pytest tests/response_cache/test_package_surface.py tests/response_cache/test_key.py tests/response_cache/test_key_factory.py tests/model_registry/model_payload/test_canonical_hash.py tests/model_registry/stores/test_in_memory.py tests/model_registry/stores/test_stores_package_surface.py tests/model_registry/test_freshness_policy.py tests/model_registry/test_registry.py tests/test_package_entrypoint.py tests/test_local_path_guard.py -v`，再執行 `uv run ruff check docs src tests plan/response-cache-keyed-minimal-boundary` 與 `uv run pyright`，然後更新 `plan/response-cache-keyed-minimal-boundary/response-cache-keyed-minimal-boundary.step.md`，再把 topic 交給 reviewer workflows。"
+  - step: "4. 執行 repo-consistent 的 selected pytest suite：`uv run pytest tests/response_cache/test_response_cache_package_surface.py tests/response_cache/test_key.py tests/response_cache/test_key_factory.py tests/model_registry/model_payload/test_canonical_hash.py tests/model_registry/stores/test_in_memory.py tests/model_registry/stores/test_stores_package_surface.py tests/model_registry/test_freshness_policy.py tests/model_registry/test_registry.py tests/test_package_entrypoint.py tests/test_local_path_guard.py -v`，再執行 `uv run ruff check docs src tests plan/response-cache-keyed-minimal-boundary` 與 `uv run pyright`，然後更新 `plan/response-cache-keyed-minimal-boundary/response-cache-keyed-minimal-boundary.step.md`，再把 topic 交給 reviewer workflows。"
     status: done
     evidence:
       - "plan/response-cache-keyed-minimal-boundary/response-cache-keyed-minimal-boundary.step.md:33"
@@ -115,7 +115,7 @@ contract_check:
     detail: "`src/async_model_gateway/response_cache/ports/feature_hasher.py:15` defines the abstract method exactly as approved."
   - item: "Backward compatibility: package root only re-exports `ResponseCacheKey` and `ResponseCacheKeyFactory`; no operational `ResponseCache` API is introduced."
     status: matches
-    detail: "`src/async_model_gateway/response_cache/__init__.py:6` exports only the two planned names, and `tests/response_cache/test_package_surface.py:21` verifies `FeatureHasher` stays outside the package root."
+    detail: "`src/async_model_gateway/response_cache/__init__.py:6` exports only the two planned names, and `tests/response_cache/test_response_cache_package_surface.py:21` verifies `FeatureHasher` stays outside the package root."
 
 test_plan_check:
   - case_type: "happy path"
@@ -129,7 +129,7 @@ test_plan_check:
     location: "tests/response_cache/test_key.py:11"
   - case_type: "regression"
     status: present
-    location: "tests/response_cache/test_package_surface.py:11"
+    location: "tests/response_cache/test_response_cache_package_surface.py:11"
   - case_type: "backward compatibility"
     status: present
     location: "tests/response_cache/test_key_factory.py:80"

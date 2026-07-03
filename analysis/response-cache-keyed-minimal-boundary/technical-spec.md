@@ -35,7 +35,7 @@
 
 ### Tests
 
-- `tests/response_cache/test_package_surface.py`
+- `tests/response_cache/test_response_cache_package_surface.py`
 - `tests/response_cache/test_key.py`
 - `tests/response_cache/test_key_factory.py`
 
@@ -69,7 +69,7 @@
 
 ## Conflict Notes And Rollback-to-Alignment Triggers
 
-- 已避開的重大衝突：若引入 concrete operational `ResponseCache` API，就會需要 store/backend 假設，而 frozen scope 明確禁止。  
+- 已避開的重大衝突：若引入 concrete operational `ResponseCache` API，就會需要 store/backend 假設，而 frozen scope 明確禁止。
   Handling：此 topic 僅限於 keyed source surfaces，加上約束未來 `ResponseCache` ownership 的 documentation。
 - 出現下列任一情況時，必須回退到 alignment：
   - 引入 store、backend、schema、TTL、eviction 或 orchestrator 檔案

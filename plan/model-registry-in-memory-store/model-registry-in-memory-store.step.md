@@ -26,7 +26,7 @@ created: 2026-07-01
 ## Implementation Steps
 
 - [X] 1. 在 `tests/model_registry/stores/test_in_memory.py` 撰寫 RED coverage，鎖定 `InMemoryRegistryStore` 的 empty-only constructor、`model_name + model_source_kind` lookup identity、first upsert / overwrite behavior、missing-entry return path，以及相同 instance 上以單一 `asyncio.Lock` 序列化讀寫的 contract。
-- [X] 2. 在 `tests/model_registry/stores/test_stores_package_surface.py`、`tests/model_registry/test_package_surface.py` 與 `tests/model_registry/test_registry.py` 撰寫或更新 bounded coverage，分別鎖定 store submodule public surface、root package 非 re-export contract，以及 `ModelRegistry(store=InMemoryRegistryStore())` 的端對端 regression path。
+- [X] 2. 在 `tests/model_registry/stores/test_stores_package_surface.py`、`tests/model_registry/test_model_registry_package_surface.py` 與 `tests/model_registry/test_registry.py` 撰寫或更新 bounded coverage，分別鎖定 store submodule public surface、root package 非 re-export contract，以及 `ModelRegistry(store=InMemoryRegistryStore())` 的端對端 regression path。
 - [X] 3. 新增 `src/async_model_gateway/model_registry/stores/in_memory.py` 與 `src/async_model_gateway/model_registry/stores/__init__.py`，讓 `InMemoryRegistryStore` 成為 `RegistryStore` concrete subclass，維持 empty-only `__init__()`、單一 `asyncio.Lock`、以及 `typing_extensions.override` 標註的 async `get_entry()` / `upsert_entry()`。
 - [X] 4. 更新 `README.md`、`docs/specs/model-side-boundary.md`、`docs/specs/canonical-input-boundary.md` 與 `docs/specs/core-abstractions-boundary.md`，以最小必要 wording 反映新的 in-memory store、submodule public surface、以及未變更的 lookup identity boundary。
 - [X] 5. 在 `src/async_model_gateway/__version__.py`、`pyproject.toml` 與 `uv.lock` 規劃並實作 patch bump sync，讓 release-facing metadata 與 editable package version 對齊；不得擴張成 major/minor release work。

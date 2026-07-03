@@ -35,4 +35,3 @@ def test_response_cache_key_preserves_literal_identity_material() -> None:
     assert key.namespace == "  demo-namespace  "
     assert key.model_payload_hash == "payload-hash"
     assert key.feature_hash == "feature-hash"
-

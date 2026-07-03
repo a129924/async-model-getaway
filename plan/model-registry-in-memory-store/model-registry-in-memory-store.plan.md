@@ -81,7 +81,7 @@
   都必須列入 implement lifecycle artifact paths。
 - stores package-surface test artifact path 固定為
   `tests/model_registry/stores/test_stores_package_surface.py`，以避免在既有
-  pytest import contract 下與 `tests/model_registry/test_package_surface.py`
+  pytest import contract 下與 `tests/model_registry/test_model_registry_package_surface.py`
   發生 basename collision；此 topic 不調整 repo-wide pytest import mode。
 - 端對端 registry/store regression test artifact path 固定為
   `tests/model_registry/test_registry.py`；此 topic 只在既有 registry 測試面補上
@@ -157,7 +157,7 @@ Routing notes:
 | In-memory store implementation | `src/async_model_gateway/model_registry/stores/in_memory.py` | Implementer | concrete async in-memory `RegistryStore` implementation |
 | Store behavior tests | `tests/model_registry/stores/test_in_memory.py` | Implementer | async behavior coverage for lookup, upsert, concurrency, and identity rules |
 | Stores package-surface tests | `tests/model_registry/stores/test_stores_package_surface.py` | Implementer | verifies submodule public exposure without root re-export while keeping a unique pytest basename |
-| Model-registry package-surface tests | `tests/model_registry/test_package_surface.py` | Implementer | guards root package non-re-export contract against store leakage |
+| Model-registry package-surface tests | `tests/model_registry/test_model_registry_package_surface.py` | Implementer | guards root package non-re-export contract against store leakage |
 | Model-registry end-to-end regression tests | `tests/model_registry/test_registry.py` | Implementer | verifies `ModelRegistry(store=InMemoryRegistryStore())` against the bounded registry/store integration path |
 | Project summary | `README.md` | Implementer | minimal first-read update for new in-memory store availability |
 | Model side boundary spec | `docs/specs/model-side-boundary.md` | Implementer | aligns model-side wording with concrete in-memory registry store availability |
@@ -198,7 +198,7 @@ Artifact path notes:
    missing-entry return path，以及相同 instance 上以單一 `asyncio.Lock`
    序列化讀寫的 contract。
 2. 在 `tests/model_registry/stores/test_stores_package_surface.py`、
-   `tests/model_registry/test_package_surface.py` 與
+   `tests/model_registry/test_model_registry_package_surface.py` 與
    `tests/model_registry/test_registry.py` 撰寫或更新 bounded coverage，分別鎖定
    store submodule public surface、root package 非 re-export contract，以及
    `ModelRegistry(store=InMemoryRegistryStore())` 的端對端 regression path。
@@ -248,7 +248,7 @@ Artifact path notes:
   `ModelRegistry(store=InMemoryRegistryStore())` 的 bounded regression
   coverage，且不額外擴張新的 registry 測試矩陣。
 - Validation 必須證明 stores package-surface test path 維持 unique basename，
-  不與 `tests/model_registry/test_package_surface.py` 在既有 pytest import
+  不與 `tests/model_registry/test_model_registry_package_surface.py` 在既有 pytest import
   contract 下產生 collision。
 - Validation 必須證明 `README.md`、docs/specs、`__version__.py`、
   `pyproject.toml` 與 `uv.lock` 的 release-facing changes 與 patch bump 一致，
@@ -300,7 +300,7 @@ Artifact path notes:
 - `src/async_model_gateway/model_registry/ports/store.py` 已定義 async-only
   `RegistryStore.get_entry(...)` 與 `upsert_entry(...)` contract，lookup identity
   維持 `model_name + model_source_kind`。
-- `tests/model_registry/test_package_surface.py` 已保護 root package 只 re-export
+- `tests/model_registry/test_model_registry_package_surface.py` 已保護 root package 只 re-export
   `ModelRegistry`，因此新 store 不能從 root package 洩漏；新增 stores
   package-surface coverage 時必須避開相同 basename。
 - `README.md` 與 docs/specs 目前描述的是最小 registry boundary；新增 concrete
@@ -339,7 +339,7 @@ Artifact path notes:
   `async_model_gateway.model_registry.stores.InMemoryRegistryStore`。
 - Interface changes: yes — `model_registry.stores` package 成為新的 concrete
   store exposure point，
-  `tests/model_registry/test_package_surface.py` 需同步防止 root package surface
+  `tests/model_registry/test_model_registry_package_surface.py` 需同步防止 root package surface
   漂移，而 stores-side coverage 必須使用不衝突的 test basename。
 - Breaking changes allowed: no — 既有 `ModelRegistry` root package contract、
   lookup identity 與 async port contract 都維持不變。
@@ -428,7 +428,7 @@ Likely affected files:
 - `src/async_model_gateway/model_registry/stores/in_memory.py`
 - `tests/model_registry/stores/test_in_memory.py`
 - `tests/model_registry/stores/test_stores_package_surface.py`
-- `tests/model_registry/test_package_surface.py`
+- `tests/model_registry/test_model_registry_package_surface.py`
 - `README.md`
 - `docs/specs/model-side-boundary.md`
 - `docs/specs/canonical-input-boundary.md`
@@ -449,13 +449,13 @@ Candidate files to inspect:
     `model_name + model_source_kind` 讀回相同 `RegistryEntry`。
 - Invalid input:
   - `tests/model_registry/stores/test_stores_package_surface.py` 與
-    `tests/model_registry/test_package_surface.py` 驗證 package surface 不會把
+    `tests/model_registry/test_model_registry_package_surface.py` 驗證 package surface 不會把
     store root re-export；任何 root import assumption 都應 fail。
 - Edge case:
   - `tests/model_registry/stores/test_in_memory.py` 驗證 missing key 讀取回傳
     `None`，以及相同 `model_name` 但不同 `model_source_kind` 不互相覆蓋。
 - Regression:
-  - `tests/model_registry/test_package_surface.py` 繼續保護
+  - `tests/model_registry/test_model_registry_package_surface.py` 繼續保護
     `async_model_gateway.model_registry.__all__ == ["ModelRegistry"]`，
     避免新增 store 造成 root package surface 漂移。
 - Backward compatibility:
@@ -467,7 +467,7 @@ Candidate files to inspect:
 
 ## Validation Commands
 
-- `uv run pytest tests/model_registry/stores/test_in_memory.py tests/model_registry/stores/test_stores_package_surface.py tests/model_registry/test_package_surface.py -v`
+- `uv run pytest tests/model_registry/stores/test_in_memory.py tests/model_registry/stores/test_stores_package_surface.py tests/model_registry/test_model_registry_package_surface.py -v`
 - `uv run ruff check src tests README.md docs/specs plan/model-registry-in-memory-store`
 - `uv run pyright`
 
@@ -487,7 +487,7 @@ Candidate files to inspect:
   `src/async_model_gateway/model_registry/stores/in_memory.py`,
   `tests/model_registry/stores/test_in_memory.py`,
   `tests/model_registry/stores/test_stores_package_surface.py`,
-  `tests/model_registry/test_package_surface.py`,
+  `tests/model_registry/test_model_registry_package_surface.py`,
   `README.md`,
   `docs/specs/model-side-boundary.md`,
   `docs/specs/canonical-input-boundary.md`,

@@ -92,7 +92,7 @@ Routing notes:
 | Response-cache key factory | `src/async_model_gateway/response_cache/key_factory.py` | Implementer | 消費顯式 payload hash 並委派 feature hashing 的 concrete `ResponseCacheKeyFactory` |
 | Response-cache ports package root | `src/async_model_gateway/response_cache/ports/__init__.py` | Implementer | bounded response-cache abstract collaborators 的 package surface |
 | Feature hasher port | `src/async_model_gateway/response_cache/ports/feature_hasher.py` | Implementer | 此 topic 中 keyed boundary 擁有的唯一 abstract collaborator |
-| Response-cache package-surface tests | `tests/response_cache/test_package_surface.py` | Implementer | 驗證 root export policy 與 bounded submodule exposure |
+| Response-cache package-surface tests | `tests/response_cache/test_response_cache_package_surface.py` | Implementer | 驗證 root export policy 與 bounded submodule exposure |
 | Response-cache key tests | `tests/response_cache/test_key.py` | Implementer | 驗證固定三欄位的 key surface |
 | Response-cache factory tests | `tests/response_cache/test_key_factory.py` | Implementer | 驗證 explicit input routing、delegation 與 fail-closed behavior |
 
@@ -104,10 +104,10 @@ Artifact path notes:
 
 ## Implementation Steps
 
-1. 在 `tests/response_cache/test_package_surface.py`、`tests/response_cache/test_key.py` 與 `tests/response_cache/test_key_factory.py` 補上 bounded RED coverage，並記錄 `plan/response-cache-keyed-minimal-boundary/response-cache-keyed-minimal-boundary.red-tests.yaml`，使 keyed boundary 在 source edits 前先被鎖定。
+1. 在 `tests/response_cache/test_response_cache_package_surface.py`、`tests/response_cache/test_key.py` 與 `tests/response_cache/test_key_factory.py` 補上 bounded RED coverage，並記錄 `plan/response-cache-keyed-minimal-boundary/response-cache-keyed-minimal-boundary.red-tests.yaml`，使 keyed boundary 在 source edits 前先被鎖定。
 2. 新增 `src/async_model_gateway/response_cache/__init__.py`、`src/async_model_gateway/response_cache/key.py`、`src/async_model_gateway/response_cache/key_factory.py`、`src/async_model_gateway/response_cache/ports/__init__.py` 與 `src/async_model_gateway/response_cache/ports/feature_hasher.py`，使 package 只暴露最小 keyed boundary，並將抽象 hashing authority 維持在 `ports/`。
 3. 更新 `docs/architecture.md` 與 `docs/specs/response-cache-boundary.md`，使 repo-visible wording 反映 keyed cache identity 現在透過 `ResponseCacheKey` 與 `ResponseCacheKeyFactory` 準備，而 operational cache storage 仍維持 deferred。
-4. 執行 repo-consistent 的 selected pytest suite：`uv run pytest tests/response_cache/test_package_surface.py tests/response_cache/test_key.py tests/response_cache/test_key_factory.py tests/model_registry/model_payload/test_canonical_hash.py tests/model_registry/stores/test_in_memory.py tests/model_registry/stores/test_stores_package_surface.py tests/model_registry/test_freshness_policy.py tests/model_registry/test_registry.py tests/test_package_entrypoint.py tests/test_local_path_guard.py -v`，再執行 `uv run ruff check docs src tests plan/response-cache-keyed-minimal-boundary` 與 `uv run pyright`，然後更新 `plan/response-cache-keyed-minimal-boundary/response-cache-keyed-minimal-boundary.step.md`，再把 topic 交給 reviewer workflows。
+4. 執行 repo-consistent 的 selected pytest suite：`uv run pytest tests/response_cache/test_response_cache_package_surface.py tests/response_cache/test_key.py tests/response_cache/test_key_factory.py tests/model_registry/model_payload/test_canonical_hash.py tests/model_registry/stores/test_in_memory.py tests/model_registry/stores/test_stores_package_surface.py tests/model_registry/test_freshness_policy.py tests/model_registry/test_registry.py tests/test_package_entrypoint.py tests/test_local_path_guard.py -v`，再執行 `uv run ruff check docs src tests plan/response-cache-keyed-minimal-boundary` 與 `uv run pyright`，然後更新 `plan/response-cache-keyed-minimal-boundary/response-cache-keyed-minimal-boundary.step.md`，再把 topic 交給 reviewer workflows。
 
 ## Validation / Acceptance Checks
 
@@ -215,7 +215,7 @@ Likely affected files:
 - `src/async_model_gateway/response_cache/key_factory.py`
 - `src/async_model_gateway/response_cache/ports/__init__.py`
 - `src/async_model_gateway/response_cache/ports/feature_hasher.py`
-- `tests/response_cache/test_package_surface.py`
+- `tests/response_cache/test_response_cache_package_surface.py`
 - `tests/response_cache/test_key.py`
 - `tests/response_cache/test_key_factory.py`
 
@@ -228,7 +228,7 @@ Candidate files to inspect:
 ## Test Plan
 
 Test files:
-- `tests/response_cache/test_package_surface.py`
+- `tests/response_cache/test_response_cache_package_surface.py`
 - `tests/response_cache/test_key.py`
 - `tests/response_cache/test_key_factory.py`
 
@@ -240,7 +240,7 @@ Test cases:
 - Edge case:
   `tests/response_cache/test_key.py` 驗證 key surface 只維持三個字串欄位，沒有 hidden defaults 或額外 metadata。
 - Regression:
-  `tests/response_cache/test_package_surface.py` 驗證 package root 只 export `ResponseCacheKey` 與 `ResponseCacheKeyFactory`，而 `FeatureHasher` 仍只在 submodule-public。
+  `tests/response_cache/test_response_cache_package_surface.py` 驗證 package root 只 export `ResponseCacheKey` 與 `ResponseCacheKeyFactory`，而 `FeatureHasher` 仍只在 submodule-public。
 - Backward compatibility:
   `tests/response_cache/test_key_factory.py` 驗證 `features` 會以 `Mapping[str, str]` 原樣交給持有的 `FeatureHasher`，且 factory 不會 mutate 或擴張 feature input semantics；`model_payload_hash` 會作為 literal upstream identity material 被保留。
 - Validation-only selected suite support:
@@ -249,7 +249,7 @@ Test cases:
 ## Validation Commands
 
 ```text
-uv run pytest tests/response_cache/test_package_surface.py tests/response_cache/test_key.py tests/response_cache/test_key_factory.py tests/model_registry/model_payload/test_canonical_hash.py tests/model_registry/stores/test_in_memory.py tests/model_registry/stores/test_stores_package_surface.py tests/model_registry/test_freshness_policy.py tests/model_registry/test_registry.py tests/test_package_entrypoint.py tests/test_local_path_guard.py -v
+uv run pytest tests/response_cache/test_response_cache_package_surface.py tests/response_cache/test_key.py tests/response_cache/test_key_factory.py tests/model_registry/model_payload/test_canonical_hash.py tests/model_registry/stores/test_in_memory.py tests/model_registry/stores/test_stores_package_surface.py tests/model_registry/test_freshness_policy.py tests/model_registry/test_registry.py tests/test_package_entrypoint.py tests/test_local_path_guard.py -v
 uv run ruff check docs src tests plan/response-cache-keyed-minimal-boundary
 uv run pyright
 ```
@@ -270,7 +270,7 @@ uv run pyright
   - `src/async_model_gateway/response_cache/key_factory.py`
   - `src/async_model_gateway/response_cache/ports/__init__.py`
   - `src/async_model_gateway/response_cache/ports/feature_hasher.py`
-  - `tests/response_cache/test_package_surface.py`
+  - `tests/response_cache/test_response_cache_package_surface.py`
   - `tests/response_cache/test_key.py`
   - `tests/response_cache/test_key_factory.py`
 - 即使 implementation 變更在 merge 前被回滾，`analysis/response-cache-keyed-minimal-boundary/` 與 `plan/response-cache-keyed-minimal-boundary/` 仍保留作為 planning history。

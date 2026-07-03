@@ -27,4 +27,3 @@ def test_response_cache_ports_package_exposes_feature_hasher() -> None:
     """The abstract collaborator should stay submodule-public."""
     assert response_cache_ports_module.__all__ == ["FeatureHasher"]
     assert response_cache_ports_module.FeatureHasher is FeatureHasher
-
