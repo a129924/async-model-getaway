@@ -24,7 +24,7 @@ preconditions:
       - "src/async_model_gateway/model_registry/stores/__init__.py:1 is present."
       - "tests/model_registry/stores/test_in_memory.py:1 is present."
       - "tests/model_registry/stores/test_stores_package_surface.py:1 is present."
-      - "tests/model_registry/test_package_surface.py:1 is present."
+      - "tests/model_registry/test_model_registry_package_surface.py:1 is present."
       - "tests/model_registry/test_registry.py:1 is present."
       - "plan/model-registry-in-memory-store/model-registry-in-memory-store.red-tests.yaml:1 is present."
       - "README.md:26 records the release-facing summary for the new store surface."
@@ -67,13 +67,13 @@ traceability_matrix:
       - "tests/model_registry/stores/test_in_memory.py:83"
       - "tests/model_registry/stores/test_in_memory.py:143"
       - "plan/model-registry-in-memory-store/model-registry-in-memory-store.red-tests.yaml:1"
-  - step: "2. 在 `tests/model_registry/stores/test_stores_package_surface.py`、`tests/model_registry/test_package_surface.py` 與 `tests/model_registry/test_registry.py` 撰寫或更新 bounded coverage，分別鎖定 store submodule public surface、root package 非 re-export contract，以及 `ModelRegistry(store=InMemoryRegistryStore())` 的端對端 regression path。"
+  - step: "2. 在 `tests/model_registry/stores/test_stores_package_surface.py`、`tests/model_registry/test_model_registry_package_surface.py` 與 `tests/model_registry/test_registry.py` 撰寫或更新 bounded coverage，分別鎖定 store submodule public surface、root package 非 re-export contract，以及 `ModelRegistry(store=InMemoryRegistryStore())` 的端對端 regression path。"
     status: done
     evidence:
       - "tests/model_registry/stores/test_stores_package_surface.py:11"
       - "tests/model_registry/stores/test_stores_package_surface.py:23"
-      - "tests/model_registry/test_package_surface.py:14"
-      - "tests/model_registry/test_package_surface.py:39"
+      - "tests/model_registry/test_model_registry_package_surface.py:14"
+      - "tests/model_registry/test_model_registry_package_surface.py:39"
       - "tests/model_registry/test_registry.py:203"
   - step: "3. 新增 `src/async_model_gateway/model_registry/stores/in_memory.py` 與 `src/async_model_gateway/model_registry/stores/__init__.py`，讓 `InMemoryRegistryStore` 成為 `RegistryStore` concrete subclass，維持 empty-only `__init__()`、單一 `asyncio.Lock`、以及 `typing_extensions.override` 標註的 async `get_entry()` / `upsert_entry()`。"
     status: done
@@ -138,7 +138,7 @@ contract_check:
     detail: "`src/async_model_gateway/model_registry/stores/in_memory.py:23-38` implements the planned async methods, and tests/model_registry/stores/test_in_memory.py:18-36 checks keyword-only lookup parameters plus `__override__` markers."
   - item: "Backward compatibility: 既有 `ModelRegistry` root import surface 與 `RegistryStore` abstract port signature 不變，且 `payload_hash` 不參與 lookup identity。"
     status: matches
-    detail: "`src/async_model_gateway/model_registry/__init__.py:3-5` preserves the root package surface, `src/async_model_gateway/model_registry/ports/store.py:12-25` preserves the abstract port signature, `tests/model_registry/test_package_surface.py:39-59` verifies `payload_hash` is absent from lookup parameters, and `src/async_model_gateway/model_registry/stores/in_memory.py:20-38` keys storage by `(model_name, model_source_kind)` only."
+    detail: "`src/async_model_gateway/model_registry/__init__.py:3-5` preserves the root package surface, `src/async_model_gateway/model_registry/ports/store.py:12-25` preserves the abstract port signature, `tests/model_registry/test_model_registry_package_surface.py:39-59` verifies `payload_hash` is absent from lookup parameters, and `src/async_model_gateway/model_registry/stores/in_memory.py:20-38` keys storage by `(model_name, model_source_kind)` only."
   - item: "Exceptions: 本 topic 不新增 public custom exceptions；缺失 key 以 `None` 表示。"
     status: matches
     detail: "`tests/model_registry/stores/test_in_memory.py:40-51` verifies missing lookups return `None`, and no new public exception surface is introduced by `src/async_model_gateway/model_registry/stores/in_memory.py:23-38`."
@@ -149,16 +149,16 @@ test_plan_check:
     location: "tests/model_registry/stores/test_in_memory.py:55"
   - case_type: "invalid input"
     status: present
-    location: "tests/model_registry/stores/test_stores_package_surface.py:23; tests/model_registry/test_package_surface.py:14"
+    location: "tests/model_registry/stores/test_stores_package_surface.py:23; tests/model_registry/test_model_registry_package_surface.py:14"
   - case_type: "edge case"
     status: present
     location: "tests/model_registry/stores/test_in_memory.py:40; tests/model_registry/stores/test_in_memory.py:83"
   - case_type: "regression"
     status: present
-    location: "tests/model_registry/test_package_surface.py:14"
+    location: "tests/model_registry/test_model_registry_package_surface.py:14"
   - case_type: "backward compatibility"
     status: present
-    location: "tests/model_registry/test_package_surface.py:30"
+    location: "tests/model_registry/test_model_registry_package_surface.py:30"
   - case_type: "async-specific"
     status: present
     location: "tests/model_registry/stores/test_in_memory.py:143"

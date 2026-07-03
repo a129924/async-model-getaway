@@ -20,17 +20,17 @@
 
 ## In-scope Requirements
 
-1. repository 必須定義一個最小 response-cache key contract，使未來任何 `ResponseCache` runtime surface 都消費已建好的 `ResponseCacheKey`，而不是自行計算 cache hash。  
+1. repository 必須定義一個最小 response-cache key contract，使未來任何 `ResponseCache` runtime surface 都消費已建好的 `ResponseCacheKey`，而不是自行計算 cache hash。
    Acceptance signal：planning artifacts 與 downstream technical spec 都必須明確寫出 hash authority 位於 `ResponseCache` 之外。
-2. `ResponseCacheKey` 必須固定為三個欄位：`namespace: str`、`model_payload_hash: str`、`feature_hash: str`。  
+2. `ResponseCacheKey` 必須固定為三個欄位：`namespace: str`、`model_payload_hash: str`、`feature_hash: str`。
    Acceptance signal：technical spec 與 topic plan 都只描述這三個欄位，不得出現額外 key material。
-3. `ResponseCacheKeyFactory` 必須在建構時持有 `FeatureHasher`，並暴露一個 `build(...)` 路徑，明確接收 `namespace`、`model_payload_hash: str` 與 `features: Mapping[str, str]`。  
+3. `ResponseCacheKeyFactory` 必須在建構時持有 `FeatureHasher`，並暴露一個 `build(...)` 路徑，明確接收 `namespace`、`model_payload_hash: str` 與 `features: Mapping[str, str]`。
    Acceptance signal：technical spec 與 topic plan 都必須凍結這些輸入，並明確寫出 payload hashing 發生在 factory 外部的 upstream owner。
-4. 此 topic 的 feature input 必須凍結為 `Mapping[str, str]`。  
+4. 此 topic 的 feature input 必須凍結為 `Mapping[str, str]`。
    Acceptance signal：所有 creator-owned artifacts 都必須使用這個精確型別，不得擴張成任意 mappings、settings objects 或 provider labels。
-5. 此最小 keyed boundary 必須與 cache backend、persistence schema、TTL、eviction 與 orchestrator wiring 決策保持分離。  
+5. 此最小 keyed boundary 必須與 cache backend、persistence schema、TTL、eviction 與 orchestrator wiring 決策保持分離。
    Acceptance signal：任何 in-scope artifact path 或 implementation step 都不得包含 store、backend、schema、TTL、eviction 或 orchestrator 檔案。
-6. topic 必須為下一個 workflow stage 產出完整的 creator-owned artifact set：`requirements.md`、`technical-spec.md`、`*.plan.md`、`*.spec.md`、`*.step.md`。  
+6. topic 必須為下一個 workflow stage 產出完整的 creator-owned artifact set：`requirements.md`、`technical-spec.md`、`*.plan.md`、`*.spec.md`、`*.step.md`。
    Acceptance signal：每個命名 artifact 都存在於 topic plan 宣告的精確路徑。
 
 ## Non-goals
@@ -49,9 +49,9 @@
 
 ## Contradictions Surfaced And Resolved
 
-- 潛在矛盾：topic 名稱提到 `ResponseCache`，但同一份 contract 又禁止 store/backend/schema work。  
+- 潛在矛盾：topic 名稱提到 `ResponseCache`，但同一份 contract 又禁止 store/backend/schema work。
   Resolution：此 topic 只凍結 keyed boundary authority 與準備 `ResponseCacheKey` 所需的最小 source surfaces；operational cache persistence 明確延後。
-- 潛在矛盾：`features` 會影響 cache reuse，但 topic 又禁止 broader feature-hash authority work。  
+- 潛在矛盾：`features` 會影響 cache reuse，但 topic 又禁止 broader feature-hash authority work。
   Resolution：`features` 凍結為 `Mapping[str, str]`，且只透過 `ResponseCacheKeyFactory` 持有的 bounded `FeatureHasher` 進行 hashing。
 
 ## Extreme-boundary Checks

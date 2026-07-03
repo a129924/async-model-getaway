@@ -20,7 +20,7 @@ preconditions:
       - "src/async_model_gateway/model_registry/freshness_result.py:1 is present."
       - "src/async_model_gateway/model_registry/ports/__init__.py:1 is present."
       - "src/async_model_gateway/model_registry/ports/store.py:1 is present."
-      - "tests/model_registry/test_package_surface.py:1 is present."
+      - "tests/model_registry/test_model_registry_package_surface.py:1 is present."
       - "tests/model_registry/test_registry.py:1 is present."
       - "tests/model_registry/test_freshness_policy.py:1 is present."
       - "plan/model-registry-minimal-boundary/model-registry-minimal-boundary.red-tests.yaml:1 is present."
@@ -30,15 +30,15 @@ step_gate:
   evidence:
     - "plan/model-registry-minimal-boundary/model-registry-minimal-boundary.step.md:18-31 marks `implementation-review` as `[X]` while keeping Implementation Steps 1-4 marked `[X]`."
     - "plan/model-registry-minimal-boundary/model-registry-minimal-boundary.step.md:24-28 records reviewer verdict approved, human check passed, and the updated selected-pytest validation contract."
-    - "Re-ran `uv run pytest tests/model_registry/test_package_surface.py tests/model_registry/test_registry.py tests/model_registry/test_freshness_policy.py tests/model_registry/model_payload/test_canonical_hash.py tests/test_package_entrypoint.py tests/test_local_path_guard.py -v`: the selected validation suite passed and aligned with the repo-wide coverage source."
+    - "Re-ran `uv run pytest tests/model_registry/test_model_registry_package_surface.py tests/model_registry/test_registry.py tests/model_registry/test_freshness_policy.py tests/model_registry/model_payload/test_canonical_hash.py tests/test_package_entrypoint.py tests/test_local_path_guard.py -v`: the selected validation suite passed and aligned with the repo-wide coverage source."
     - "Re-ran `uv run ruff check README.md docs src tests plan/model-registry-minimal-boundary`: all checks passed."
     - "Re-ran `uv run pyright`: 0 errors, 0 warnings, 0 informations."
 
 traceability_matrix:
-  - step: "1. 在 tests/model_registry/test_package_surface.py、tests/model_registry/test_registry.py 與 tests/model_registry/test_freshness_policy.py 新增 async RED coverage，並記錄 plan/model-registry-minimal-boundary/model-registry-minimal-boundary.red-tests.yaml。"
+  - step: "1. 在 tests/model_registry/test_model_registry_package_surface.py、tests/model_registry/test_registry.py 與 tests/model_registry/test_freshness_policy.py 新增 async RED coverage，並記錄 plan/model-registry-minimal-boundary/model-registry-minimal-boundary.red-tests.yaml。"
     status: done
     evidence:
-      - "tests/model_registry/test_package_surface.py:9"
+      - "tests/model_registry/test_model_registry_package_surface.py:9"
       - "tests/model_registry/test_registry.py:61"
       - "tests/model_registry/test_freshness_policy.py:25"
       - "plan/model-registry-minimal-boundary/model-registry-minimal-boundary.red-tests.yaml:1"
@@ -108,7 +108,7 @@ test_plan_check:
     location: "tests/model_registry/test_freshness_policy.py:74"
   - case_type: "regression"
     status: present
-    location: "tests/model_registry/test_package_surface.py:9"
+    location: "tests/model_registry/test_model_registry_package_surface.py:9"
   - case_type: "backward compatibility"
     status: present
     location: "tests/model_registry/test_registry.py:214"

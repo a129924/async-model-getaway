@@ -47,6 +47,7 @@ def test_build_returns_response_cache_key_from_explicit_hash_input() -> None:
 
 def test_build_propagates_feature_hash_failures_without_wrapping() -> None:
     """Feature hashing failures should escape unchanged."""
+
     class FailingFeatureHasher(FeatureHasher):
         def hash_features(self, features: Mapping[str, str]) -> str:
             raise ValueError("feature hash failed")

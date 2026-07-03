@@ -152,7 +152,7 @@ Routing notes:
 | Registry freshness result | `src/async_model_gateway/model_registry/freshness_result.py` | Implementer | 固定為 `decision + entry + previous_payload_hash` 的單一概念 result surface |
 | Registry ports package root | `src/async_model_gateway/model_registry/ports/__init__.py` | Implementer | 放置 `ports/` 下 abstract collaborators 的 topic-local package surface |
 | Registry store port | `src/async_model_gateway/model_registry/ports/store.py` | Implementer | 唯一 abstract collaborator，負責 async store lookup 與 upsert behavior |
-| Registry package-surface tests | `tests/model_registry/test_package_surface.py` | Implementer | 驗證 root re-export 與 `ports/` placement boundary 的 pytest coverage |
+| Registry package-surface tests | `tests/model_registry/test_model_registry_package_surface.py` | Implementer | 驗證 root re-export 與 `ports/` placement boundary 的 pytest coverage |
 | Registry boundary tests | `tests/model_registry/test_registry.py` | Implementer | 驗證 lookup、hashing、decision 與條件式 persistence flow 的 async pytest coverage |
 | Registry freshness-policy tests | `tests/model_registry/test_freshness_policy.py` | Implementer | 驗證 result shape、key semantics 與 freshness classification behavior 的 pytest coverage |
 
@@ -180,7 +180,7 @@ Artifact path notes:
 
 ## Implementation Steps
 
-1. 在 `tests/model_registry/test_package_surface.py`、
+1. 在 `tests/model_registry/test_model_registry_package_surface.py`、
    `tests/model_registry/test_registry.py` 與
    `tests/model_registry/test_freshness_policy.py` 新增 async RED coverage，
    並記錄
@@ -206,7 +206,7 @@ Artifact path notes:
    freshness flow，且不擴張到 cache、gateway、pool 或 orchestrator
    implementation work。
 4. 執行
-   `uv run pytest tests/model_registry/test_package_surface.py tests/model_registry/test_registry.py tests/model_registry/test_freshness_policy.py tests/model_registry/model_payload/test_canonical_hash.py tests/test_package_entrypoint.py tests/test_local_path_guard.py -v`、
+   `uv run pytest tests/model_registry/test_model_registry_package_surface.py tests/model_registry/test_registry.py tests/model_registry/test_freshness_policy.py tests/model_registry/model_payload/test_canonical_hash.py tests/test_package_entrypoint.py tests/test_local_path_guard.py -v`、
    `uv run ruff check README.md docs src tests plan/model-registry-minimal-boundary`
    與 `uv run pyright`，然後再更新
    `plan/model-registry-minimal-boundary/model-registry-minimal-boundary.step.md`
@@ -451,7 +451,7 @@ Likely affected files:
 - `src/async_model_gateway/model_registry/freshness_result.py`
 - `src/async_model_gateway/model_registry/ports/__init__.py`
 - `src/async_model_gateway/model_registry/ports/store.py`
-- `tests/model_registry/test_package_surface.py`
+- `tests/model_registry/test_model_registry_package_surface.py`
 - `tests/model_registry/test_registry.py`
 - `tests/model_registry/test_freshness_policy.py`
 
@@ -463,7 +463,7 @@ Candidate files to inspect:
 ## Test Plan
 
 Test files:
-- `tests/model_registry/test_package_surface.py`
+- `tests/model_registry/test_model_registry_package_surface.py`
 - `tests/model_registry/test_registry.py`
 - `tests/model_registry/test_freshness_policy.py`
 
@@ -481,7 +481,7 @@ Test cases:
   `unchanged`、不同 payload hash 變成 `changed`，且結果始終只包含
   `decision`、`entry` 與 `previous_payload_hash`。
 - Regression:
-  `tests/model_registry/test_package_surface.py` 驗證
+  `tests/model_registry/test_model_registry_package_surface.py` 驗證
   `model_registry/__init__.py` 只 re-export `ModelRegistry`，且
   `RegistryStore` 仍位於 `ports/`。
 - Backward compatibility:
@@ -492,7 +492,7 @@ Test cases:
 ## Validation Commands
 
 ```text
-uv run pytest tests/model_registry/test_package_surface.py tests/model_registry/test_registry.py tests/model_registry/test_freshness_policy.py tests/model_registry/model_payload/test_canonical_hash.py tests/test_package_entrypoint.py tests/test_local_path_guard.py -v
+uv run pytest tests/model_registry/test_model_registry_package_surface.py tests/model_registry/test_registry.py tests/model_registry/test_freshness_policy.py tests/model_registry/model_payload/test_canonical_hash.py tests/test_package_entrypoint.py tests/test_local_path_guard.py -v
 uv run ruff check README.md docs src tests plan/model-registry-minimal-boundary
 uv run pyright
 ```
@@ -519,7 +519,7 @@ uv run pyright
   `src/async_model_gateway/model_registry/freshness_result.py`、
   `src/async_model_gateway/model_registry/ports/__init__.py`、
   `src/async_model_gateway/model_registry/ports/store.py`、
-  `tests/model_registry/test_package_surface.py`、
+  `tests/model_registry/test_model_registry_package_surface.py`、
   `tests/model_registry/test_registry.py` 與
   `tests/model_registry/test_freshness_policy.py`。
 - 即使 implementation 被回滾，也要保留
