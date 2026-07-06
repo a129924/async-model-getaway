@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import importlib
 import inspect
 
 import async_model_gateway.response_cache as response_cache_module
+import async_model_gateway.response_cache.cache as response_cache_cache_module
 import async_model_gateway.response_cache.ports as response_cache_ports_module
+import async_model_gateway.response_cache.ports.store as response_cache_store_module
 from async_model_gateway.response_cache import ResponseCacheKey, ResponseCacheKeyFactory
 from async_model_gateway.response_cache.ports import FeatureHasher
 
@@ -46,14 +47,18 @@ def test_response_cache_ports_package_does_not_reexport_store_port() -> None:
     assert not hasattr(response_cache_ports_module, "ResponseCacheStore")
 
 
+def test_response_cache_cache_module_does_not_expose_store_port() -> None:
+    """The operational owner module must not expose the store port at runtime."""
+    assert not hasattr(response_cache_cache_module, "ResponseCacheStore")
+
+
 def test_response_cache_store_is_only_public_from_store_submodule() -> None:
     """The store port should stay submodule-public with a locked async contract."""
-    store_module = importlib.import_module("async_model_gateway.response_cache.ports.store")
-    response_cache_store = store_module.ResponseCacheStore
+    response_cache_store = response_cache_store_module.ResponseCacheStore
     get_signature = inspect.signature(response_cache_store.get)
     set_signature = inspect.signature(response_cache_store.set)
 
-    assert store_module.__all__ == ["ResponseCacheStore"]
+    assert response_cache_store_module.__all__ == ["ResponseCacheStore"]
     assert inspect.isabstract(response_cache_store)
     assert inspect.iscoroutinefunction(response_cache_store.get)
     assert inspect.iscoroutinefunction(response_cache_store.set)

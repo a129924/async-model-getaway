@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from .entry import ResponseCacheEntry
 from .key import ResponseCacheKey
-from .ports.store import ResponseCacheStore
+
+if TYPE_CHECKING:
+    from .ports.store import ResponseCacheStore
 
 __all__ = ["ResponseCache"]
 

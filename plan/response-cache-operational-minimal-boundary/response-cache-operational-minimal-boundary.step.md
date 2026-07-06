@@ -1,6 +1,6 @@
 ---
 topic: response-cache-operational-minimal-boundary
-phase: plan-authoring
+phase: pr-comment-review-pr-comments-and-fix
 created: 2026-07-03
 ---
 
@@ -16,12 +16,12 @@ created: 2026-07-03
 - [X] plan-review
 - [X] tdd-test-authoring
 - [X] implementation
-- [ ] implementation-review
+- [X] implementation-review
 - [ ] code-review
 
 ## Gate Status
 
-- Current workflow position: renewed approved plan review 與 cleared human check 之後，repaired selected pytest suite、`uv run ruff check docs src tests plan/response-cache-operational-minimal-boundary` 與 `uv run pyright` 已於 2026-07-03 全部通過；implementation 已完成，topic 可交給 reviewer-owned `implementation-review`。
+- Current workflow position: repo-visible `implementation-review` artifact 已是 `approved / COMPLETE`；此 topic 目前位於 `pr-comment-review-pr-comments-and-fix`，`code-review` 仍未開始。先前 repaired selected pytest suite、`uv run ruff check docs src tests plan/response-cache-operational-minimal-boundary` 與 `uv run pyright` 已於 2026-07-03 通過。
 
 ## Implementation Steps
 
