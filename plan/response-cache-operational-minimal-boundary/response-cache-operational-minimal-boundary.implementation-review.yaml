@@ -96,22 +96,22 @@ contract_check:
       src/async_model_gateway/response_cache/__init__.py:8 omits ResponseCacheStore and
       src/async_model_gateway/response_cache/ports/__init__.py:3 exports only FeatureHasher;
       tests/response_cache/test_response_cache_package_surface.py:39 and :44 verify both boundaries.
-  - item: ResponseCache constructor is ResponseCache(store: ResponseCacheStore).
+  - item: "ResponseCache constructor is ResponseCache(store: ResponseCacheStore)."
     status: matches
     detail: >
       src/async_model_gateway/response_cache/cache.py:15 defines the locked constructor;
       tests/response_cache/test_cache.py:41 verifies the public signature.
-  - item: ResponseCache.get is async def get(self, *, key: ResponseCacheKey) -> ResponseCacheEntry | None.
+  - item: "ResponseCache.get is async def get(self, *, key: ResponseCacheKey) -> ResponseCacheEntry | None."
     status: matches
     detail: >
       src/async_model_gateway/response_cache/cache.py:19 matches exactly and delegates directly;
       tests/response_cache/test_cache.py:41 and :57 verify the signature and behavior.
-  - item: ResponseCache.set is async def set(self, *, key: ResponseCacheKey, entry: ResponseCacheEntry) -> None.
+  - item: "ResponseCache.set is async def set(self, *, key: ResponseCacheKey, entry: ResponseCacheEntry) -> None."
     status: matches
     detail: >
       src/async_model_gateway/response_cache/cache.py:23 matches exactly and delegates directly;
       tests/response_cache/test_cache.py:41 and :90 verify the signature and behavior.
-  - item: ResponseCacheEntry is an immutable value type with only response: str.
+  - item: "ResponseCacheEntry is an immutable value type with only response: str."
     status: matches
     detail: >
       src/async_model_gateway/response_cache/entry.py:10 defines a frozen slotted dataclass
