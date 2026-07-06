@@ -4,7 +4,7 @@
 
 `ResponseCache` 是 response reuse boundary。
 
-它的角色是讓相同條件下的 response 可以被重用，但目前只落地最小 keyed boundary，不處理實際 backend、schema 或 persistence implementation。
+它的角色是讓相同條件下的 response 可以被重用。repo 目前已落地既有 keyed boundary，加上最小 operational boundary，但仍不處理實際 backend、schema 或 persistence implementation。
 
 ## Identity Dependency
 
@@ -30,6 +30,23 @@
 - feature hashing 仍由 `response_cache.ports.FeatureHasher` 擁有
 - factory 只負責協調上述 inputs 並回傳 `ResponseCacheKey`
 
+## Operational Boundary
+
+目前新增的最小 operational boundary 只包含：
+
+- package root re-export `ResponseCache`、`ResponseCacheEntry`、`ResponseCacheKey` 與 `ResponseCacheKeyFactory`
+- `ResponseCacheEntry` 只保留 `response: str`
+- `ResponseCache` 只透過 async `get(...)` / `set(...)` 消費既有 `ResponseCacheKey`
+- `ResponseCacheStore` 只維持在 `response_cache.ports.store` 的 submodule-public path
+
+在這個 boundary 中：
+
+- `ResponseCache` 只持有 caller 提供的 `ResponseCacheStore`
+- `ResponseCache.get(...)` / `set(...)` 只做 direct await delegation
+- store miss 以 `None` 表達
+- store failures 原樣向外傳播
+- `ResponseCache` 不建立、關閉或重置 store resources
+
 ## Owner Responsibility
 
 `ResponseCache` 負責：
@@ -37,6 +54,7 @@
 - 定義 response reuse 的責任歸屬
 - 對 `orchestrator` 提供 hit / miss 概念邊界
 - 與 canonical input 及 model side identity 維持清楚依賴方向
+- 透過既有 `ResponseCacheKey` 與最小 `ResponseCacheStore` port 協調 operational read/write owner
 
 未來任何 operational `ResponseCache` surface 都應消費 `ResponseCacheKey`，而不是在自身內部重新計算 payload 或 feature hashes。
 
@@ -44,7 +62,7 @@
 
 這一輪不定義：
 
-- operational cache storage API
+- concrete operational cache storage implementation
 - TTL / eviction implementation
 - persistence schema
 - database / Redis / `SQLAlchemy`
