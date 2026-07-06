@@ -68,8 +68,9 @@ repository 中落地。
 在目前 repo 已落地的最小 cache boundary 中，gateway side 只先準備
 `ResponseCacheKey`：它由 literal `namespace`、既有 `ModelPayloadHasher`
 產生的 `model_payload_hash`，以及 `FeatureHasher` 產生的 `feature_hash`
-組成。未來任何 operational `ResponseCache` owner 都應消費這個 key，
-而不是自行計算 hashes。
+組成。repo 現在另外落地最小 operational `ResponseCache` boundary：它只透過
+async `ResponseCacheStore` port 消費這個 key 與 `ResponseCacheEntry`，而不是
+自行計算 hashes 或擁有 backend/policy semantics。
 
 但 gateway side 不直接擁有 model invocation semantics。
 

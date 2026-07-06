@@ -1,0 +1,82 @@
+verdict: red-tests-ready
+d1_verdict:
+  verdict: non-trivial
+  reason: feature
+test_mapping:
+  - requirement_id: "AC1"
+    test_case_name: "test_response_cache_package_reexports_operational_and_key_surfaces"
+    coverage_category: "regression"
+  - requirement_id: "AC2"
+    test_case_name: "test_response_cache_package_does_not_reexport_store_port"
+    coverage_category: "boundary-edge"
+  - requirement_id: "AC2"
+    test_case_name: "test_response_cache_ports_package_does_not_reexport_store_port"
+    coverage_category: "boundary-edge"
+  - requirement_id: "AC2"
+    test_case_name: "test_response_cache_store_is_only_public_from_store_submodule"
+    coverage_category: "integration-points"
+  - requirement_id: "AC3"
+    test_case_name: "test_response_cache_public_contract_is_async_only"
+    coverage_category: "boundary-edge"
+  - requirement_id: "AC4"
+    test_case_name: "test_response_cache_get_delegates_key_and_returns_store_entry"
+    coverage_category: "happy-path"
+  - requirement_id: "AC4"
+    test_case_name: "test_response_cache_get_returns_none_for_cache_miss"
+    coverage_category: "boundary-edge"
+  - requirement_id: "AC5"
+    test_case_name: "test_response_cache_set_delegates_same_key_and_entry"
+    coverage_category: "state-side-effects"
+  - requirement_id: "AC6"
+    test_case_name: "test_response_cache_get_delegates_key_and_returns_store_entry"
+    coverage_category: "integration-points"
+  - requirement_id: "AC6"
+    test_case_name: "test_response_cache_set_delegates_same_key_and_entry"
+    coverage_category: "state-side-effects"
+  - requirement_id: "AC7"
+    test_case_name: "test_response_cache_entry_is_a_frozen_dataclass_with_one_string_field"
+    coverage_category: "boundary-edge"
+  - requirement_id: "AC7"
+    test_case_name: "test_response_cache_entry_preserves_literal_response_without_normalization"
+    coverage_category: "state-side-effects"
+  - requirement_id: "AC7"
+    test_case_name: "test_response_cache_entry_rejects_mutation_after_construction"
+    coverage_category: "error-exception"
+  - requirement_id: "AC8"
+    test_case_name: "test_response_cache_store_is_only_public_from_store_submodule"
+    coverage_category: "integration-points"
+  - requirement_id: "AC9"
+    test_case_name: "tests/response_cache/test_key.py"
+    coverage_category: "regression"
+  - requirement_id: "AC9"
+    test_case_name: "tests/response_cache/test_key_factory.py"
+    coverage_category: "regression"
+  - requirement_id: "AC10"
+    test_case_name: "docs/architecture.md + docs/specs/response-cache-boundary.md update"
+    coverage_category: "integration-points"
+  - requirement_id: "AC11"
+    test_case_name: "test_response_cache_public_contract_is_async_only"
+    coverage_category: "boundary-edge"
+  - requirement_id: "AC12"
+    test_case_name: "test_response_cache_get_propagates_store_failure_unchanged"
+    coverage_category: "error-exception"
+  - requirement_id: "AC12"
+    test_case_name: "test_response_cache_set_propagates_cancelled_error_unchanged"
+    coverage_category: "error-exception"
+validation_checks:
+  d1_decision: pass
+  behavior_contract_source: plan/response-cache-operational-minimal-boundary/response-cache-operational-minimal-boundary.spec.md
+  requirements_mapped: pass
+  public_contract_coverage: pass
+  test_categories_present:
+    - happy-path
+    - error-exception
+    - boundary-edge
+    - state-side-effects
+    - integration-points
+    - regression
+  expected_initial_status: red
+  production_code_modified: false
+issues:
+  - "AC10 is documentation-facing and not directly runtime-testable; repo-visible docs updates remain part of implementation and later lint validation rather than pytest assertions."
+next_step: Run the response-cache pytest subset to confirm the new operational-boundary tests fail before any source or docs implementation work begins, then implement the bounded source and documentation changes.

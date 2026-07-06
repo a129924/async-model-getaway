@@ -1,0 +1,186 @@
+verdict: approved
+review_status: COMPLETE
+topic: response-cache-operational-minimal-boundary
+phase: implement-plan
+summary: >
+  The implementation matches the approved minimal operational ResponseCache boundary.
+  All declared implementation steps are complete, the change stays inside declared
+  topic paths and locked decisions, the public contract is unchanged, no forbidden
+  scope drift was introduced, the repaired validation contract passed, and no
+  unauthorized dynamic module-loading exception was used in tests.
+
+traceability_matrix:
+  - step: >
+      1. Add RED coverage in tests/response_cache/test_response_cache_package_surface.py,
+      tests/response_cache/test_cache.py, and tests/response_cache/test_entry.py; record
+      plan/response-cache-operational-minimal-boundary/response-cache-operational-minimal-boundary.red-tests.yaml;
+      preserve and validate tests/response_cache/test_key.py and tests/response_cache/test_key_factory.py.
+    status: done
+    evidence: >
+      plan/response-cache-operational-minimal-boundary/response-cache-operational-minimal-boundary.red-tests.yaml:1;
+      tests/response_cache/test_response_cache_package_surface.py:14;
+      tests/response_cache/test_cache.py:41;
+      tests/response_cache/test_entry.py:12;
+      tests/response_cache/test_key.py:11;
+      tests/response_cache/test_key_factory.py:28
+  - step: >
+      2. Add or update src/async_model_gateway/response_cache/__init__.py,
+      cache.py, entry.py, ports/__init__.py, and ports/store.py so package root
+      re-exports ResponseCache, ResponseCacheEntry, ResponseCacheKey, and
+      ResponseCacheKeyFactory, while ResponseCacheStore stays submodule-public only.
+    status: done
+    evidence: >
+      src/async_model_gateway/response_cache/__init__.py:1;
+      src/async_model_gateway/response_cache/cache.py:12;
+      src/async_model_gateway/response_cache/entry.py:10;
+      src/async_model_gateway/response_cache/ports/__init__.py:1;
+      src/async_model_gateway/response_cache/ports/store.py:13;
+      tests/response_cache/test_response_cache_package_surface.py:39
+  - step: >
+      3. Update docs/architecture.md and docs/specs/response-cache-boundary.md so
+      repo-visible wording reflects the existing keyed boundary plus the new minimal
+      operational ResponseCache owner that consumes ResponseCacheKey and ResponseCacheEntry
+      through an async store port.
+    status: done
+    evidence: >
+      docs/architecture.md:68;
+      docs/specs/response-cache-boundary.md:33
+  - step: >
+      4. Run the selected pytest suite, uv run ruff check docs src tests
+      plan/response-cache-operational-minimal-boundary, and uv run pyright; update
+      step.md and leave reviewer-owned artifacts for later actors.
+    status: done
+    evidence: >
+      plan/response-cache-operational-minimal-boundary/response-cache-operational-minimal-boundary.step.md:17;
+      selected pytest suite passed with 68 tests and 99.61 percent total coverage;
+      uv run ruff check docs src tests plan/response-cache-operational-minimal-boundary passed;
+      uv run pyright passed with 0 errors
+
+scope_creep_check:
+  - non_goal: No concrete ResponseCacheStore backend.
+    violated: no
+    evidence: >
+      clean; source changes stop at abstract port src/async_model_gateway/response_cache/ports/store.py:13
+  - non_goal: No Redis, database, file, or memory backend selection.
+    violated: no
+    evidence: clean
+  - non_goal: No TTL, eviction, invalidation, or freshness policy.
+    violated: no
+    evidence: >
+      clean; docs/specs/response-cache-boundary.md:61 only lists these as explicit out-of-scope items
+  - non_goal: No redesign of ResponseCacheKey or ResponseCacheKeyFactory.
+    violated: no
+    evidence: >
+      clean; regression coverage preserved at tests/response_cache/test_key.py:11 and
+      tests/response_cache/test_key_factory.py:28
+  - non_goal: No metadata-bearing ResponseCacheEntry payload.
+    violated: no
+    evidence: src/async_model_gateway/response_cache/entry.py:10
+  - non_goal: No orchestrator, provider, or response-generation wiring.
+    violated: no
+    evidence: >
+      clean; docs only retain conceptual boundary wording at docs/specs/response-cache-boundary.md:52
+  - non_goal: No stable-library, release, or versioning work.
+    violated: no
+    evidence: clean
+
+contract_check:
+  - item: Package root re-exports ResponseCache, ResponseCacheEntry, ResponseCacheKey, and ResponseCacheKeyFactory.
+    status: matches
+    detail: >
+      src/async_model_gateway/response_cache/__init__.py:3 exposes exactly those four names;
+      tests/response_cache/test_response_cache_package_surface.py:14 verifies the export list.
+  - item: Package root and response_cache.ports do not re-export ResponseCacheStore.
+    status: matches
+    detail: >
+      src/async_model_gateway/response_cache/__init__.py:8 omits ResponseCacheStore and
+      src/async_model_gateway/response_cache/ports/__init__.py:3 exports only FeatureHasher;
+      tests/response_cache/test_response_cache_package_surface.py:39 and :44 verify both boundaries.
+  - item: "ResponseCache constructor is ResponseCache(store: ResponseCacheStore)."
+    status: matches
+    detail: >
+      src/async_model_gateway/response_cache/cache.py:15 defines the locked constructor;
+      tests/response_cache/test_cache.py:41 verifies the public signature.
+  - item: "ResponseCache.get is async def get(self, *, key: ResponseCacheKey) -> ResponseCacheEntry | None."
+    status: matches
+    detail: >
+      src/async_model_gateway/response_cache/cache.py:19 matches exactly and delegates directly;
+      tests/response_cache/test_cache.py:41 and :57 verify the signature and behavior.
+  - item: "ResponseCache.set is async def set(self, *, key: ResponseCacheKey, entry: ResponseCacheEntry) -> None."
+    status: matches
+    detail: >
+      src/async_model_gateway/response_cache/cache.py:23 matches exactly and delegates directly;
+      tests/response_cache/test_cache.py:41 and :90 verify the signature and behavior.
+  - item: "ResponseCacheEntry is an immutable value type with only response: str."
+    status: matches
+    detail: >
+      src/async_model_gateway/response_cache/entry.py:10 defines a frozen slotted dataclass
+      with one field; tests/response_cache/test_entry.py:12, :20, and :27 verify the contract.
+  - item: ResponseCacheStore is submodule-public at response_cache.ports.store with async get/set.
+    status: matches
+    detail: >
+      src/async_model_gateway/response_cache/ports/store.py:13 defines the abstract async port;
+      tests/response_cache/test_response_cache_package_surface.py:49 verifies the only allowed public path.
+  - item: Store failures and cancellations propagate unchanged, and None means cache miss.
+    status: matches
+    detail: >
+      src/async_model_gateway/response_cache/cache.py:19 and :23 do raw delegation;
+      tests/response_cache/test_cache.py:75, :108, and :122 verify miss, failure propagation,
+      and cancellation propagation.
+
+test_plan_check:
+  - case_type: package-surface exports and hidden store port
+    status: present
+    location: tests/response_cache/test_response_cache_package_surface.py:14
+  - case_type: async owner signature and direct delegation
+    status: present
+    location: tests/response_cache/test_cache.py:41
+  - case_type: cache hit and miss semantics
+    status: present
+    location: tests/response_cache/test_cache.py:57
+  - case_type: store failure and cancellation propagation
+    status: present
+    location: tests/response_cache/test_cache.py:108
+  - case_type: immutable single-field ResponseCacheEntry contract
+    status: present
+    location: tests/response_cache/test_entry.py:12
+  - case_type: keyed boundary regression preservation
+    status: present
+    location: tests/response_cache/test_key.py:11
+  - case_type: keyed factory regression preservation
+    status: present
+    location: tests/response_cache/test_key_factory.py:28
+  - case_type: repo-visible docs alignment
+    status: present
+    location: docs/architecture.md:68
+
+validation_evidence:
+  plan_review_artifact: plan/response-cache-operational-minimal-boundary/response-cache-operational-minimal-boundary.plan-review.json
+  human_check_artifact: plan/response-cache-operational-minimal-boundary/response-cache-operational-minimal-boundary.human-check.json
+  step_gate: passed
+  selected_pytest_suite:
+    status: passed
+    detail: 68 passed; coverage 99.61 percent
+  ruff_check:
+    status: passed
+    command: uv run ruff check docs src tests plan/response-cache-operational-minimal-boundary
+  pyright:
+    status: passed
+    detail: 0 errors, 0 warnings, 0 informations
+
+path_boundary_check:
+  status: passed
+  detail: >
+    Observed worktree changes are confined to declared topic docs, source, tests, and
+    analysis/plan artifacts. No undeclared source or test paths were changed.
+
+dynamic_module_loading_check:
+  status: passed
+  detail: >
+    No unauthorized dynamic module-loading pattern was found in tests. The only importlib
+    usage is tests/response_cache/test_response_cache_package_surface.py:51 importing the
+    normal package submodule async_model_gateway.response_cache.ports.store without file-path
+    loading, sys.path mutation, or spec-based loader bypass.
+
+blocking_issues: []
+next_recommended_role: Observer stop before pr-comment
