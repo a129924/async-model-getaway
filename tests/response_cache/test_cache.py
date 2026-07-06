@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+from typing import get_type_hints
 
 import pytest
+import async_model_gateway.response_cache.cache as response_cache_cache_module
 from async_model_gateway.response_cache import ResponseCache, ResponseCacheEntry, ResponseCacheKey
 from async_model_gateway.response_cache.ports.store import ResponseCacheStore
 
@@ -52,6 +54,14 @@ def test_response_cache_public_contract_is_async_only() -> None:
     assert tuple(set_signature.parameters) == ("self", "key", "entry")
     assert set_signature.parameters["key"].kind is inspect.Parameter.KEYWORD_ONLY
     assert set_signature.parameters["entry"].kind is inspect.Parameter.KEYWORD_ONLY
+
+
+def test_response_cache_init_type_hints_resolve_store_port_without_public_reexport() -> None:
+    """The constructor annotation must stay runtime-resolvable without a public leak."""
+    init_type_hints = get_type_hints(ResponseCache.__init__)
+
+    assert init_type_hints["store"] is ResponseCacheStore
+    assert "ResponseCacheStore" not in vars(response_cache_cache_module)
 
 
 @pytest.mark.asyncio

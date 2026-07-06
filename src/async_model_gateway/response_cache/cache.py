@@ -2,13 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from .entry import ResponseCacheEntry
 from .key import ResponseCacheKey
-
-if TYPE_CHECKING:
-    from .ports.store import ResponseCacheStore
+from .ports.store import ResponseCacheStore as _ResponseCacheStore
 
 __all__ = ["ResponseCache"]
 
@@ -16,7 +12,7 @@ __all__ = ["ResponseCache"]
 class ResponseCache:
     """Delegate response-cache reads and writes to the configured store port."""
 
-    def __init__(self, store: ResponseCacheStore) -> None:
+    def __init__(self, store: _ResponseCacheStore) -> None:
         """Bind the operational owner to the caller-provided store reference."""
         self._store = store
 
