@@ -23,11 +23,17 @@
 - packaged application scaffold
 - 最小 CLI entrypoint
 
-目前 package version baseline 為 `0.4.3`。repo 也已落地最小
-`ModelRegistry` boundary：root package 只 re-export `ModelRegistry`，
+目前 package version baseline 為 `0.4.4`。repo 目前已落地最小
+`ModelRegistry` boundary，並補齊最小 operational `ResponseCache`
+boundary：`async_model_gateway.response_cache` 只公開
+`ResponseCacheKey` 與 `ResponseCacheKeyFactory`，而
+`async_model_gateway.response_cache.ports` 提供 `FeatureHasher` port。
+root package 目前只公開 `__version__` 與 `main`；`ModelRegistry` 由
+`async_model_gateway.model_registry` 提供，
 `async_model_gateway.model_registry.stores` 提供 submodule public 的
 `InMemoryRegistryStore`，而 `model-payload` hashing 的 public owner 仍維持為
-`ModelPayloadHasher`。
+`ModelPayloadHasher`。這不代表 cache backend、TTL policy、`orchestrator`
+flow 或 broader cache architecture 已完成。
 
 ## 核心概念
 
@@ -78,7 +84,7 @@ core abstractions 的 boundary spec 入口整理在 [docs/specs/core-abstraction
 - 更寬的 model-side architecture 與任何超出最小 boundary 的 registry behavior
 - gateway execution flow
 - model pool behavior
-- response cache logic
+- broader response cache runtime logic
 - `runtime-model` acquisition
 - provider adapters
 - infrastructure components
