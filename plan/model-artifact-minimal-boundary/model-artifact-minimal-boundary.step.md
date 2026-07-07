@@ -16,12 +16,12 @@ created: 2026-07-07
 - [X] plan-review
 - [X] tdd-test-authoring
 - [X] implementation
-- [ ] implementation-review
+- [X] implementation-review
 - [ ] code-review
 
 ## Gate Status
 
-- Current workflow position: `implement-plan` 已完成；`ModelArtifact` public constructor typing 已對齊 locked contract，topic tests 已補齊合法空 dict 與合法巢狀 JSON-like `loader_options` 正向 edge cases，且現行 validation contract `uv run pytest -q`、`uv run ruff check docs src tests plan/model-artifact-minimal-boundary` 與 `uv run pyright` 皆已通過，等待 reviewer 重跑 implementation review verdict。
+- Current workflow position: `review-ready`；repo-visible `implementation-review` 已為 approved，而上一輪 `code-review` 對 `ModelArtifact.loader_options` immutable shared read contract 提出 needs-rework。本次 bounded rework 已補上 top-level 與 nested JSON-like mutation 防護，並重跑現行 validation contract：`uv run pytest -q` = 94 passed / 92.72% coverage、`uv run ruff check docs src tests plan/model-artifact-minimal-boundary` = passed、`uv run pyright` = 0 errors / 0 warnings / 0 informations；目前等待下一輪 review verdict。
 
 ## Implementation Steps
 

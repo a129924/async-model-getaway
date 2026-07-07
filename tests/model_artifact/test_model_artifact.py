@@ -85,6 +85,70 @@ def test_model_artifact_accepts_nested_json_like_loader_options() -> None:
     assert artifact.loader_options == loader_options
 
 
+def test_model_artifact_rejects_top_level_loader_options_mutation() -> None:
+    """The shared read contract must reject direct top-level loader-options edits."""
+    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
+    loader_family_module = importlib.import_module(
+        "async_model_gateway.model_artifact.loader_family"
+    )
+
+    artifact = artifact_module.ModelArtifact(
+        loader_family=loader_family_module.LoaderFamily.TORCH,
+        artifact_path="weights/model.pt",
+        loader_options={"map_location": "cpu"},
+    )
+
+    with pytest.raises(TypeError, match="loader_options is immutable"):
+        artifact.loader_options["device"] = "cuda"
+
+    with pytest.raises(TypeError, match="loader_options is immutable"):
+        artifact.loader_options["map_location"] = "cuda"
+
+    assert artifact.loader_options == {"map_location": "cpu"}
+
+
+def test_model_artifact_rejects_nested_loader_options_mutation() -> None:
+    """Nested JSON-like loader metadata must stay immutable after construction."""
+    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
+    loader_family_module = importlib.import_module(
+        "async_model_gateway.model_artifact.loader_family"
+    )
+
+    loader_options = {
+        "session": {
+            "providers": ["CPUExecutionProvider"],
+            "graph_optimization": {"level": 3, "disabled": False},
+        },
+        "tensor_names": ["input_ids", "attention_mask"],
+    }
+
+    artifact = artifact_module.ModelArtifact(
+        loader_family=loader_family_module.LoaderFamily.ONNX,
+        artifact_path="weights/model.onnx",
+        loader_options=loader_options,
+    )
+
+    session = artifact.loader_options["session"]
+    assert isinstance(session, dict)
+    providers = session["providers"]
+    assert isinstance(providers, list)
+    graph_optimization = session["graph_optimization"]
+    assert isinstance(graph_optimization, dict)
+    tensor_names = artifact.loader_options["tensor_names"]
+    assert isinstance(tensor_names, list)
+
+    with pytest.raises(TypeError, match="loader_options is immutable"):
+        providers.append("CUDAExecutionProvider")
+
+    with pytest.raises(TypeError, match="loader_options is immutable"):
+        graph_optimization["level"] = 1
+
+    with pytest.raises(TypeError, match="loader_options is immutable"):
+        tensor_names.append("token_type_ids")
+
+    assert artifact.loader_options == loader_options
+
+
 @pytest.mark.parametrize("blank_path", ["", "   "])
 def test_model_artifact_rejects_blank_artifact_path(blank_path: str) -> None:
     """Artifact location must be explicit and non-blank."""

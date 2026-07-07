@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TypeGuard
+from typing import NoReturn, TypeGuard
 
 from .loader_family import LoaderFamily
 
@@ -11,6 +11,85 @@ __all__ = ["ModelArtifact"]
 
 JSONScalar = None | bool | int | float | str
 JSONLike = JSONScalar | list["JSONLike"] | dict[str, "JSONLike"]
+
+
+def _raise_loader_options_immutable() -> NoReturn:
+    """Fail closed on attempts to mutate loader_options content."""
+    msg = "loader_options is immutable"
+    raise TypeError(msg)
+
+
+class _FrozenJSONList(list[JSONLike]):
+    """List-like JSON container that rejects in-place mutation."""
+
+    __slots__ = ()
+
+    def __delitem__(self, _key: object) -> None:
+        _raise_loader_options_immutable()
+
+    def __iadd__(self, _value: object) -> _FrozenJSONList:
+        _raise_loader_options_immutable()
+
+    def __imul__(self, _value: object) -> _FrozenJSONList:
+        _raise_loader_options_immutable()
+
+    def __setitem__(self, _key: object, _value: object) -> None:
+        _raise_loader_options_immutable()
+
+    def append(self, _value: JSONLike) -> None:
+        _raise_loader_options_immutable()
+
+    def clear(self) -> None:
+        _raise_loader_options_immutable()
+
+    def extend(self, _values: object) -> None:
+        _raise_loader_options_immutable()
+
+    def insert(self, _index: object, _value: JSONLike) -> None:
+        _raise_loader_options_immutable()
+
+    def pop(self, _index: object = -1) -> JSONLike:
+        _raise_loader_options_immutable()
+
+    def remove(self, _value: JSONLike) -> None:
+        _raise_loader_options_immutable()
+
+    def reverse(self) -> None:
+        _raise_loader_options_immutable()
+
+    def sort(self, *, key: object = None, reverse: bool = False) -> None:
+        _ = key, reverse
+        _raise_loader_options_immutable()
+
+
+class _FrozenJSONDict(dict[str, JSONLike]):
+    """Dict-like JSON container that rejects in-place mutation."""
+
+    __slots__ = ()
+
+    def __delitem__(self, _key: str) -> None:
+        _raise_loader_options_immutable()
+
+    def __ior__(self, _value: object) -> _FrozenJSONDict:
+        _raise_loader_options_immutable()
+
+    def __setitem__(self, _key: str, _value: JSONLike) -> None:
+        _raise_loader_options_immutable()
+
+    def clear(self) -> None:
+        _raise_loader_options_immutable()
+
+    def pop(self, _key: str, _default: object = None) -> JSONLike:
+        _raise_loader_options_immutable()
+
+    def popitem(self) -> tuple[str, JSONLike]:
+        _raise_loader_options_immutable()
+
+    def setdefault(self, _key: str, _default: JSONLike = None) -> JSONLike:
+        _raise_loader_options_immutable()
+
+    def update(self, *_args: object, **_kwargs: JSONLike) -> None:
+        _raise_loader_options_immutable()
 
 
 def _is_json_scalar(value: object) -> TypeGuard[JSONScalar]:
@@ -34,7 +113,7 @@ def _normalize_json_like(value: object) -> JSONLike:
         return value
 
     if _is_json_list(value):
-        return [_normalize_json_like(item) for item in value]
+        return _FrozenJSONList(_normalize_json_like(item) for item in value)
 
     if _is_json_dict(value):
         normalized_dict: dict[str, JSONLike] = {}
@@ -43,7 +122,7 @@ def _normalize_json_like(value: object) -> JSONLike:
                 msg = "loader_options dict keys must be strings"
                 raise TypeError(msg)
             normalized_dict[key] = _normalize_json_like(item)
-        return normalized_dict
+        return _FrozenJSONDict(normalized_dict)
 
     msg = "loader_options values must be JSON-like scalars, lists, or dicts"
     raise TypeError(msg)
