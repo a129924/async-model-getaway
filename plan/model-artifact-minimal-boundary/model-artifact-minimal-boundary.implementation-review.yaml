@@ -1,0 +1,277 @@
+verdict: needs-rework
+review_status: INCOMPLETE
+topic: model-artifact-minimal-boundary
+phase: implement-plan
+summary: >
+  The observed source, tests, docs, and plan changes stay inside the topic's declared
+  path boundary and preserve the locked docs-level deferral of `LocalModelLoader`.
+  However, the implementation does not yet satisfy the locked typed `ModelArtifact`
+  public contract, the test plan misses the required edge-case positive coverage for
+  valid empty and nested JSON-like `loader_options`, and the plan-specified bounded
+  pytest command is a validation-contract blocker rather than an implementation
+  blocker because the repo-wide coverage gate is global while the full repository
+  suite passes at 96.88 percent coverage.
+
+preconditions:
+  plan_review_approved:
+    status: yes
+    evidence: plan/model-artifact-minimal-boundary/model-artifact-minimal-boundary.plan-review.json:2
+  human_check_cleared:
+    status: yes
+    evidence: plan/model-artifact-minimal-boundary/model-artifact-minimal-boundary.human-check.json:1
+  implementation_present:
+    status: yes
+    evidence: >
+      src/async_model_gateway/model_artifact/__init__.py:1;
+      src/async_model_gateway/model_artifact/loader_family.py:1;
+      src/async_model_gateway/model_artifact/artifact.py:1;
+      tests/model_artifact/test_model_artifact_package_surface.py:1;
+      tests/model_artifact/test_loader_family.py:1;
+      tests/model_artifact/test_model_artifact.py:1;
+      plan/model-artifact-minimal-boundary/model-artifact-minimal-boundary.red-tests.yaml:1
+
+step_gate:
+  status: pending
+  evidence: >
+    plan/model-artifact-minimal-boundary/model-artifact-minimal-boundary.step.md:24
+    records the disputed validation state, and
+    plan/model-artifact-minimal-boundary/model-artifact-minimal-boundary.step.md:31
+    leaves Implementation Step 4 unchecked because the bounded pytest command exits 1
+    on repo-wide coverage even though its 23 assertions pass.
+
+traceability_matrix:
+  - step: >
+      1. Add RED coverage in tests/model_artifact/test_model_artifact_package_surface.py,
+      tests/model_artifact/test_loader_family.py, and
+      tests/model_artifact/test_model_artifact.py; record
+      plan/model-artifact-minimal-boundary/model-artifact-minimal-boundary.red-tests.yaml;
+      lock the public import surface, bounded LoaderFamily vocabulary, minimal
+      ModelArtifact fields, non-identity semantics, and the still-absent
+      LocalModelLoader boundary.
+    status: partial
+    evidence: >
+      plan/model-artifact-minimal-boundary/model-artifact-minimal-boundary.red-tests.yaml:1;
+      tests/model_artifact/test_model_artifact_package_surface.py:8;
+      tests/model_artifact/test_loader_family.py:10;
+      tests/model_artifact/test_model_artifact.py:11; the suite covers package-surface,
+      bounded vocabulary, explicit-family preservation, invalid family, blank path,
+      and non-identity rejection, but no test positively verifies valid empty
+      loader_options or nested JSON-like loader_options required by the plan's edge
+      case at plan/model-artifact-minimal-boundary/model-artifact-minimal-boundary.plan.md:412.
+  - step: >
+      2. Add src/async_model_gateway/model_artifact/__init__.py,
+      src/async_model_gateway/model_artifact/loader_family.py, and
+      src/async_model_gateway/model_artifact/artifact.py so source layout stays
+      one-concept-per-file and async_model_gateway.model_artifact re-exports only
+      ModelArtifact and LoaderFamily.
+    status: partial
+    evidence: >
+      src/async_model_gateway/model_artifact/__init__.py:3;
+      src/async_model_gateway/model_artifact/loader_family.py:10;
+      src/async_model_gateway/model_artifact/artifact.py:65;
+      tests/model_artifact/test_model_artifact_package_surface.py:16; the package
+      root is correctly narrow and the source layout is correct, but
+      src/async_model_gateway/model_artifact/artifact.py:76-78 widens the public
+      constructor annotations to object/object/object instead of the locked
+      typed contract.
+  - step: >
+      3. Update docs/architecture.md, docs/specs/canonical-input-boundary.md,
+      docs/specs/core-abstractions-boundary.md, and docs/specs/model-side-boundary.md
+      so repo-visible wording consistently states that model_artifact is a shared
+      read contract, LoaderFamily is explicit and bounded to pickle|torch|onnx,
+      ModelArtifact carries only loader_family / artifact_path / loader_options,
+      and LocalModelLoader stays docs-level deferred.
+    status: done
+    evidence: >
+      docs/architecture.md:24;
+      docs/specs/canonical-input-boundary.md:119;
+      docs/specs/core-abstractions-boundary.md:56;
+      docs/specs/model-side-boundary.md:89
+  - step: >
+      4. Run the bounded validation commands, then update only implementer-owned
+      step tracking before reviewer verdict.
+    status: partial
+    evidence: >
+      plan/model-artifact-minimal-boundary/model-artifact-minimal-boundary.step.md:31;
+      uv run pytest tests/model_artifact/test_model_artifact_package_surface.py
+      tests/model_artifact/test_loader_family.py
+      tests/model_artifact/test_model_artifact.py
+      tests/test_package_entrypoint.py tests/test_local_path_guard.py -v =>
+      23 passed, coverage 75.94 percent, exit 1;
+      uv run ruff check docs src tests plan/model-artifact-minimal-boundary => passed;
+      uv run pyright => 0 errors, 0 warnings, 0 informations;
+      uv run pytest -q => 90 passed, coverage 96.88 percent
+
+scope_creep_check:
+  - non_goal: >
+      This topic does not implement LocalModelLoader, local artifact read, or any
+      concrete backend / serialization adapters.
+    violated: no
+    evidence: >
+      clean; find src/async_model_gateway/model_artifact tests/model_artifact -maxdepth 1
+      -type f returns only __init__.py, artifact.py, loader_family.py, and the three
+      topic tests, with no LocalModelLoader source or tests.
+  - non_goal: >
+      This topic does not establish ModelPool public ownership, resource lifecycle,
+      pooling policy, timeout, retry, or cancellation semantics.
+    violated: no
+    evidence: clean
+  - non_goal: >
+      This topic does not rewrite model-payload hashing, ModelRegistry freshness,
+      ResponseCache identity, or any runtime-model execution contract.
+    violated: no
+    evidence: clean
+  - non_goal: >
+      This topic does not add loader-family guessing, artifact probing, path-normalization
+      fallback, or object-shape inference.
+    violated: no
+    evidence: >
+      src/async_model_gateway/model_artifact/loader_family.py:10 and
+      src/async_model_gateway/model_artifact/artifact.py:81 only accept explicit
+      LoaderFamily values; docs/specs/model-side-boundary.md:122 keeps guessing deferred.
+  - non_goal: >
+      This topic does not pull release-facing metadata into implement-plan.
+    violated: no
+    evidence: >
+      clean; git status --short shows changes only under the declared docs, source,
+      tests, and plan/model-artifact-minimal-boundary paths.
+
+contract_check:
+  - item: >
+      Public subpackage import surface is async_model_gateway.model_artifact and it
+      re-exports only ModelArtifact and LoaderFamily.
+    status: matches
+    detail: >
+      src/async_model_gateway/model_artifact/__init__.py:3-6 exposes exactly those
+      two names, and tests/model_artifact/test_model_artifact_package_surface.py:16-18
+      verifies the export list and identity.
+  - item: >
+      LoaderFamily public surface is LoaderFamily(str, Enum) with bounded vocabulary
+      pickle|torch|onnx and no inference behavior.
+    status: matches
+    detail: >
+      src/async_model_gateway/model_artifact/loader_family.py:10-15 defines the
+      bounded enum, and tests/model_artifact/test_loader_family.py:19-33 verifies the
+      exact members and fail-closed rejection of unknown explicit values.
+  - item: >
+      ModelArtifact public surface is
+      ModelArtifact(loader_family: LoaderFamily, artifact_path: str,
+      loader_options: dict[str, JSONLike]).
+    status: deviation
+    detail: >
+      The implementation stores the expected three fields at
+      src/async_model_gateway/model_artifact/artifact.py:69-71, but the public
+      constructor widens all three parameter annotations to object at
+      src/async_model_gateway/model_artifact/artifact.py:76-78. A direct
+      inspect.signature check returns
+      (*, loader_family: 'object', artifact_path: 'object', loader_options: 'object')
+      -> 'None', which drifts from the locked public typed contract at
+      plan/model-artifact-minimal-boundary/model-artifact-minimal-boundary.plan.md:344-348.
+  - item: >
+      ModelArtifact must fail closed on blank artifact_path and malformed
+      loader_options without accepting identity material.
+    status: matches
+    detail: >
+      src/async_model_gateway/model_artifact/artifact.py:85-98 raises TypeError or
+      ValueError as planned, and tests/model_artifact/test_model_artifact.py:42-98
+      verifies blank-path rejection, malformed loader_options rejection, and
+      model_payload rejection.
+  - item: No existing public API is modified or removed.
+    status: matches
+    detail: >
+      tests/model_artifact/test_model_artifact_package_surface.py:43-50 verifies the
+      root package, model_registry, and response_cache do not re-export the new surface.
+
+test_plan_check:
+  - case_type: happy path
+    status: present
+    location: tests/model_artifact/test_loader_family.py:10; tests/model_artifact/test_model_artifact.py:24
+  - case_type: invalid input
+    status: present
+    location: tests/model_artifact/test_loader_family.py:26; tests/model_artifact/test_model_artifact.py:42; tests/model_artifact/test_model_artifact.py:58
+  - case_type: edge case
+    status: missing
+    location: >
+      not found for a positive valid-empty-dict case or a positive nested JSON-like
+      loader_options case required by
+      plan/model-artifact-minimal-boundary/model-artifact-minimal-boundary.plan.md:412-414
+  - case_type: regression
+    status: present
+    location: >
+      tests/model_artifact/test_model_artifact_package_surface.py:36;
+      tests/test_package_entrypoint.py:1;
+      tests/test_local_path_guard.py:1
+  - case_type: backward compatibility
+    status: present
+    location: tests/model_artifact/test_model_artifact_package_surface.py:43
+
+validation_evidence:
+  bounded_pytest_suite:
+    status: failed
+    detail: >
+      The plan-specified bounded command runs 23 passing assertions but exits 1 on the
+      repository coverage gate: 75.94 percent total coverage versus fail_under 90.
+  ruff_check:
+    status: passed
+    detail: uv run ruff check docs src tests plan/model-artifact-minimal-boundary
+  pyright:
+    status: passed
+    detail: 0 errors, 0 warnings, 0 informations
+  full_suite_pytest:
+    status: passed
+    detail: >
+      uv run pytest -q passes with 90 tests and 96.88 percent total coverage, showing
+      no repository-wide coverage deficit once the full source set is exercised.
+
+coverage_caveat:
+  evaluated: yes
+  blocker: yes
+  classification: validation-contract blocker
+  detail: >
+    pyproject.toml:79-94 applies repository-wide coverage collection and fail_under 90
+    to every pytest invocation. Because the plan locks a bounded pytest subset at
+    plan/model-artifact-minimal-boundary/model-artifact-minimal-boundary.plan.md:425-429,
+    the command can pass every topic assertion yet still exit 1 for unrelated uncovered
+    modules. The full-suite result shows this is not an implementation-level evidence
+    failure, but the current plan/validation contract still cannot be marked complete
+    as written.
+
+path_boundary_check:
+  status: passed
+  detail: >
+    Observed changes are confined to the declared topic docs, source, tests, and
+    plan/model-artifact-minimal-boundary artifact paths. No release-only metadata
+    files or undeclared source/test lanes were touched.
+
+dynamic_module_loading_check:
+  status: passed
+  detail: >
+    No unauthorized dynamic module-loading pattern was found in tests. The topic
+    tests use importlib.import_module only in
+    tests/model_artifact/test_model_artifact_package_surface.py:10-47,
+    tests/model_artifact/test_loader_family.py:12-30, and
+    tests/model_artifact/test_model_artifact.py:13-89 without file-path loading,
+    spec-based loaders, or sys.path mutation.
+
+blocking_issues:
+  - >
+    Source rework: tighten the ModelArtifact public constructor annotations in
+    src/async_model_gateway/model_artifact/artifact.py:76-78 so they match the locked
+    public contract and typed-value-object requirement at
+    plan/model-artifact-minimal-boundary/model-artifact-minimal-boundary.plan.md:331-345.
+  - >
+    Test rework: add the missing edge-case positive coverage for valid empty dict and
+    nested JSON-like loader_options required by
+    plan/model-artifact-minimal-boundary/model-artifact-minimal-boundary.plan.md:412-414.
+  - >
+    Plan/validation-contract rework: repair Implementation Step 4 so the accepted
+    pytest evidence aligns with the repository-wide coverage contract in
+    pyproject.toml:79-94. The current bounded pytest exit-1 is a validation-contract
+    blocker, not a source implementation blocker.
+
+routing:
+  next_review_stage: rework
+  action_required: >
+    Return to implementer for the source/test gaps above, and return to plan/validation
+    owners to repair the locked pytest validation contract before re-submitting for
+    implementation review.

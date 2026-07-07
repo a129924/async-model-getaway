@@ -116,11 +116,18 @@ flow 仍不屬於這份 spec 的實作範圍。
 
 `model_artifact` 是 producer 與 local model side 之間的 read contract，不是 identity material。
 
-它至少必須能表達：
+目前 repo 已以 `async_model_gateway.model_artifact` 落地最小 public owner，
+package root 只 re-export `ModelArtifact` 與 `LoaderFamily`。
 
-- 怎麼選 loader family
-- 要讀哪個 artifact
-- 讀取時需要的額外資訊
-- 讀完後要交付什麼邊界
+在這個最小 boundary 中：
+
+- `LoaderFamily` 是 bounded enum，starter vocabulary 只允許 `pickle`、`torch`、`onnx`
+- family 值必須由 producer 顯式提供，不得由副檔名、path fragment、artifact content 或 fallback heuristics 推導
+- `ModelArtifact` 只承載 `loader_family`、`artifact_path` 與 `loader_options`
+- `loader_options` 只承擔 JSON-like read-time metadata，不承擔 identity authority
 
 `model_artifact` 不參與 `payload-hash` authority，也不應與 `model-payload` 混用。
+
+`LocalModelLoader` 仍維持 docs-level deferred boundary；這個 shared read
+contract 的存在不代表 artifact read、existence probing、resource lifecycle 或
+runtime-model acquisition behavior 已在 repo 中落地。
