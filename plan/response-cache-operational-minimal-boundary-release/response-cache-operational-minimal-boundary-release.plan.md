@@ -32,7 +32,7 @@
   - 任何重新打開 `ResponseCache` architecture、API、owner boundary、async policy 或 store exposure 決策。
   - 任何修改既有 `response-cache-operational-minimal-boundary` analysis、plan、spec、step 或 review artifacts。
   - 任何 source/test/docs 變更超出 `README.md`、`src/async_model_gateway/__version__.py`、`pyproject.toml` 與必要 lockfile sync。
-  - 任何 tag 建立、release 發佈、merge、push、version 檔案實改或 release execution。
+  - 任何 tag 建立、release 發佈、merge、push，或任何超出前述 version metadata patch bump / lockfile sync 的 release execution。
 
 ## Locked Decisions
 
@@ -64,8 +64,9 @@
   若發現需要 source/test/docs 邊界外變更，必須回到 `spec-and-plan-finalization`。
 - Reviewer 只負責獨立 plan verdict；reviewer 不代替 creator 執行 version bump、
   也不代替 human 或 release actor 關閉 gate。
-- Human gate 仍需在 plan review 通過後獨立明示；本 plan 只宣告未來 gate path，
-  不建立、不預填 human check artifact。
+- Human gate 仍需在 plan review 通過後獨立明示；即使 repo-visible
+  `human-check` artifact 已存在，其 owner 仍固定為 Human，planning actor、
+  implementer 與 reviewer 都不得代替 Human 關閉 gate。
 - 此 topic 不得把既有 merged topic 的 implementation scope、public contract、
   analysis-layer baseline 或 validation claims retroactively 改寫成 release topic。
 
@@ -121,7 +122,7 @@ Artifact path notes:
   `plan/response-cache-operational-minimal-boundary/` 下的任何既有 artifact。
 - listed paths 是 executable contract；若後續工作偏離這些精確 paths，必須停止並回到
   `spec-and-plan-finalization`。
-- 本輪 plan authoring 只宣告 future reviewer / human gate paths，不建立對應 artifact。
+- reviewer / human gate paths 已在本 PR 以 repo-visible artifact 記錄；這些檔案只作為 gate evidence，不授權 planning actor、implementer 或 reviewer 代替 Human 關 gate。
 
 ## Stable library metadata
 
