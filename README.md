@@ -50,7 +50,11 @@ flow 或 broader cache architecture 已完成。
 - `runtime-model`
 - local / remote model source
 
-這些目前都屬於設計層級的概念，用來做規劃與對齊，還不是已實作的 Python type 或 runtime feature。
+這些詞彙大多數仍屬設計層級，用來做規劃與對齊；目前只有最小
+model-registry boundary 與最小 operational response-cache boundary 已以狹義
+public surface 落地。除此之外，較寬的 `features` semantics、response cache
+architecture、`orchestrator` 與 `runtime-model` flow 仍不是已完成的 Python type
+或 runtime feature。
 
 目前已落地的最小 model-registry boundary 包含：
 
@@ -66,6 +70,16 @@ flow 或 broader cache architecture 已完成。
 - list 順序保留
 - scalar 不做 normalization
 - unsupported type 會 fail closed 並 raise `TypeError`
+
+目前已落地的最小 operational response-cache boundary 包含：
+
+- `async_model_gateway.response_cache.ResponseCache`
+- `async_model_gateway.response_cache.ResponseCacheEntry`
+- `async_model_gateway.response_cache.ResponseCacheKey`
+- `async_model_gateway.response_cache.ResponseCacheKeyFactory`
+- `async_model_gateway.response_cache.ports.FeatureHasher`
+
+其中 `ResponseCacheStore` 仍維持為 submodule-only surface。
 
 在目前階段，`model_source_kind` 只鎖 `local | remote`，而 capability 差異先收斂在 `features`，不先拆成多方法名公開介面。
 

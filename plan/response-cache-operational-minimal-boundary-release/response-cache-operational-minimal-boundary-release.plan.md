@@ -72,7 +72,7 @@
 
 ## Status / Allowed Transitions
 
-- **Current**: `review-ready`
+- **Current**: `pr-open`
 - **Execution model**: follow
   `spec-and-plan-finalization -> implement-plan -> pr-comment -> pr-comment-review-pr-comments-and-fix -> release`；
   由於本 topic 明確宣告 release-facing timing，因此 `release` workflow 條件成立。
@@ -96,6 +96,19 @@ Routing notes:
 - `approved` 依 repo contract 必須同時具備
   `plan/response-cache-operational-minimal-boundary-release/response-cache-operational-minimal-boundary-release.plan-review.json`
   的 `approved` verdict 與獨立 human check gate pass。
+- 上述 plan-review artifact 目前已記錄 `approved` verdict；這是
+  `spec-and-plan-finalization` 已完成的歷史 review evidence，不是目前
+  post-implement workflow state 的直接錨點。
+- `plan/response-cache-operational-minimal-boundary-release/response-cache-operational-minimal-boundary-release.human-check.json`
+  是此 topic 的 exact `human check` evidence path；它已在 `2026-07-06`
+  記錄 `status: cleared` 與 `cleared_for: implement-plan`，因此只代表核准計畫曾合法進入
+  `implement-plan`，不是目前 workflow state。
+- release-facing implementation work 與對應 gate evidence 已隨 PR `#11`
+  提交，因此此 topic 已依 workflow 從 `publish-in-progress` 進入 `pr-open`。
+- PR `#11` 的最新 review 只要求 bounded README / plan wording 修正；因此目前
+  active workflow position 是 `pr-comment-review-pr-comments-and-fix`，且修正範圍
+  只限 `README.md` 與此 `plan.md`，不得回寫 gate artifacts 或擴張到其他
+  release metadata paths。
 - 此 topic 只規劃 release-facing file edits 與 merge 後 release timing；若後續實作想觸碰
   response-cache source/tests/docs boundary，必須停止並回到
   `spec-and-plan-finalization`。
