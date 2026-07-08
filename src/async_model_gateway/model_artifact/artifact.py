@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import NoReturn, TypeGuard, cast, overload
 
@@ -251,7 +251,7 @@ class ModelArtifact:
 
     loader_family: LoaderFamily
     artifact_path: str
-    loader_options: dict[str, JSONLike]
+    _loader_options: _FrozenJSONDict = field(repr=False)
 
     def __init__(
         self,
@@ -265,6 +265,11 @@ class ModelArtifact:
         object.__setattr__(self, "artifact_path", _require_artifact_path(artifact_path))
         object.__setattr__(
             self,
-            "loader_options",
-            cast(dict[str, JSONLike], _normalize_loader_options(loader_options)),
+            "_loader_options",
+            _normalize_loader_options(loader_options),
         )
+
+    @property
+    def loader_options(self) -> dict[str, JSONLike]:
+        """Return a fresh plain JSON-like copy that matches the public contract."""
+        return cast(dict[str, JSONLike], _materialize_json_like(self._loader_options))
