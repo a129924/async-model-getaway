@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import importlib
 import inspect
+import async_model_gateway.model_artifact.artifact as artifact_module
+import async_model_gateway.model_artifact.loader_family as loader_family_module
 from typing import cast
 
 import pytest
@@ -11,8 +12,6 @@ import pytest
 
 def test_model_artifact_accepts_only_the_locked_minimal_fields() -> None:
     """The shared read contract must stay limited to three explicit fields."""
-    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
-
     artifact_signature = inspect.signature(artifact_module.ModelArtifact)
 
     assert tuple(artifact_signature.parameters) == (
@@ -29,11 +28,6 @@ def test_model_artifact_accepts_only_the_locked_minimal_fields() -> None:
 
 def test_model_artifact_preserves_explicit_loader_family_without_path_inference() -> None:
     """The explicit family must win even if the path suffix suggests another loader."""
-    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
-    loader_family_module = importlib.import_module(
-        "async_model_gateway.model_artifact.loader_family"
-    )
-
     artifact = artifact_module.ModelArtifact(
         loader_family=loader_family_module.LoaderFamily.PICKLE,
         artifact_path="weights/model.onnx",
@@ -47,11 +41,6 @@ def test_model_artifact_preserves_explicit_loader_family_without_path_inference(
 
 def test_model_artifact_accepts_empty_loader_options_dict() -> None:
     """An explicit empty metadata bag remains a valid shared read contract value."""
-    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
-    loader_family_module = importlib.import_module(
-        "async_model_gateway.model_artifact.loader_family"
-    )
-
     artifact = artifact_module.ModelArtifact(
         loader_family=loader_family_module.LoaderFamily.TORCH,
         artifact_path="weights/model.pt",
@@ -63,11 +52,6 @@ def test_model_artifact_accepts_empty_loader_options_dict() -> None:
 
 def test_model_artifact_accepts_nested_json_like_loader_options() -> None:
     """Nested JSON-like metadata remains valid when explicitly supplied."""
-    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
-    loader_family_module = importlib.import_module(
-        "async_model_gateway.model_artifact.loader_family"
-    )
-
     loader_options = {
         "session": {
             "providers": ["CPUExecutionProvider"],
@@ -88,11 +72,6 @@ def test_model_artifact_accepts_nested_json_like_loader_options() -> None:
 
 def test_model_artifact_returns_plain_loader_options_dict_copy() -> None:
     """The public loader-options surface must be a standard dict copy."""
-    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
-    loader_family_module = importlib.import_module(
-        "async_model_gateway.model_artifact.loader_family"
-    )
-
     artifact = artifact_module.ModelArtifact(
         loader_family=loader_family_module.LoaderFamily.TORCH,
         artifact_path="weights/model.pt",
@@ -111,11 +90,6 @@ def test_model_artifact_returns_plain_loader_options_dict_copy() -> None:
 
 def test_model_artifact_returns_plain_nested_loader_options_containers() -> None:
     """Nested loader-options values must also use standard dict and list containers."""
-    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
-    loader_family_module = importlib.import_module(
-        "async_model_gateway.model_artifact.loader_family"
-    )
-
     loader_options = {
         "session": {
             "providers": ["CPUExecutionProvider"],
@@ -146,11 +120,6 @@ def test_model_artifact_returns_plain_nested_loader_options_containers() -> None
 
 def test_model_artifact_loader_options_mutation_does_not_affect_artifact_state() -> None:
     """Mutating a returned loader-options snapshot must not mutate the artifact."""
-    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
-    loader_family_module = importlib.import_module(
-        "async_model_gateway.model_artifact.loader_family"
-    )
-
     loader_options = {
         "session": {
             "providers": ["CPUExecutionProvider"],
@@ -182,11 +151,6 @@ def test_model_artifact_loader_options_mutation_does_not_affect_artifact_state()
 
 def test_model_artifact_builtin_dict_mutation_only_changes_returned_snapshot() -> None:
     """Built-in dict mutators must not reach the artifact's stored loader options."""
-    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
-    loader_family_module = importlib.import_module(
-        "async_model_gateway.model_artifact.loader_family"
-    )
-
     loader_options = {
         "session": {"providers": ["CPUExecutionProvider"]},
         "revision": None,
@@ -207,11 +171,6 @@ def test_model_artifact_builtin_dict_mutation_only_changes_returned_snapshot() -
 
 def test_model_artifact_builtin_list_mutation_only_changes_returned_snapshot() -> None:
     """Built-in list mutators must not reach nested stored loader options."""
-    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
-    loader_family_module = importlib.import_module(
-        "async_model_gateway.model_artifact.loader_family"
-    )
-
     loader_options = {
         "session": {"providers": ["CPUExecutionProvider"]},
         "revision": None,
@@ -236,11 +195,6 @@ def test_model_artifact_builtin_list_mutation_only_changes_returned_snapshot() -
 @pytest.mark.parametrize("blank_path", ["", "   "])
 def test_model_artifact_rejects_blank_artifact_path(blank_path: str) -> None:
     """Artifact location must be explicit and non-blank."""
-    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
-    loader_family_module = importlib.import_module(
-        "async_model_gateway.model_artifact.loader_family"
-    )
-
     with pytest.raises(ValueError):
         artifact_module.ModelArtifact(
             loader_family=loader_family_module.LoaderFamily.TORCH,
@@ -251,11 +205,6 @@ def test_model_artifact_rejects_blank_artifact_path(blank_path: str) -> None:
 
 def test_model_artifact_rejects_non_json_like_loader_options() -> None:
     """Loader options must stay within a JSON-like metadata boundary."""
-    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
-    loader_family_module = importlib.import_module(
-        "async_model_gateway.model_artifact.loader_family"
-    )
-
     with pytest.raises(TypeError):
         artifact_module.ModelArtifact(
             loader_family=loader_family_module.LoaderFamily.ONNX,
@@ -266,8 +215,6 @@ def test_model_artifact_rejects_non_json_like_loader_options() -> None:
 
 def test_model_artifact_rejects_non_enum_loader_family() -> None:
     """Explicit loader family must be provided through the bounded enum."""
-    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
-
     with pytest.raises(TypeError):
         artifact_module.ModelArtifact(
             loader_family="pickle",
@@ -278,11 +225,6 @@ def test_model_artifact_rejects_non_enum_loader_family() -> None:
 
 def test_model_artifact_does_not_accept_identity_material_fields() -> None:
     """The shared read contract must stay separate from model identity material."""
-    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
-    loader_family_module = importlib.import_module(
-        "async_model_gateway.model_artifact.loader_family"
-    )
-
     with pytest.raises(TypeError):
         artifact_module.ModelArtifact(
             loader_family=loader_family_module.LoaderFamily.PICKLE,
@@ -318,8 +260,6 @@ def test_frozen_json_list_rejects_all_mutation_entrypoints(
     run_operation,
 ) -> None:
     """Every exposed list mutation entrypoint must fail closed."""
-    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
-
     frozen_list = artifact_module._normalize_json_like(
         ["cpu", {"providers": ["CPUExecutionProvider"]}]
     )
@@ -356,8 +296,6 @@ def test_frozen_json_dict_rejects_all_mutation_entrypoints(
     run_operation,
 ) -> None:
     """Every exposed dict mutation entrypoint must fail closed."""
-    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
-
     frozen_dict = artifact_module._normalize_json_like(
         {"providers": ["CPUExecutionProvider"], "revision": None}
     )
@@ -376,11 +314,6 @@ def test_frozen_json_dict_rejects_all_mutation_entrypoints(
 
 def test_model_artifact_rejects_non_string_loader_options_dict_keys() -> None:
     """Nested loader-option dict keys must remain explicit strings."""
-    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
-    loader_family_module = importlib.import_module(
-        "async_model_gateway.model_artifact.loader_family"
-    )
-
     with pytest.raises(TypeError, match="loader_options dict keys must be strings"):
         artifact_module.ModelArtifact(
             loader_family=loader_family_module.LoaderFamily.ONNX,
@@ -391,11 +324,6 @@ def test_model_artifact_rejects_non_string_loader_options_dict_keys() -> None:
 
 def test_model_artifact_rejects_non_dict_loader_options_boundary() -> None:
     """Top-level loader options must remain a dict boundary."""
-    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
-    loader_family_module = importlib.import_module(
-        "async_model_gateway.model_artifact.loader_family"
-    )
-
     with pytest.raises(TypeError, match="loader_options must be a dict\\[str, JSONLike\\]"):
         artifact_module.ModelArtifact(
             loader_family=loader_family_module.LoaderFamily.ONNX,
@@ -406,11 +334,6 @@ def test_model_artifact_rejects_non_dict_loader_options_boundary() -> None:
 
 def test_model_artifact_rejects_non_string_artifact_path() -> None:
     """Artifact path must stay within the explicit string boundary."""
-    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
-    loader_family_module = importlib.import_module(
-        "async_model_gateway.model_artifact.loader_family"
-    )
-
     with pytest.raises(TypeError, match="artifact_path must be a string"):
         artifact_module.ModelArtifact(
             loader_family=loader_family_module.LoaderFamily.ONNX,
