@@ -83,14 +83,15 @@
   package layout，必須回到 `spec-and-plan-finalization`。
 - Reviewer 只負責獨立 plan verdict 與後續 implementation review；reviewer
   不代替 creator 寫 implementation steps，也不代替 Human 關閉 gates。
-- Human gate 仍必須獨立存在；即使本輪不建立 human-owned artifact，也不得把
-  chat consensus、reviewer silence 或 PR 綠燈視為 `human check`。
+- Human gate 仍必須獨立存在；目前雖已由 human-owned artifact 明確記錄
+  `human check` cleared evidence，仍不得把 chat consensus、reviewer silence
+  或 PR 綠燈視為 gate 替代品。
 - 此 topic 不重寫 repo workflow names、status names、gate semantics，也不把
   conditional release workflow 擴張成自動化 publishing topic。
 
 ## Status / Allowed Transitions
 
-- **Current**: `review-ready`
+- **Current**: `pr-open`
 - **Execution model**: follow
   `spec-and-plan-finalization -> implement-plan -> pr-comment -> pr-comment-review-pr-comments-and-fix -> release`；
   此 topic 已宣告條件式 `release` workflow，因此允許 `merged -> released`。
@@ -113,13 +114,17 @@ Routing notes:
 
 - analysis layer 目前缺件，已以上方 semantic warning 明示；後續 reviewer /
   implementer 不得把缺件狀態當成可自由擴張 scope 的理由。
-- 本輪 creator rework 已完成，topic 已回到 `review-ready`；下一個合法步驟是
-  reviewer 在
-  `plan/model-artifact-minimal-boundary/model-artifact-minimal-boundary.plan-review.json`
-  重新記錄 verdict。
-- `approved` 依 repo contract 必須同時具備 repo-visible review verdict 與未來的
-  explicit `human check`；在這兩個 gate 真的存在前，不得進入
-  `implement-plan`。
+- `plan/model-artifact-minimal-boundary/model-artifact-minimal-boundary.plan-review.json`
+  已記錄 `approved` verdict，而
+  `plan/model-artifact-minimal-boundary/model-artifact-minimal-boundary.human-check.json`
+  已記錄 `cleared` 的 `human check` evidence；這兩個 planning gates 已完成，
+  不再是待補的下一步。
+- `plan/model-artifact-minimal-boundary/model-artifact-minimal-boundary.implementation-review.yaml`
+  也已完成 `approved` reviewer re-check；因此目前 workflow 位置是 open PR 上的
+  `pr-comment-review-pr-comments-and-fix` slice，而不是回到 plan-review routing。
+- 從目前的 `pr-open` 狀態，只允許依 repo contract 繼續做 bounded rework
+  `pr-open -> needs-rework`，或在 human merge gate 明確通過後前進到
+  `merged`。
 - `release` 只在 `merged` 後成立；release metadata 與 tag / release notes
   不得被誤寫成 pre-merge implementation evidence。
 
@@ -131,7 +136,7 @@ Routing notes:
 | Topic step tracking | `plan/model-artifact-minimal-boundary/model-artifact-minimal-boundary.step.md` | Implementer | repo-visible implementation progress companion artifact |
 | Topic behavior spec | `plan/model-artifact-minimal-boundary/model-artifact-minimal-boundary.spec.md` | Planning actor | non-trivial Python behavior contract |
 | Plan review artifact | `plan/model-artifact-minimal-boundary/model-artifact-minimal-boundary.plan-review.json` | Reviewer | repo-visible planning gate verdict |
-| Human check gate artifact | `plan/model-artifact-minimal-boundary/model-artifact-minimal-boundary.human-check.json` | Human | explicit repo-visible gate that clears the approved plan for `implement-plan` |
+| Human check gate artifact | `plan/model-artifact-minimal-boundary/model-artifact-minimal-boundary.human-check.json` | Human | explicit repo-visible gate evidence that cleared the approved plan for `implement-plan` |
 | RED test artifact | `plan/model-artifact-minimal-boundary/model-artifact-minimal-boundary.red-tests.yaml` | Implementer | `implement-plan` 期間的 repo-visible TDD gate evidence |
 | Implementation review artifact | `plan/model-artifact-minimal-boundary/model-artifact-minimal-boundary.implementation-review.yaml` | Reviewer | repo-visible implementation-review gate evidence |
 | Architecture summary | `docs/architecture.md` | Implementer | 對齊 model-side responsibility summary 與 local read contract wording |
@@ -158,9 +163,11 @@ Artifact path notes:
   `uv.lock` 已以上述 exact rows 宣告為 release-only artifact paths；它們只供
   merge 後 `release` workflow 使用，不授權進入 pre-merge
   `implement-plan`。
-- `model-artifact-minimal-boundary.plan-review.json` 與
-  `model-artifact-minimal-boundary.human-check.json` 在本輪不建立，只預留 exact
-  future gate paths。
+- `model-artifact-minimal-boundary.plan-review.json`、
+  `model-artifact-minimal-boundary.human-check.json` 與
+  `model-artifact-minimal-boundary.implementation-review.yaml` 已存在，並分別記錄
+  planning approval、human-check cleared evidence 與 implementation-review
+  approval；這些 rows 反映的是 current gate evidence，不是 future placeholders。
 - 若後續工作偏離上述精確 paths，必須停止並回到
   `spec-and-plan-finalization`。
 
@@ -222,8 +229,12 @@ Artifact path notes:
 - `model-artifact-minimal-boundary.spec.md` 必須存在，因為此 topic 已鎖定為
   `non-trivial`。
 - `model-artifact-minimal-boundary.step.md` 必須鏡像每個編號的 implementation
-  step，且在目前階段只允許 `plan-authoring` 完成；`plan-review` 為下一階段，
-  其餘 workflow stages 不得預填。
+  step；其中 `Implementation Steps` 區塊在目前 `pr-open` 階段只允許記錄
+  implementer-owned implementation / PR rework progress。若 `step.md` 另含
+  repo-visible `Workflow Stages` 或 `Gate Status` 摘要，其內容必須與 current
+  reviewer-owned / human-owned artifacts 一致，且不得把這些 gate artifacts 的
+  ownership 或正式 verdict 轉移到 `step.md`，也不得預填 `merged` /
+  `released` state。
 - Validation 必須證明 public import surface 只在
   `async_model_gateway.model_artifact`；root package 與其他既有 package roots
   都不得 re-export 新 surface。
@@ -280,7 +291,8 @@ Artifact path notes:
   `ResponseCache` identity、或任何 `runtime-model` execution contract。
 - 此 topic 不加入 loader-family guessing、artifact probing、path normalization
   fallback、或 object-shape inference。
-- 此 topic 不在本輪建立 reviewer-owned 或 human-owned gate artifact。
+- 此 topic 不在本輪新增、重建或改寫 reviewer-owned / human-owned gate artifact；
+  既有 gate artifacts 只作為 current-state evidence 保留，不屬於本次 scope。
 
 ## Current Context
 
