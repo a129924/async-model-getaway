@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import NoReturn, TypeGuard
+from types import MappingProxyType
+from typing import NoReturn, TypeGuard, cast, overload
+
+from collections.abc import Iterator, Mapping, Sequence
 
 from .loader_family import LoaderFamily
 
@@ -19,10 +22,49 @@ def _raise_loader_options_immutable() -> NoReturn:
     raise TypeError(msg)
 
 
-class _FrozenJSONList(list[JSONLike]):
+class _FrozenJSONList(Sequence["FrozenJSONLike"]):
     """List-like JSON container that rejects in-place mutation."""
 
-    __slots__ = ()
+    _values: tuple[FrozenJSONLike, ...]
+    __slots__ = ("_values",)
+
+    def __init__(self, values: Sequence[FrozenJSONLike]) -> None:
+        object.__setattr__(self, "_values", tuple(values))
+
+    def __delattr__(self, _name: str) -> NoReturn:
+        _raise_loader_options_immutable()
+
+    def __setattr__(self, _name: str, _value: object) -> NoReturn:
+        _raise_loader_options_immutable()
+
+    @overload
+    def __getitem__(self, index: int) -> FrozenJSONLike: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> tuple[FrozenJSONLike, ...]: ...
+
+    def __getitem__(
+        self, index: int | slice
+    ) -> FrozenJSONLike | tuple[FrozenJSONLike, ...]:
+        return self._values[index]
+
+    def __iter__(self) -> Iterator[FrozenJSONLike]:
+        return iter(self._values)
+
+    def __len__(self) -> int:
+        return len(self._values)
+
+    def __repr__(self) -> str:
+        return repr(list(self._values))
+
+    def __eq__(self, other: object) -> bool:
+        return _materialize_json_like(self) == _materialize_json_like(other)
+
+    def __add__(self, _value: object) -> NoReturn:
+        _raise_loader_options_immutable()
+
+    def __radd__(self, _value: object) -> NoReturn:
+        _raise_loader_options_immutable()
 
     def __delitem__(self, _key: object) -> None:
         _raise_loader_options_immutable()
@@ -36,7 +78,7 @@ class _FrozenJSONList(list[JSONLike]):
     def __setitem__(self, _key: object, _value: object) -> None:
         _raise_loader_options_immutable()
 
-    def append(self, _value: JSONLike) -> None:
+    def append(self, _value: FrozenJSONLike) -> None:
         _raise_loader_options_immutable()
 
     def clear(self) -> None:
@@ -45,13 +87,13 @@ class _FrozenJSONList(list[JSONLike]):
     def extend(self, _values: object) -> None:
         _raise_loader_options_immutable()
 
-    def insert(self, _index: object, _value: JSONLike) -> None:
+    def insert(self, _index: object, _value: FrozenJSONLike) -> None:
         _raise_loader_options_immutable()
 
-    def pop(self, _index: object = -1) -> JSONLike:
+    def pop(self, _index: object = -1) -> FrozenJSONLike:
         _raise_loader_options_immutable()
 
-    def remove(self, _value: JSONLike) -> None:
+    def remove(self, _value: FrozenJSONLike) -> None:
         _raise_loader_options_immutable()
 
     def reverse(self) -> None:
@@ -62,10 +104,35 @@ class _FrozenJSONList(list[JSONLike]):
         _raise_loader_options_immutable()
 
 
-class _FrozenJSONDict(dict[str, JSONLike]):
+class _FrozenJSONDict(Mapping[str, "FrozenJSONLike"]):
     """Dict-like JSON container that rejects in-place mutation."""
 
-    __slots__ = ()
+    _values: Mapping[str, FrozenJSONLike]
+    __slots__ = ("_values",)
+
+    def __init__(self, values: Mapping[str, FrozenJSONLike]) -> None:
+        object.__setattr__(self, "_values", MappingProxyType(dict(values)))
+
+    def __delattr__(self, _name: str) -> NoReturn:
+        _raise_loader_options_immutable()
+
+    def __setattr__(self, _name: str, _value: object) -> NoReturn:
+        _raise_loader_options_immutable()
+
+    def __getitem__(self, key: str) -> FrozenJSONLike:
+        return self._values[key]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._values)
+
+    def __len__(self) -> int:
+        return len(self._values)
+
+    def __repr__(self) -> str:
+        return repr(dict(self._values))
+
+    def __eq__(self, other: object) -> bool:
+        return _materialize_json_like(self) == _materialize_json_like(other)
 
     def __delitem__(self, _key: str) -> None:
         _raise_loader_options_immutable()
@@ -73,23 +140,40 @@ class _FrozenJSONDict(dict[str, JSONLike]):
     def __ior__(self, _value: object) -> _FrozenJSONDict:
         _raise_loader_options_immutable()
 
-    def __setitem__(self, _key: str, _value: JSONLike) -> None:
+    def __setitem__(self, _key: str, _value: FrozenJSONLike) -> None:
         _raise_loader_options_immutable()
 
     def clear(self) -> None:
         _raise_loader_options_immutable()
 
-    def pop(self, _key: str, _default: object = None) -> JSONLike:
+    def pop(self, _key: str, _default: object = None) -> FrozenJSONLike:
         _raise_loader_options_immutable()
 
-    def popitem(self) -> tuple[str, JSONLike]:
+    def popitem(self) -> tuple[str, FrozenJSONLike]:
         _raise_loader_options_immutable()
 
-    def setdefault(self, _key: str, _default: JSONLike = None) -> JSONLike:
+    def setdefault(
+        self, _key: str, _default: FrozenJSONLike = None
+    ) -> FrozenJSONLike:
         _raise_loader_options_immutable()
 
-    def update(self, *_args: object, **_kwargs: JSONLike) -> None:
+    def update(self, *_args: object, **_kwargs: FrozenJSONLike) -> None:
         _raise_loader_options_immutable()
+
+
+FrozenJSONLike = JSONScalar | _FrozenJSONList | _FrozenJSONDict
+
+
+def _materialize_json_like(value: object) -> object:
+    """Convert frozen JSON wrappers into plain built-in containers for comparisons."""
+    if isinstance(value, _FrozenJSONDict):
+        return {
+            key: cast(JSONLike, _materialize_json_like(item))
+            for key, item in value.items()
+        }
+    if isinstance(value, _FrozenJSONList):
+        return [cast(JSONLike, _materialize_json_like(item)) for item in value]
+    return value
 
 
 def _is_json_scalar(value: object) -> TypeGuard[JSONScalar]:
@@ -107,16 +191,16 @@ def _is_json_dict(value: object) -> TypeGuard[dict[object, object]]:
     return isinstance(value, dict)
 
 
-def _normalize_json_like(value: object) -> JSONLike:
+def _normalize_json_like(value: object) -> FrozenJSONLike:
     """Validate runtime metadata and return a JSON-like copy."""
     if _is_json_scalar(value):
         return value
 
     if _is_json_list(value):
-        return _FrozenJSONList(_normalize_json_like(item) for item in value)
+        return _FrozenJSONList([_normalize_json_like(item) for item in value])
 
     if _is_json_dict(value):
-        normalized_dict: dict[str, JSONLike] = {}
+        normalized_dict: dict[str, FrozenJSONLike] = {}
         for key, item in value.items():
             if not isinstance(key, str):
                 msg = "loader_options dict keys must be strings"
@@ -128,14 +212,14 @@ def _normalize_json_like(value: object) -> JSONLike:
     raise TypeError(msg)
 
 
-def _normalize_loader_options(value: object) -> dict[str, JSONLike]:
+def _normalize_loader_options(value: object) -> _FrozenJSONDict:
     """Validate top-level loader options as dict[str, JSONLike]."""
     if not _is_json_dict(value):
         msg = "loader_options must be a dict[str, JSONLike]"
         raise TypeError(msg)
 
     normalized_value = _normalize_json_like(value)
-    if not isinstance(normalized_value, dict):
+    if not isinstance(normalized_value, _FrozenJSONDict):
         msg = "loader_options must be a dict[str, JSONLike]"
         raise TypeError(msg)
     return normalized_value
@@ -182,5 +266,5 @@ class ModelArtifact:
         object.__setattr__(
             self,
             "loader_options",
-            _normalize_loader_options(loader_options),
+            cast(dict[str, JSONLike], _normalize_loader_options(loader_options)),
         )

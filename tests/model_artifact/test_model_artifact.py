@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import inspect
+from typing import cast
 
 import pytest
 
@@ -128,14 +129,10 @@ def test_model_artifact_rejects_nested_loader_options_mutation() -> None:
         loader_options=loader_options,
     )
 
-    session = artifact.loader_options["session"]
-    assert isinstance(session, dict)
-    providers = session["providers"]
-    assert isinstance(providers, list)
-    graph_optimization = session["graph_optimization"]
-    assert isinstance(graph_optimization, dict)
-    tensor_names = artifact.loader_options["tensor_names"]
-    assert isinstance(tensor_names, list)
+    session = cast(dict[str, object], artifact.loader_options["session"])
+    providers = cast(list[str], session["providers"])
+    graph_optimization = cast(dict[str, object], session["graph_optimization"])
+    tensor_names = cast(list[str], artifact.loader_options["tensor_names"])
 
     with pytest.raises(TypeError, match="loader_options is immutable"):
         providers.append("CUDAExecutionProvider")
@@ -145,6 +142,57 @@ def test_model_artifact_rejects_nested_loader_options_mutation() -> None:
 
     with pytest.raises(TypeError, match="loader_options is immutable"):
         tensor_names.append("token_type_ids")
+
+    assert artifact.loader_options == loader_options
+
+
+def test_model_artifact_rejects_builtin_dict_bypass_for_loader_options() -> None:
+    """dict base mutators must not be able to bypass loader-options immutability."""
+    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
+    loader_family_module = importlib.import_module(
+        "async_model_gateway.model_artifact.loader_family"
+    )
+
+    loader_options = {
+        "session": {"providers": ["CPUExecutionProvider"]},
+        "revision": None,
+    }
+
+    artifact = artifact_module.ModelArtifact(
+        loader_family=loader_family_module.LoaderFamily.ONNX,
+        artifact_path="weights/model.onnx",
+        loader_options=loader_options,
+    )
+
+    with pytest.raises(TypeError):
+        dict.__setitem__(artifact.loader_options, "x", 1)
+
+    assert artifact.loader_options == loader_options
+
+
+def test_model_artifact_rejects_builtin_list_bypass_for_nested_loader_options() -> None:
+    """list base mutators must not be able to bypass nested immutability."""
+    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
+    loader_family_module = importlib.import_module(
+        "async_model_gateway.model_artifact.loader_family"
+    )
+
+    loader_options = {
+        "session": {"providers": ["CPUExecutionProvider"]},
+        "revision": None,
+    }
+
+    artifact = artifact_module.ModelArtifact(
+        loader_family=loader_family_module.LoaderFamily.ONNX,
+        artifact_path="weights/model.onnx",
+        loader_options=loader_options,
+    )
+
+    session = cast(dict[str, object], artifact.loader_options["session"])
+    providers = cast(list[str], session["providers"])
+
+    with pytest.raises(TypeError):
+        list.append(providers, "CUDAExecutionProvider")
 
     assert artifact.loader_options == loader_options
 
