@@ -43,9 +43,7 @@ class _FrozenJSONList(Sequence["FrozenJSONLike"]):
     @overload
     def __getitem__(self, index: slice) -> tuple[FrozenJSONLike, ...]: ...
 
-    def __getitem__(
-        self, index: int | slice
-    ) -> FrozenJSONLike | tuple[FrozenJSONLike, ...]:
+    def __getitem__(self, index: int | slice) -> FrozenJSONLike | tuple[FrozenJSONLike, ...]:
         return self._values[index]
 
     def __iter__(self) -> Iterator[FrozenJSONLike]:
@@ -152,9 +150,7 @@ class _FrozenJSONDict(Mapping[str, "FrozenJSONLike"]):
     def popitem(self) -> tuple[str, FrozenJSONLike]:
         _raise_loader_options_immutable()
 
-    def setdefault(
-        self, _key: str, _default: FrozenJSONLike = None
-    ) -> FrozenJSONLike:
+    def setdefault(self, _key: str, _default: FrozenJSONLike = None) -> FrozenJSONLike:
         _raise_loader_options_immutable()
 
     def update(self, *_args: object, **_kwargs: FrozenJSONLike) -> None:
@@ -167,10 +163,7 @@ FrozenJSONLike = JSONScalar | _FrozenJSONList | _FrozenJSONDict
 def _materialize_json_like(value: object) -> object:
     """Convert frozen JSON wrappers into plain built-in containers for comparisons."""
     if isinstance(value, _FrozenJSONDict):
-        return {
-            key: cast(JSONLike, _materialize_json_like(item))
-            for key, item in value.items()
-        }
+        return {key: cast(JSONLike, _materialize_json_like(item)) for key, item in value.items()}
     if isinstance(value, _FrozenJSONList):
         return [cast(JSONLike, _materialize_json_like(item)) for item in value]
     return value
