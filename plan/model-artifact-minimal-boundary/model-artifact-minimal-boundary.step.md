@@ -16,12 +16,12 @@ created: 2026-07-07
 - [X] plan-review
 - [X] tdd-test-authoring
 - [X] implementation
-- [ ] implementation-review
-- [ ] code-review
+- [X] implementation-review
+- [X] code-review
 
 ## Gate Status
 
-- Current workflow position: 最新獨立 `code-review` verdict 仍是 `needs-rework`，但其唯一 blocker 已收斂為本檔 repo-visible state drift。current `HEAD` 已補上 `ModelArtifact.loader_options` 對 built-in `dict` / `list` bypass 的直接封鎖，並新增對應 regression coverage；exact validation evidence 也已到位：`uv run ruff check docs src tests plan/model-artifact-minimal-boundary`、`uv run pyright` 與 `uv run pytest -q` 皆已通過。repo-visible implementer state 現在對齊 current `HEAD`，後續 reviewer workflows 仍需各自更新 `implementation-review` / `code-review` gate，本檔不預先宣稱其完成。
+- Current workflow position: reviewer-owned `implementation-review` artifact 現已為 `approved`；最新獨立 `code-review` verdict 為可直接前進。reviewer 端已重跑 exact validation 並通過：`uv run pytest -q` => `126 passed`, coverage `99.29%`；`uv run ruff check docs src tests plan/model-artifact-minimal-boundary` => passed；`uv run pyright` => passed。dispatcher 目前停在下一個 `human-check` 邊界。
 
 ## Implementation Steps
 
