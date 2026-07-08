@@ -290,3 +290,130 @@ def test_model_artifact_does_not_accept_identity_material_fields() -> None:
             loader_options={},
             model_payload={"name": "demo"},
         )
+
+
+@pytest.mark.parametrize(
+    ("operation_name", "run_operation"),
+    [
+        ("setattr", lambda frozen_list: setattr(frozen_list, "x", 1)),
+        ("delattr", lambda frozen_list: delattr(frozen_list, "_values")),
+        ("add", lambda frozen_list: frozen_list.__add__([])),
+        ("radd", lambda frozen_list: frozen_list.__radd__([])),
+        ("delitem", lambda frozen_list: frozen_list.__delitem__(0)),
+        ("iadd", lambda frozen_list: frozen_list.__iadd__(["x"])),
+        ("imul", lambda frozen_list: frozen_list.__imul__(2)),
+        ("setitem", lambda frozen_list: frozen_list.__setitem__(0, "x")),
+        ("append", lambda frozen_list: frozen_list.append("x")),
+        ("clear", lambda frozen_list: frozen_list.clear()),
+        ("extend", lambda frozen_list: frozen_list.extend(["x"])),
+        ("insert", lambda frozen_list: frozen_list.insert(0, "x")),
+        ("pop", lambda frozen_list: frozen_list.pop()),
+        ("remove", lambda frozen_list: frozen_list.remove("cpu")),
+        ("reverse", lambda frozen_list: frozen_list.reverse()),
+        ("sort", lambda frozen_list: frozen_list.sort()),
+    ],
+)
+def test_frozen_json_list_rejects_all_mutation_entrypoints(
+    operation_name: str,
+    run_operation,
+) -> None:
+    """Every exposed list mutation entrypoint must fail closed."""
+    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
+
+    frozen_list = artifact_module._normalize_json_like(
+        ["cpu", {"providers": ["CPUExecutionProvider"]}]
+    )
+
+    assert frozen_list[0] == "cpu"
+    assert frozen_list[1:] == ({"providers": ["CPUExecutionProvider"]},)
+    assert len(frozen_list) == 2
+    assert repr(frozen_list) == "['cpu', {'providers': ['CPUExecutionProvider']}]"
+    assert frozen_list == ["cpu", {"providers": ["CPUExecutionProvider"]}]
+
+    with pytest.raises(TypeError, match="loader_options is immutable"):
+        run_operation(frozen_list)
+
+    assert operation_name
+
+
+@pytest.mark.parametrize(
+    ("operation_name", "run_operation"),
+    [
+        ("setattr", lambda frozen_dict: setattr(frozen_dict, "x", 1)),
+        ("delattr", lambda frozen_dict: delattr(frozen_dict, "_values")),
+        ("delitem", lambda frozen_dict: frozen_dict.__delitem__("providers")),
+        ("ior", lambda frozen_dict: frozen_dict.__ior__({"extra": True})),
+        ("setitem", lambda frozen_dict: frozen_dict.__setitem__("extra", True)),
+        ("clear", lambda frozen_dict: frozen_dict.clear()),
+        ("pop", lambda frozen_dict: frozen_dict.pop("providers")),
+        ("popitem", lambda frozen_dict: frozen_dict.popitem()),
+        ("setdefault", lambda frozen_dict: frozen_dict.setdefault("extra", True)),
+        ("update", lambda frozen_dict: frozen_dict.update({"extra": True})),
+    ],
+)
+def test_frozen_json_dict_rejects_all_mutation_entrypoints(
+    operation_name: str,
+    run_operation,
+) -> None:
+    """Every exposed dict mutation entrypoint must fail closed."""
+    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
+
+    frozen_dict = artifact_module._normalize_json_like(
+        {"providers": ["CPUExecutionProvider"], "revision": None}
+    )
+
+    assert frozen_dict["providers"] == ["CPUExecutionProvider"]
+    assert tuple(frozen_dict) == ("providers", "revision")
+    assert len(frozen_dict) == 2
+    assert repr(frozen_dict) == "{'providers': ['CPUExecutionProvider'], 'revision': None}"
+    assert frozen_dict == {"providers": ["CPUExecutionProvider"], "revision": None}
+
+    with pytest.raises(TypeError, match="loader_options is immutable"):
+        run_operation(frozen_dict)
+
+    assert operation_name
+
+
+def test_model_artifact_rejects_non_string_loader_options_dict_keys() -> None:
+    """Nested loader-option dict keys must remain explicit strings."""
+    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
+    loader_family_module = importlib.import_module(
+        "async_model_gateway.model_artifact.loader_family"
+    )
+
+    with pytest.raises(TypeError, match="loader_options dict keys must be strings"):
+        artifact_module.ModelArtifact(
+            loader_family=loader_family_module.LoaderFamily.ONNX,
+            artifact_path="weights/model.onnx",
+            loader_options={"session": {1: "cpu"}},
+        )
+
+
+def test_model_artifact_rejects_non_dict_loader_options_boundary() -> None:
+    """Top-level loader options must remain a dict boundary."""
+    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
+    loader_family_module = importlib.import_module(
+        "async_model_gateway.model_artifact.loader_family"
+    )
+
+    with pytest.raises(TypeError, match="loader_options must be a dict\\[str, JSONLike\\]"):
+        artifact_module.ModelArtifact(
+            loader_family=loader_family_module.LoaderFamily.ONNX,
+            artifact_path="weights/model.onnx",
+            loader_options=[],
+        )
+
+
+def test_model_artifact_rejects_non_string_artifact_path() -> None:
+    """Artifact path must stay within the explicit string boundary."""
+    artifact_module = importlib.import_module("async_model_gateway.model_artifact.artifact")
+    loader_family_module = importlib.import_module(
+        "async_model_gateway.model_artifact.loader_family"
+    )
+
+    with pytest.raises(TypeError, match="artifact_path must be a string"):
+        artifact_module.ModelArtifact(
+            loader_family=loader_family_module.LoaderFamily.ONNX,
+            artifact_path=1,
+            loader_options={},
+        )
