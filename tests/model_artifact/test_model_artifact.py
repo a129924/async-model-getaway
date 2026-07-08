@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict, replace
 import inspect
 import async_model_gateway.model_artifact.artifact as artifact_module
 import async_model_gateway.model_artifact.loader_family as loader_family_module
@@ -190,6 +191,45 @@ def test_model_artifact_builtin_list_mutation_only_changes_returned_snapshot() -
 
     assert providers == ["CPUExecutionProvider", "CUDAExecutionProvider"]
     assert artifact.loader_options == loader_options
+
+
+def test_model_artifact_asdict_uses_public_loader_options_contract() -> None:
+    """dataclasses.asdict must not expose private frozen loader-options storage."""
+    loader_options = {
+        "session": {"providers": ["CPUExecutionProvider"]},
+        "revision": None,
+    }
+    artifact = artifact_module.ModelArtifact(
+        loader_family=loader_family_module.LoaderFamily.ONNX,
+        artifact_path="weights/model.onnx",
+        loader_options=loader_options,
+    )
+
+    assert asdict(artifact) == {
+        "loader_family": loader_family_module.LoaderFamily.ONNX,
+        "artifact_path": "weights/model.onnx",
+        "loader_options": loader_options,
+    }
+
+
+def test_model_artifact_replace_reuses_public_loader_options_contract() -> None:
+    """dataclasses.replace must rebuild through public loader_options only."""
+    loader_options = {
+        "session": {"providers": ["CPUExecutionProvider"]},
+        "revision": None,
+    }
+    artifact = artifact_module.ModelArtifact(
+        loader_family=loader_family_module.LoaderFamily.ONNX,
+        artifact_path="weights/model.onnx",
+        loader_options=loader_options,
+    )
+
+    replaced_artifact = replace(artifact, artifact_path="weights/model-v2.onnx")
+
+    assert replaced_artifact is not artifact
+    assert replaced_artifact.loader_family is loader_family_module.LoaderFamily.ONNX
+    assert replaced_artifact.artifact_path == "weights/model-v2.onnx"
+    assert replaced_artifact.loader_options == loader_options
 
 
 @pytest.mark.parametrize("blank_path", ["", "   "])

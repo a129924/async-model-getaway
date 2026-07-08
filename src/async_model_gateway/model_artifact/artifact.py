@@ -244,7 +244,7 @@ class ModelArtifact:
 
     loader_family: LoaderFamily
     artifact_path: str
-    _loader_options: _FrozenJSONDict = field(repr=False)
+    loader_options: dict[str, JSONLike] = field(repr=False)
 
     def __init__(
         self,
@@ -258,11 +258,13 @@ class ModelArtifact:
         object.__setattr__(self, "artifact_path", _require_artifact_path(artifact_path))
         object.__setattr__(
             self,
-            "_loader_options",
+            "loader_options",
             _normalize_loader_options(loader_options),
         )
 
-    @property
-    def loader_options(self) -> dict[str, JSONLike]:
-        """Return a fresh plain JSON-like copy that matches the public contract."""
-        return cast(dict[str, JSONLike], _materialize_json_like(self._loader_options))
+    def __getattribute__(self, name: str) -> object:
+        """Expose the public loader-options contract while storing frozen internals."""
+        value = object.__getattribute__(self, name)
+        if name == "loader_options":
+            return cast(dict[str, JSONLike], _materialize_json_like(value))
+        return value
