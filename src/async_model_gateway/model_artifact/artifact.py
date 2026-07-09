@@ -6,7 +6,7 @@ import copy
 from dataclasses import dataclass, field
 import math
 from types import MappingProxyType
-from typing import NoReturn, TypeGuard, cast, overload
+from typing import NoReturn, SupportsIndex, TypeGuard, cast, overload
 
 from collections.abc import Iterator, Mapping, Sequence
 
@@ -349,7 +349,7 @@ class ModelArtifact:
 
     def __reduce_ex__(
         self,
-        protocol: int,
+        protocol: SupportsIndex,
     ) -> tuple[object, tuple[LoaderFamily, str, dict[str, JSONLike]]]:
         """Force pickle-based reconstruction back through validation."""
         _ = protocol
