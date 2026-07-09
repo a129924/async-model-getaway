@@ -86,6 +86,16 @@ gateway / registry 不做語意等價判斷；只要 `model-payload` material �
 
 它的輸入是 `model_artifact`，而不是 `model-payload`。
 
+目前 repo 已先落地這個 shared read contract 的最小 public owner：
+`async_model_gateway.model_artifact`。package root 只公開 `ModelArtifact` 與
+`LoaderFamily`。
+
+其中：
+
+- `ModelArtifact` 只承載 `loader_family`、`artifact_path`、`loader_options`
+- `LoaderFamily` 是 bounded enum，starter vocabulary 只允許 `pickle`、`torch`、`onnx`
+- loader family 必須由 producer 顯式提供，不得由 path、副檔名、artifact content 或 fallback heuristics 推導
+
 它負責：
 
 - 根據 `model_artifact` 選 loader family
@@ -108,6 +118,9 @@ gateway / registry 不做語意等價判斷；只要 `model-payload` material �
 猜副檔名、猜 pickle、猜 object shape 不能作為正式主路徑。
 
 最多只能保留為 deferred fallback note，而不能寫成標準行為。
+
+因此，即使 `artifact_path` 看起來像既有格式，shared read contract 仍不得省略
+explicit `LoaderFamily`，也不得把 `loader_options` 升格成 identity material。
 
 ## `ModelGateway`
 

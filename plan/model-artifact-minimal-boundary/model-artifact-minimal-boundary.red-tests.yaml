@@ -1,0 +1,59 @@
+verdict: red-tests-ready
+d1_verdict:
+  verdict: non-trivial
+  reason: new-public-boundary
+test_mapping:
+  - requirement_id: 1
+    test_case_name: test_model_artifact_package_reexports_only_model_artifact_and_loader_family
+    coverage_category: integration-points
+  - requirement_id: 2
+    test_case_name: test_model_artifact_types_stay_in_the_locked_single_concept_modules
+    coverage_category: boundary-edge
+  - requirement_id: 3
+    test_case_name: test_loader_family_supports_only_the_locked_starter_vocabulary
+    coverage_category: happy-path
+  - requirement_id: 3
+    test_case_name: test_loader_family_rejects_unknown_explicit_values
+    coverage_category: error-exception
+  - requirement_id: 4
+    test_case_name: test_model_artifact_accepts_only_the_locked_minimal_fields
+    coverage_category: boundary-edge
+  - requirement_id: 4
+    test_case_name: test_model_artifact_rejects_non_json_like_loader_options
+    coverage_category: error-exception
+  - requirement_id: 5
+    test_case_name: test_model_artifact_preserves_explicit_loader_family_without_path_inference
+    coverage_category: state-side-effects
+  - requirement_id: 5
+    test_case_name: test_model_artifact_rejects_non_enum_loader_family
+    coverage_category: error-exception
+  - requirement_id: 5
+    test_case_name: test_model_artifact_does_not_accept_identity_material_fields
+    coverage_category: regression
+  - requirement_id: 6
+    test_case_name: test_model_artifact_package_does_not_expose_local_model_loader
+    coverage_category: integration-points
+  - requirement_id: 7
+    test_case_name: test_model_artifact_preserves_explicit_loader_family_without_path_inference
+    coverage_category: boundary-edge
+  - requirement_id: 8
+    test_case_name: test_existing_package_roots_do_not_reexport_model_artifact_surface
+    coverage_category: regression
+validation_checks:
+  d1_decision: pass
+  behavior_contract_source: plan/model-artifact-minimal-boundary/model-artifact-minimal-boundary.spec.md
+  requirements_mapped: pass
+  public_contract_coverage: pass
+  test_categories_present:
+    - happy-path
+    - error-exception
+    - boundary-edge
+    - state-side-effects
+    - integration-points
+    - regression
+  expected_initial_status: red
+  production_code_modified: false
+issues:
+  - "Acceptance criteria 7 and 8 are only partially runtime-testable at the RED stage; final confirmation still depends on the later docs diff and implement-plan step audit."
+  - "The RED pytest run fails with ModuleNotFoundError for `async_model_gateway.model_artifact*` and with the repository coverage gate below 90%, which is expected before the new boundary is implemented and the bounded validation command is rerun."
+next_step: Proceed to implementation under the locked source, tests, docs, and plan artifact paths.

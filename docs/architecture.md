@@ -21,6 +21,11 @@
 
 在 local path，除了 identity context 外，還需要一份獨立的 read contract 供 loader 使用；這條路徑不能把 `model-payload` 當成 loader 猜測依據。
 
+目前 repo 已以 `async_model_gateway.model_artifact` 落地這份最小 shared read
+contract：package root 只公開 `ModelArtifact` 與 `LoaderFamily`，其中
+`ModelArtifact` 只承載 `loader_family`、`artifact_path` 與 `loader_options`，
+而 `LoaderFamily` starter vocabulary 只允許 `pickle`、`torch`、`onnx`。
+
 目前 repo 已落地一個最小的 model-registry boundary：
 `async_model_gateway.model_registry.ModelRegistry` 會先以
 `model_name + model_source_kind` 做 store lookup，再透過既有的
@@ -85,6 +90,11 @@ async `ResponseCacheStore` port 消費這個 key 與 `ResponseCacheEntry`，而�
 
 local 與 remote 被視為 model-source concern，而不是不同的 gateway mode。
 
+在 local path，`ModelPool` 內部會消費獨立的 shared read contract
+`async_model_gateway.model_artifact`；這個 boundary 只固定 explicit
+`LoaderFamily` 與最小 artifact metadata，不承擔 loader runtime、artifact I/O
+或 identity authority。
+
 ## Shared Vocabulary
 
 以下詞彙是目前專案共享語彙的一部分：
@@ -93,6 +103,7 @@ local 與 remote 被視為 model-source concern，而不是不同的 gateway mod
 - `model_source_kind`
 - `orchestrator`
 - `model-payload`
+- `model_artifact`
 - `features`
 - `ModelPool`
 - `ModelGateway`

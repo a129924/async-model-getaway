@@ -53,7 +53,11 @@
 
 - `model_source_kind` 只鎖 `local | remote`
 - local runtime taxonomy 留在 `ModelPool` 內部
-- local read contract 由 `model_artifact` 承擔
+- local read contract 由 `model_artifact` 承擔，且目前已由
+  `async_model_gateway.model_artifact` 提供最小 public shared read contract
+- `async_model_gateway.model_artifact` 只公開 `ModelArtifact` 與 `LoaderFamily`
+- `ModelArtifact` 只承載 `loader_family`、`artifact_path`、`loader_options`
+- `LoaderFamily` starter vocabulary 只允許 `pickle`、`torch`、`onnx`
 - `async_model_gateway.model_registry.stores.InMemoryRegistryStore` 已作為
   process-local concrete store 提供，但不改變 `model_registry` root package
   的 re-export boundary
