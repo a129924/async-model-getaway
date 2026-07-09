@@ -103,6 +103,19 @@ def test_model_artifact_returns_plain_loader_options_dict_copy() -> None:
     assert first_read is not second_read
 
 
+def test_model_artifact_is_explicitly_unhashable() -> None:
+    """The shared contract must not advertise hashability it cannot uphold."""
+    artifact = artifact_module.ModelArtifact(
+        loader_family=loader_family_module.LoaderFamily.TORCH,
+        artifact_path="weights/model.pt",
+        loader_options={"map_location": "cpu"},
+    )
+
+    assert artifact_module.ModelArtifact.__hash__ is None
+    with pytest.raises(TypeError, match="unhashable type: 'ModelArtifact'"):
+        hash(artifact)
+
+
 def test_model_artifact_returns_plain_nested_loader_options_containers() -> None:
     """Nested loader-options values must also use standard dict and list containers."""
     loader_options = {

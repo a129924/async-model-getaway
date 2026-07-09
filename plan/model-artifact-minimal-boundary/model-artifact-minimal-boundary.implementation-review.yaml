@@ -2,14 +2,16 @@ verdict: approved
 topic: model-artifact-minimal-boundary
 phase: implement-plan
 summary: >
-  Re-check confirms the two prior reviewer blockers are resolved on the current HEAD:
-  `ModelArtifact` now exposes the locked public constructor typing, and
-  `tests/model_artifact/test_model_artifact.py` now includes the required positive
-  edge cases for valid empty-dict and nested JSON-like `loader_options`. Observed
-  source, tests, docs, and plan changes remain inside the topic's declared path
-  boundary, preserve the docs-level deferral of `LocalModelLoader`, and do not
-  introduce new contract or scope drift. Reviewer-side re-check also reproduced the
-  exact validation contract on the current HEAD:
+  Reviewer-owned refresh on the current HEAD confirms the still-valid code blocker
+  is resolved: `ModelArtifact` now declares explicit `__hash__ = None`, and
+  `tests/model_artifact/test_model_artifact.py` includes a direct regression test
+  that locks both class-level `__hash__ is None` and `hash(...)` raising
+  `TypeError`. Previously approved constructor typing and valid `loader_options`
+  edge coverage remain intact. Observed source, tests, docs, and plan changes stay
+  inside the topic's declared path boundary, preserve the docs-level deferral of
+  `LocalModelLoader`, and do not introduce new contract or scope drift.
+  Reviewer-side re-check also reproduced the exact validation contract on the
+  current HEAD:
   `uv run pytest -q`, `uv run ruff check docs src tests plan/model-artifact-minimal-boundary`,
   and `uv run pyright` all pass.
 
@@ -54,6 +56,7 @@ traceability_matrix:
       tests/model_artifact/test_model_artifact_package_surface.py:8;
       tests/model_artifact/test_loader_family.py:10;
       tests/model_artifact/test_model_artifact.py:11;
+      tests/model_artifact/test_model_artifact.py:106;
       tests/model_artifact/test_model_artifact.py:47;
       tests/model_artifact/test_model_artifact.py:63
   - step: >
@@ -66,6 +69,7 @@ traceability_matrix:
     evidence: >
       src/async_model_gateway/model_artifact/__init__.py:3;
       src/async_model_gateway/model_artifact/loader_family.py:9;
+      src/async_model_gateway/model_artifact/artifact.py:308;
       src/async_model_gateway/model_artifact/artifact.py:85;
       src/async_model_gateway/model_artifact/artifact.py:93
   - step: >
@@ -187,7 +191,7 @@ test_plan_check:
     location: tests/model_artifact/test_model_artifact.py:47; tests/model_artifact/test_model_artifact.py:63
   - case_type: regression
     status: present
-    location: tests/model_artifact/test_model_artifact_package_surface.py:36; tests/model_artifact/test_model_artifact.py:131
+    location: tests/model_artifact/test_model_artifact.py:106; tests/model_artifact/test_model_artifact_package_surface.py:36
   - case_type: backward compatibility
     status: present
     location: tests/model_artifact/test_model_artifact_package_surface.py:43
@@ -221,6 +225,13 @@ validation_evidence:
     detail: >
       A direct Python `inspect.signature(ModelArtifact)` probe confirms the public
       constructor annotations now match the locked contract.
+  explicit_unhashable_regression_recheck:
+    status: passed
+    detail: >
+      src/async_model_gateway/model_artifact/artifact.py:308 declares
+      `ModelArtifact.__hash__ = None`, and
+      tests/model_artifact/test_model_artifact.py:106-115 directly locks the
+      class-level unhashable contract plus `hash(...)` raising `TypeError`.
 
 path_boundary_check:
   status: passed

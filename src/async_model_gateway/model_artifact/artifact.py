@@ -305,6 +305,7 @@ class ModelArtifact:
     loader_family: LoaderFamily
     artifact_path: str
     loader_options: dict[str, JSONLike] = field(repr=False)
+    __hash__ = None
 
     def __init__(
         self,
