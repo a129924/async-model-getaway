@@ -87,7 +87,8 @@ gateway / registry 不做語意等價判斷；只要 `model-payload` material �
 它的輸入是 `model_artifact`，而不是 `model-payload`。
 
 目前 repo 已先落地這個 shared read contract 的最小 public owner：
-`async_model_gateway.model_artifact`。package root 只公開 `ModelArtifact` 與
+`async_model_gateway.model_runtime.model_artifact`。`model_runtime` 是 umbrella
+root，而 `model_artifact` package root 只公開 `ModelArtifact` 與
 `LoaderFamily`。
 
 其中：
