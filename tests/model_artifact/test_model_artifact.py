@@ -2,13 +2,27 @@
 
 from __future__ import annotations
 
+import copy
 from dataclasses import asdict, replace
 import inspect
+import pickle
 import async_model_gateway.model_artifact.artifact as artifact_module
 import async_model_gateway.model_artifact.loader_family as loader_family_module
 from typing import cast
 
 import pytest
+
+
+def _build_self_referential_loader_options_dict() -> dict[str, object]:
+    loader_options: dict[str, object] = {}
+    loader_options["self"] = loader_options
+    return loader_options
+
+
+def _build_self_referential_loader_options_list() -> dict[str, object]:
+    providers: list[object] = []
+    providers.append(providers)
+    return {"session": providers}
 
 
 def test_model_artifact_accepts_only_the_locked_minimal_fields() -> None:
@@ -232,6 +246,48 @@ def test_model_artifact_replace_reuses_public_loader_options_contract() -> None:
     assert replaced_artifact.loader_options == loader_options
 
 
+@pytest.mark.parametrize(
+    ("rebuild_name", "rebuild_artifact"),
+    [
+        ("copy", copy.copy),
+        ("deepcopy", copy.deepcopy),
+        ("pickle", lambda artifact: pickle.loads(pickle.dumps(artifact))),
+    ],
+)
+def test_model_artifact_rebuild_preserves_frozen_loader_options_internals(
+    rebuild_name: str,
+    rebuild_artifact,
+) -> None:
+    """Every reconstruction path must restore frozen internal loader-options storage."""
+    loader_options = {
+        "session": {"providers": ["CPUExecutionProvider"]},
+        "revision": None,
+    }
+    artifact = artifact_module.ModelArtifact(
+        loader_family=loader_family_module.LoaderFamily.ONNX,
+        artifact_path="weights/model.onnx",
+        loader_options=loader_options,
+    )
+
+    rebuilt_artifact = rebuild_artifact(artifact)
+    internal_loader_options = object.__getattribute__(rebuilt_artifact, "loader_options")
+    internal_session = internal_loader_options["session"]
+    internal_providers = internal_session["providers"]
+
+    assert rebuilt_artifact is not artifact
+    assert rebuilt_artifact.loader_options == loader_options
+    assert isinstance(internal_loader_options, artifact_module._FrozenJSONDict)
+    assert isinstance(internal_session, artifact_module._FrozenJSONDict)
+    assert isinstance(internal_providers, artifact_module._FrozenJSONList)
+
+    rebuilt_snapshot = rebuilt_artifact.loader_options
+    rebuilt_session = cast(dict[str, object], rebuilt_snapshot["session"])
+    rebuilt_session["providers"] = ["CUDAExecutionProvider"]
+
+    assert rebuilt_artifact.loader_options == loader_options
+    assert rebuild_name
+
+
 @pytest.mark.parametrize("blank_path", ["", "   "])
 def test_model_artifact_rejects_blank_artifact_path(blank_path: str) -> None:
     """Artifact location must be explicit and non-blank."""
@@ -250,6 +306,23 @@ def test_model_artifact_rejects_non_json_like_loader_options() -> None:
             loader_family=loader_family_module.LoaderFamily.ONNX,
             artifact_path="weights/model.onnx",
             loader_options={"session": object()},
+        )
+
+
+@pytest.mark.parametrize(
+    "non_finite_value",
+    [float("nan"), float("inf"), float("-inf")],
+    ids=["nan", "inf", "negative-inf"],
+)
+def test_model_artifact_rejects_non_finite_loader_option_floats(
+    non_finite_value: float,
+) -> None:
+    """Loader-option floats must stay within JSON-like finite number semantics."""
+    with pytest.raises(ValueError, match="loader_options floats must be finite"):
+        artifact_module.ModelArtifact(
+            loader_family=loader_family_module.LoaderFamily.ONNX,
+            artifact_path="weights/model.onnx",
+            loader_options={"temperature": non_finite_value},
         )
 
 
@@ -370,6 +443,31 @@ def test_model_artifact_rejects_non_dict_loader_options_boundary() -> None:
             artifact_path="weights/model.onnx",
             loader_options=[],
         )
+
+
+@pytest.mark.parametrize(
+    ("cycle_name", "build_loader_options"),
+    [
+        ("dict-cycle", _build_self_referential_loader_options_dict),
+        ("list-cycle", _build_self_referential_loader_options_list),
+    ],
+    ids=["dict-cycle", "list-cycle"],
+)
+def test_model_artifact_rejects_cyclic_loader_options(
+    cycle_name: str,
+    build_loader_options,
+) -> None:
+    """Self-referential loader options must fail closed with a validation error."""
+    loader_options = build_loader_options()
+
+    with pytest.raises(ValueError, match="loader_options must not contain cyclic references"):
+        artifact_module.ModelArtifact(
+            loader_family=loader_family_module.LoaderFamily.ONNX,
+            artifact_path="weights/model.onnx",
+            loader_options=loader_options,
+        )
+
+    assert cycle_name
 
 
 def test_model_artifact_rejects_non_string_artifact_path() -> None:
