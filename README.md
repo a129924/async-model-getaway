@@ -23,13 +23,17 @@
 - packaged application scaffold
 - 最小 CLI entrypoint
 
-目前 package version baseline 為 `0.4.4`。repo 目前已落地最小
+目前 package version baseline 為 `0.4.5`。repo 目前已落地最小
 `ModelRegistry` boundary，並補齊最小 operational `ResponseCache`
 boundary：`async_model_gateway.response_cache` 公開
 `ResponseCache`、`ResponseCacheEntry`、`ResponseCacheKey` 與
 `ResponseCacheKeyFactory`，而 `async_model_gateway.response_cache.ports`
 提供 `FeatureHasher` port；`ResponseCacheStore` 仍維持為 submodule-only
-surface。
+surface。repo 也已把最小 `ModelArtifact` + `LoaderFamily` shared read
+contract 納入 baseline：`async_model_gateway.model_artifact` 公開
+`ModelArtifact` 與 `LoaderFamily`，用來表達 local artifact identity 與顯式
+loader family。這不代表 `LocalModelLoader`、artifact I/O、`ModelPool`
+runtime behavior 已完成。
 root package 目前只公開 `__version__` 與 `main`；`ModelRegistry` 由
 `async_model_gateway.model_registry` 提供，
 `async_model_gateway.model_registry.stores` 提供 submodule public 的
@@ -81,6 +85,14 @@ architecture、`orchestrator` 與 `runtime-model` flow 仍不是已完成的 Pyt
 
 其中 `ResponseCacheStore` 仍維持為 submodule-only surface。
 
+目前已落地的最小 model-artifact shared read contract 包含：
+
+- `async_model_gateway.model_artifact.ModelArtifact`
+- `async_model_gateway.model_artifact.LoaderFamily`
+
+其中 `ModelArtifact` 只負責 shared read contract；`LocalModelLoader`、artifact
+I/O 與 `ModelPool` runtime behavior 仍 deferred。
+
 在目前階段，`model_source_kind` 只鎖 `local | remote`，而 capability 差異先收斂在 `features`，不先拆成多方法名公開介面。
 
 ## 責任摘要
@@ -99,7 +111,9 @@ core abstractions 的 boundary spec 入口整理在 [docs/specs/core-abstraction
 
 - 更寬的 model-side architecture 與任何超出最小 boundary 的 registry behavior
 - gateway execution flow
-- model pool behavior
+- `LocalModelLoader`
+- artifact I/O
+- `ModelPool` runtime behavior
 - broader response cache runtime logic
 - `runtime-model` acquisition
 - provider adapters
