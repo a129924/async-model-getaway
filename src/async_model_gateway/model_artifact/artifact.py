@@ -6,7 +6,7 @@ import copy
 from dataclasses import dataclass, field
 import math
 from types import MappingProxyType
-from typing import NoReturn, SupportsIndex, TypeGuard, cast, overload
+from typing import ClassVar, NoReturn, SupportsIndex, TypeGuard, cast, overload
 
 from collections.abc import Iterator, Mapping, Sequence
 
@@ -305,7 +305,7 @@ class ModelArtifact:
     loader_family: LoaderFamily
     artifact_path: str
     loader_options: dict[str, JSONLike] = field(repr=False)
-    __hash__ = None
+    __hash__: ClassVar[None] = None  # pyright: ignore[reportIncompatibleMethodOverride]
 
     def __init__(
         self,
