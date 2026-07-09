@@ -23,7 +23,7 @@
 - packaged application scaffold
 - 最小 CLI entrypoint
 
-目前 package version baseline 為 `0.4.5`。repo 目前已落地最小
+目前 package version baseline 為 `0.4.6`。repo 目前已落地最小
 `ModelRegistry` boundary，並補齊最小 operational `ResponseCache`
 boundary：`async_model_gateway.response_cache` 公開
 `ResponseCache`、`ResponseCacheEntry`、`ResponseCacheKey` 與
@@ -31,8 +31,9 @@ boundary：`async_model_gateway.response_cache` 公開
 提供 `FeatureHasher` port；`ResponseCacheStore` 仍維持為 submodule-only
 surface。repo 也已把最小 `ModelArtifact` + `LoaderFamily` shared read
 contract 納入 baseline：`async_model_gateway.model_artifact` 公開
-`ModelArtifact` 與 `LoaderFamily`，用來表達 local artifact identity 與顯式
-loader family。這不代表 `LocalModelLoader`、artifact I/O、`ModelPool`
+`ModelArtifact` 與 `LoaderFamily`，用來表達 shared read contract 的最小
+artifact metadata 與顯式 loader family vocabulary。這不代表
+`LocalModelLoader`、artifact I/O、`ModelPool`
 runtime behavior 已完成。
 root package 目前只公開 `__version__` 與 `main`；`ModelRegistry` 由
 `async_model_gateway.model_registry` 提供，
