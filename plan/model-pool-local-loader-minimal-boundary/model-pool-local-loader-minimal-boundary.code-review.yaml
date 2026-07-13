@@ -8,7 +8,7 @@ preconditions:
     artifact: plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.implementation-review.yaml
   workflow_stages:
     implementation-review: complete
-    code-review: pending-reviewer-update
+    code-review: complete
   review_scope:
     - src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py
     - src/async_model_gateway/model_runtime/model_pool/pool.py
@@ -34,7 +34,7 @@ findings:
   observability: []
 
 review_notes:
-  - "The latest implementation-review is approved for assert-never-explicit-dispatch, and the canonical step tracker marks implementation-review [X] while code-review remains [ ]."
+  - "The latest implementation-review is approved for assert-never-explicit-dispatch, and the canonical step tracker marks both implementation-review and code-review [X]."
   - "LocalModelLoader.load retains the exact two-line deferred-contract TODO and its fully annotated object return without introducing LoadedRuntimeModel, a Protocol, or a provider abstraction."
   - "typing_extensions.assert_never is compatible with the Python 3.10 baseline through the existing runtime dependency; using it instead of typing.assert_never preserves that compatibility and supplies the strict type-checker unreachable-path assertion."
   - "The explicit match/case covers every current closed LoaderFamily member (PICKLE, TORCH, ONNX); each branch awaits only its corresponding private handler, and case _ calls assert_never. There is no ValueError fallback, mapping lookup, _route_mapping seam, or KeyError dispatch."
@@ -44,4 +44,4 @@ review_notes:
 
 gate_status: code-review-complete
 next_role: Implementer
-next_action: "Record this approved code-review gate by marking code-review [X] in the canonical step evidence; then return the topic to the dispatcher for the next human boundary."
+next_action: "No outstanding code-review action remains; all workflow stages and review gates are complete."
