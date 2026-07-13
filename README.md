@@ -30,11 +30,12 @@ boundary：`async_model_gateway.response_cache` 公開
 `ResponseCacheKeyFactory`，而 `async_model_gateway.response_cache.ports`
 提供 `FeatureHasher` port；`ResponseCacheStore` 仍維持為 submodule-only
 surface。repo 也已把最小 `ModelArtifact` + `LoaderFamily` shared read
-contract 納入 baseline：`async_model_gateway.model_artifact` 公開
-`ModelArtifact` 與 `LoaderFamily`，用來表達 shared read contract 的最小
-artifact metadata 與顯式 loader family vocabulary。這不代表
-`LocalModelLoader`、artifact I/O、`ModelPool`
-runtime behavior 已完成。
+contract 納入 baseline：
+`async_model_gateway.model_runtime.model_artifact` 公開 `ModelArtifact` 與
+`LoaderFamily`，並由 `model_runtime` 作為後續 model-runtime family layout 的
+umbrella root，用來表達 shared read contract 的最小 artifact metadata 與顯式
+loader family vocabulary。這不代表 `LocalModelLoader`、artifact I/O、
+`ModelPool` runtime behavior 已完成。
 root package 目前只公開 `__version__` 與 `main`；`ModelRegistry` 由
 `async_model_gateway.model_registry` 提供，
 `async_model_gateway.model_registry.stores` 提供 submodule public 的
@@ -88,8 +89,8 @@ architecture、`orchestrator` 與 `runtime-model` flow 仍不是已完成的 Pyt
 
 目前已落地的最小 model-artifact shared read contract 包含：
 
-- `async_model_gateway.model_artifact.ModelArtifact`
-- `async_model_gateway.model_artifact.LoaderFamily`
+- `async_model_gateway.model_runtime.model_artifact.ModelArtifact`
+- `async_model_gateway.model_runtime.model_artifact.LoaderFamily`
 
 其中 `ModelArtifact` 只負責 shared read contract；`LocalModelLoader`、artifact
 I/O 與 `ModelPool` runtime behavior 仍 deferred。

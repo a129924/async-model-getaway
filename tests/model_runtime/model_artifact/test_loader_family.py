@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import async_model_gateway.model_artifact.loader_family as loader_family_module
+import async_model_gateway.model_runtime.model_artifact.loader_family as loader_family_module
 
 import pytest
 
@@ -10,7 +10,7 @@ import pytest
 def test_loader_family_supports_only_the_locked_starter_vocabulary() -> None:
     """The shared read contract must keep a bounded starter vocabulary."""
     assert loader_family_module.LoaderFamily.__module__ == (
-        "async_model_gateway.model_artifact.loader_family"
+        "async_model_gateway.model_runtime.model_artifact.loader_family"
     )
     assert [member.value for member in loader_family_module.LoaderFamily] == [
         "pickle",
