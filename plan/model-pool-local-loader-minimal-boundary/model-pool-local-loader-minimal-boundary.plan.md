@@ -163,7 +163,7 @@ Artifact path notes:
 1. Tester adds RED coverage in `tests/model_runtime/model_pool/test_model_pool_package_surface.py`, `test_model_pool.py`, and `test_local_model_loader.py`, then records the failing contract in `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.red-tests.yaml`: only `ModelPool` is package-public; construct `LocalModelLoader(_route_mapping=...)` with a complete mapping containing exactly the three `LoaderFamily` keys and unique async sentinel routes; monkeypatch `async_model_gateway.model_runtime.model_pool.pool._create_local_model_loader` before `ModelPool()` construction with a zero-argument callable returning that loader; assert factory-once retention, direct family routing, no-I/O default failures, and the locked invalid-input, mapping-validation, route-failure, and cancellation surfaces.
 2. Implementer adds `src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py` with private `LocalModelLoader(*, _route_mapping=...)`: a supplied mapping must have all and only `LoaderFamily` keys before any route is awaited (`ValueError` otherwise), while a non-`Mapping` or non-callable route value raises `TypeError`; it dispatches explicitly and supplies no-I/O defaults that raise `NotImplementedError`.
 3. Implementer adds `src/async_model_gateway/model_runtime/model_pool/pool.py` and `__init__.py`: define `def _create_local_model_loader() -> LocalModelLoader`, have each `ModelPool.__init__` call it exactly once and retain that returned instance, have `acquire(...)` validate `ModelArtifact` then directly await the retained loader, and re-export only `ModelPool` from the topic package root.
-4. Implementer runs `uv run pytest tests/model_runtime/model_pool -v`, `uv run ruff check src tests plan/model-pool-local-loader-minimal-boundary`, and `uv run pyright`; after all pass, update only the Implementer-owned progress in `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.step.md`.
+4. Implementer runs `uv run pytest --no-cov tests/model_runtime/model_pool -v` for targeted behavior validation, `uv run pytest -v` as the repository-wide coverage gate, `uv run ruff check src tests plan/model-pool-local-loader-minimal-boundary`, and `uv run pyright`; after all pass, update only the Implementer-owned progress in `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.step.md`.
 
 ## Validation / Acceptance Checks
 
@@ -192,8 +192,12 @@ Artifact path notes:
 - Default routes raise `NotImplementedError`; non-`ModelArtifact` input raises
   `TypeError`; route exceptions and cancellation propagate unchanged. No `None`,
   fallback, cache, retry, timeout, or wrapper semantics are introduced.
-- The three validation commands in Implementation Step 4 pass. Tests use ordinary
-  imports and monkeypatch only private seams; they do not use dynamic module loading.
+- Targeted behavior validation runs `uv run pytest --no-cov
+  tests/model_runtime/model_pool -v` so the package-level test result is not
+  coupled to the repository-wide coverage threshold. `uv run pytest -v` then
+  passes as the repository-wide coverage gate; ruff and pyright also pass.
+  Tests use ordinary imports and monkeypatch only private seams; they do not use
+  dynamic module loading.
 - Before PR routing, independent implementation review records plan conformance in
   the declared `.implementation-review.yaml`; it does not replace the later code
   review or human merge gate.
@@ -311,6 +315,11 @@ propagation, plus `ValueError` for missing/extra/non-family mapping keys and
 `TypeError` for non-`Mapping` or non-callable mapping input. Default-route tests prove
 all families fail closed without using a file or provider seam.
 
+Targeted behavior validation uses `uv run pytest --no-cov
+tests/model_runtime/model_pool -v` so its result is independent of the
+repository-wide coverage threshold. `uv run pytest -v` remains the required
+full-suite coverage gate, followed by the declared ruff and pyright checks.
+
 ### Handoff notes for the implementer
 
 Keep `_create_local_model_loader()` and `_route_mapping` private and exact; do not
@@ -384,7 +393,8 @@ Test cases:
 ## Validation Commands
 
 ```bash
-uv run pytest tests/model_runtime/model_pool -v
+uv run pytest --no-cov tests/model_runtime/model_pool -v
+uv run pytest -v
 uv run ruff check src tests plan/model-pool-local-loader-minimal-boundary
 uv run pyright
 ```

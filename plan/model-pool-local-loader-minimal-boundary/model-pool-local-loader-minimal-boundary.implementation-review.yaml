@@ -1,0 +1,125 @@
+verdict: approved
+review_status: COMPLETE
+preconditions:
+  plan_review: approved
+  human_check:
+    status: cleared
+    cleared_for: implement-plan
+  implementation_diff: present
+  implementation_steps: complete
+
+traceability_matrix:
+  - step: >-
+      Tester adds RED coverage and records the failing contract for package surface,
+      explicit routes, factory retention, default failures, invalid input, mapping
+      validation, route failure, and cancellation.
+    status: done
+    evidence:
+      - tests/model_runtime/model_pool/test_model_pool_package_surface.py:14
+      - tests/model_runtime/model_pool/test_model_pool.py:41
+      - tests/model_runtime/model_pool/test_local_model_loader.py:51
+      - plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.red-tests.yaml:1
+  - step: >-
+      Add private LocalModelLoader with exact supplied-mapping validation, explicit
+      LoaderFamily dispatch, and no-I/O NotImplementedError defaults.
+    status: done
+    evidence:
+      - src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:33
+      - src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:45
+      - src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:49
+      - src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:59
+  - step: >-
+      Add ModelPool, private zero-argument factory, one-time retained loader,
+      ModelArtifact validation, direct await, and ModelPool-only package re-export.
+    status: done
+    evidence:
+      - src/async_model_gateway/model_runtime/model_pool/pool.py:12
+      - src/async_model_gateway/model_runtime/model_pool/pool.py:25
+      - src/async_model_gateway/model_runtime/model_pool/pool.py:29
+      - src/async_model_gateway/model_runtime/model_pool/__init__.py:3
+      - tests/model_runtime/model_pool/test_model_pool.py:41
+      - tests/model_runtime/model_pool/test_model_pool_package_surface.py:14
+  - step: >-
+      Run targeted and repository-wide pytest, ruff, and pyright validation, then
+      update Implementer-owned step progress.
+    status: done
+    evidence:
+      - plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.step.md:24
+      - "uv run pytest --no-cov tests/model_runtime/model_pool -v: 18 passed"
+      - "uv run pytest -v: 158 passed; coverage 99.02%"
+      - "uv run ruff check src tests plan/model-pool-local-loader-minimal-boundary: passed"
+      - "uv run pyright: 0 errors, 0 warnings, 0 informations"
+
+scope_creep_check:
+  - non_goal: >-
+      No artifact file read, pickle/torch/onnx provider integration, or concrete
+      runtime-model type.
+    violated: no
+    evidence: src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:18
+  - non_goal: >-
+      No cache/reuse, close/unload, resource sharing, timeout, retry, batching,
+      fan-out, or background ownership.
+    violated: no
+    evidence: clean
+  - non_goal: >-
+      No ModelGateway, ModelExecution, provider framework, registry/cache
+      integration, or ModelArtifact shared-read-contract modification.
+    violated: no
+    evidence: clean; implementation adds only model_pool source and topic artifacts
+  - non_goal: No README, version, release metadata, tag, or release-workflow change.
+    violated: no
+    evidence: clean
+
+contract_check:
+  - item: ModelPool is the only model_pool package-root public export.
+    status: matches
+    detail: __all__ is exactly ["ModelPool"]; LocalModelLoader remains private.
+  - item: >-
+      ModelPool.acquire is async acquire(self, artifact: ModelArtifact) -> object
+      with no added public options.
+    status: matches
+    detail: pool.py exposes the locked signature and targeted package-surface test passes.
+  - item: >-
+      ModelPool construction calls the zero-argument private factory once and retains
+      that returned loader; acquire directly awaits it.
+    status: matches
+    detail: pool.py constructs once in __init__ and delegates through direct await.
+  - item: >-
+      LocalModelLoader is internal-only; its sole test seam validates exact
+      LoaderFamily mapping keys and callable values before awaiting a route.
+    status: matches
+    detail: >-
+      _local_model_loader.py validates Mapping, exact set(LoaderFamily), and callables
+      before load dispatch; the package root does not re-export it.
+  - item: >-
+      ModelArtifact is consumed unchanged; non-artifact input fails before routing;
+      selected route result, failure, and cancellation propagate unchanged.
+    status: matches
+    detail: >-
+      acquire type-checks before direct await; no exception translation is present;
+      targeted tests cover TypeError, identity-preserving route failure, and cancellation.
+
+test_plan_check:
+  - case_type: Happy path — explicit route per LoaderFamily returns its opaque object.
+    status: present
+    location: tests/model_runtime/model_pool/test_local_model_loader.py:51
+  - case_type: Invalid input — non-artifact and invalid mapping configurations fail.
+    status: present
+    location: tests/model_runtime/model_pool/test_model_pool.py:71
+  - case_type: Edge case — explicit LoaderFamily overrides artifact-path appearance.
+    status: present
+    location: tests/model_runtime/model_pool/test_local_model_loader.py:69
+  - case_type: Regression — factory monkeypatch target and retained-loader lifetime.
+    status: present
+    location: tests/model_runtime/model_pool/test_model_pool.py:41
+  - case_type: Backward compatibility — ModelPool-only package export and no umbrella export.
+    status: present
+    location: tests/model_runtime/model_pool/test_model_pool_package_surface.py:14
+  - case_type: >-
+      Async safety — route failure and asyncio.CancelledError propagate unchanged;
+      default routes fail closed.
+    status: present
+    location: tests/model_runtime/model_pool/test_model_pool.py:91
+
+next_role: Reviewer
+next_action: Run python-code-review; no implementation rework is required.

@@ -20,6 +20,9 @@
    A supplied mapping must contain all and only current `LoaderFamily` keys before
    any route is awaited; missing, extra, or non-family keys raise `ValueError`, while
    a non-`Mapping` input or non-callable route value raises `TypeError`.
+8. Targeted `model_pool` behavior validation runs
+   `uv run pytest --no-cov tests/model_runtime/model_pool -v`; `uv run pytest -v`
+   remains the required repository-wide coverage gate before ruff and pyright.
 
 ## Behavioral Scenarios
 
