@@ -131,6 +131,5 @@ def test_local_model_loader_uses_typing_extensions_assert_never_for_the_unreacha
     assert local_model_loader_module.assert_never is assert_never
     assert "from typing_extensions import assert_never" in module_source
     assert (
-        "            case _:\n"
-        "                assert_never(artifact.loader_family)"
+        "            case _:\n                assert_never(artifact.loader_family)"
     ) in load_source
