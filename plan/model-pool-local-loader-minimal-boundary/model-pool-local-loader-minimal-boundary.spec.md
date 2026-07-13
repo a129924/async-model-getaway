@@ -82,3 +82,36 @@
 - `needs-rework`, an absent artifact, or a stale artifact blocks `pr-comment`; a fresh
   `approved` verdict follows fresh approved implementation review and is the only
   quality-gate handoff to PR routing.
+
+## Release Acceptance
+
+1. Existing implementation `plan-review` and `human-check` artifacts remain
+   historical evidence for the merged `assert-never-explicit-dispatch` revision. They
+   are not release gates; only the declared release-plan-review and release-human-check
+   artifacts are fresh gates for this release contract.
+2. **Release Gate 5**: Plan-Reviewer records `verdict: approved` in the declared release-plan-review
+   artifact for revision `v0.4.7-release-contract-sequenced`.
+3. **Release Gate 6**: The Human creates
+   `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.release-human-check.json`
+   only after that approved release-plan review and before any release work. The
+   artifact identifies topic `model-pool-local-loader-minimal-boundary` and revision
+   `v0.4.7-release-contract-sequenced`, records that review path and
+   `release_plan_review_verdict: approved`, and states `decision: approved`,
+   `status: cleared`, `cleared_for: release`, and `cleared: true`.
+4. **Release Step 7**: After that clearance, the Implementer commits and pushes the five bounded
+   documentation changes and three synchronized `0.4.7` version changes on `dev` as
+   the release commit. The merged minimal boundary is documented consistently in `README.md`,
+   `docs/architecture.md`, `docs/specs/model-side-boundary.md`,
+   `docs/specs/core-abstractions-boundary.md`, and
+   `docs/specs/canonical-input-boundary.md`: `ModelPool.acquire(...)` is minimal and
+   public, `LocalModelLoader` is private and explicit-dispatch-only, and artifact I/O,
+   full lifecycle, concrete runtime-model typing, provider abstraction, ModelGateway,
+   and ModelExecution remain deferred.
+   `src/async_model_gateway/__version__.py`, `pyproject.toml`, and `uv.lock` agree on
+   package version `0.4.7` without dependency or packaging-policy drift.
+5. **Release Step 8**: Implementer creates and pushes lightweight `v0.4.7` from that exact release
+   commit; local and remote verification resolve the tag to the release commit.
+6. **Release Step 9**: Implementer writes release evidence with the release-commit SHA, tag resolution,
+   remote-tag verification, and no-GitHub-Release/no-publish result, then commits and
+   pushes that evidence separately without moving the tag. No GitHub Release is
+   created and no package is published.

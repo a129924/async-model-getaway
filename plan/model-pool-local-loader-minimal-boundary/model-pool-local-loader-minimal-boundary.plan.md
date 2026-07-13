@@ -1,7 +1,8 @@
 > Semantic warning: `analysis/model-pool-local-loader-minimal-boundary/requirements.md`
 > 與 `analysis/model-pool-local-loader-minimal-boundary/technical-spec.md` 均不存在。
-> 本 revision 依據人類明確鎖定的 internal-seam correction 與現有
-> `model_runtime` / `model_artifact` contract；不得以此補齊 broader runtime scope。
+> 本 revision 依據已 merged 的 implementation、現有 `model_runtime` /
+> `model_artifact` contract，以及人類明確授權的 `v0.4.7` release；不得以此補齊
+> broader runtime scope。
 
 # model-pool-local-loader-minimal-boundary
 
@@ -13,6 +14,11 @@
   family-dispatch structure。
 - `model_artifact` 僅被消費；`LocalModelLoader.load(...) -> object` 只加註已鎖定
   future contract TODO，不建立 `LoadedRuntimeModel` 或任何 abstraction。
+- 將已 merged 的最小 `ModelPool` / private `LocalModelLoader` boundary 納入
+  `v0.4.7` package baseline：先 commit 並 push 指定 first-read / architecture 文件與
+  version metadata，從該 release commit 建立並 push 同名 lightweight git tag，接著
+  寫入、另 commit 並 push release evidence，且 evidence commit 不得移動 tag；不建立
+  GitHub Release，也不發佈套件。
 
 ## Scope
 
@@ -26,14 +32,25 @@
   - 在 `LocalModelLoader.load(self, artifact: ModelArtifact) -> object` 加入精確
     two-line TODO；重建本 revision 的 plan、RED-test、implementation-review 與
     code-review gates。
+  - 更新 `README.md`、`docs/architecture.md`、
+    `docs/specs/model-side-boundary.md`、
+    `docs/specs/core-abstractions-boundary.md` 與
+    `docs/specs/canonical-input-boundary.md`，使其只反映已落地的最小 acquisition
+    boundary，且不宣稱 artifact I/O、完整 lifecycle、runtime-model contract 或
+    provider abstraction 已完成。
+  - 將 `src/async_model_gateway/__version__.py`、`pyproject.toml` 與 `uv.lock`
+    的 package version 從 `0.4.6` 同步 bump 至 `0.4.7`；在同步後的 `dev` release
+    commit 建立並推送 lightweight `v0.4.7` git tag，記錄 release evidence，並以獨立
+    evidence commit push 該 artifact，而不移動 tag。
 - **Out of scope**:
   - artifact I/O、serialization/framework imports、provider adapter、runtime-model
     concrete type、Protocol、provider abstraction。
   - cache/reuse、close/unload、timeout、retry、background task、fan-out、broader
     lifecycle policy。
   - `ModelGateway`、`ModelExecution`、`model_registry`、`response_cache`、
-    `model_artifact` source/tests/exports/fields/vocabulary/validation，及 README、
-    version、release、tag。
+    `model_artifact` source/tests/exports/fields/vocabulary/validation。
+  - GitHub Release、PyPI 或其他套件發佈、release note、dependency / packaging policy
+    變更，以及任何未列出的文件或 source/test path。
 
 ## Locked Decisions
 
@@ -80,19 +97,26 @@
 - Async-planning is a focused retrofit, not a new lifecycle design: direct await,
   caller-owned cancellation, no timeout/retry, and no external resource ownership
   remain locked.
-- Stable-library intent is explicit no-promotion: README, version, and release paths
-  remain excluded.
+- Stable-library release intent is explicit: baseline `0.4.6` receives exactly one
+  patch bump to `0.4.7`. The executable version sources are
+  `src/async_model_gateway/__version__.py`, `pyproject.toml`, and `uv.lock`; there
+  is no root `VERSION` file. README and the four named architecture/spec documents
+  require a bounded wording update. The post-merge release action commits and pushes
+  those synchronized metadata and documentation updates, creates and pushes lightweight
+  tag `v0.4.7` from that exact release commit, then commits and pushes release evidence
+  without moving the tag. Do not create a GitHub Release or publish a package.
+- Release clearance is a fresh Human-owned artifact for revision
+  `v0.4.7-release-contract-sequenced`. It may exist only after the declared
+  release-plan review artifact records `verdict: approved`, and it must contain the
+  topic, that exact revision, `decision: approved`, `status: cleared`,
+  `release_plan_review_path`, `release_plan_review_verdict: approved`,
+  `cleared_for: release`, and `cleared: true`. No documentation, version, lock,
+  commit, push, tag, or evidence work may begin before this artifact exists.
 - Existing plan-review, human-check, RED-test, implementation-review, and code-review
-  evidence describe the superseded ValueError-fallback revision.
-  They must not be treated as approval for this revision; their respective owners must
-  revalidate them after plan review. The sole code-review evidence location for this
-  topic is the declared `*.code-review.yaml` path below.
-- A fresh code-review artifact is produced only after this revision's fresh
-  implementation-review artifact is `approved`, and before `pr-comment` routing. It
-  is stale if any reviewed source/test change, or any planning/spec/RED/step revision
-  that changes the implementation contract, occurs after its verdict. A stale artifact
-  cannot satisfy the quality gate; the Reviewer must issue a new verdict at the same
-  declared path.
+  evidence record the completed `assert-never-explicit-dispatch` implementation and
+  must remain unmodified historical truth. They do not approve this later release
+  contract; the release-specific reviewer and Human artifacts declared below are the
+  only new gates.
 
 ## Boundaries / Exclusions
 
@@ -107,26 +131,22 @@
 
 ## Status / Allowed Transitions
 
-- **Current**: `review-ready` — explicit-dispatch rework revision; prior approval and
-  human clearance are stale and require revalidation.
+- **Current**: `merged` — implementation, PR, and human-merge history remain
+  complete. Only the declared post-merge release workflow remains; it does not reopen
+  the merged implementation.
 - **Execution model**: `spec-and-plan-finalization -> implement-plan -> pr-comment ->
-  pr-comment-review-pr-comments-and-fix`; stop at `merged`, with no `release` phase.
-- **Allowed transitions**:
-  - `planned` -> `creator-in-progress`
-  - `creator-in-progress` -> `review-ready`
-  - `review-ready` -> `reviewer-in-progress`
-  - `reviewer-in-progress` -> `approved` | `needs-rework`
-  - `needs-rework` -> `creator-in-progress`
-  - `approved` -> `creator-in-progress` | `publish-in-progress`
-  - `publish-in-progress` -> `pr-open` | `merged`
-  - `pr-open` -> `needs-rework` | `merged`
+  pr-comment-review-pr-comments-and-fix -> release`; the `release` phase is required
+  for this explicitly declared stable-library promotion.
+- **Allowed transition**: `merged` -> `released`, only after all post-merge release
+  gates and release implementation steps below complete in order.
 
-  `implement-plan` may start only after a fresh approved plan-review artifact and
-  fresh human-check clearance. RED tests are the mandatory first Python subphase. A
-  fresh approved implementation-review artifact is required before the independent
-  code review; only a fresh `approved` code-review artifact permits `pr-comment`
-  routing. Any covered revision after either reviewer verdict resets that verdict and
-  returns routing to the applicable earlier gate.
+  The already completed Python workflow remains historical evidence for the merged
+  implementation. The fresh release gate sequence is: (5) Plan-Reviewer approves the
+  declared `release-plan-review`; (6) Human writes the bound
+  `release-human-check`; then (7) Implementer commits and pushes the bounded
+  docs/version release change, (8) creates and pushes its exact lightweight tag, and
+  (9) commits and pushes release evidence without moving the tag. This does not rerun
+  RED tests or rewrite implementation/code-review evidence.
 
 ## Artifact Paths
 
@@ -135,45 +155,74 @@
 | Topic plan | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.plan.md` | Planning actor | execution contract |
 | Python spec | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.spec.md` | Planning actor | behavior contract |
 | Step tracking | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.step.md` | Implementer | progress/gate tracking |
-| Plan review | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.plan-review.json` | Plan-Reviewer | fresh planning verdict |
-| Human check | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.human-check.json` | Human | fresh clearance into implement-plan |
-| RED-test evidence | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.red-tests.yaml` | Tester | fresh first-subphase evidence |
-| Implementation review | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.implementation-review.yaml` | Reviewer | fresh plan-conformance gate |
-| Code review | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.code-review.yaml` | Reviewer | sole fresh Python-quality verdict after implementation review, before PR routing |
+| Plan review | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.plan-review.json` | Plan-Reviewer | historical implementation plan-review evidence; not a release gate |
+| Human check | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.human-check.json` | Human | historical implementation clearance; not a release gate |
+| Release plan review | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.release-plan-review.json` | Plan-Reviewer | fresh release gate for this post-merge release-contract revision |
+| Release human check | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.release-human-check.json` | Human | fresh release gate bound to this topic/revision and approved release-plan review |
+| RED-test evidence | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.red-tests.yaml` | Tester | historical implementation evidence; not a release gate |
+| Implementation review | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.implementation-review.yaml` | Reviewer | historical implementation evidence; not a release gate |
+| Code review | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.code-review.yaml` | Reviewer | historical implementation evidence; not a release gate |
 | Package root | `src/async_model_gateway/model_runtime/model_pool/__init__.py` | Implementer | `ModelPool` re-export only |
 | Public pool | `src/async_model_gateway/model_runtime/model_pool/pool.py` | Implementer | public acquisition / retained loader |
 | Private loader | `src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py` | Implementer | explicit family dispatch |
 | Package tests | `tests/model_runtime/model_pool/test_model_pool_package_surface.py` | Tester | public surface / TODO regression |
 | Pool tests | `tests/model_runtime/model_pool/test_model_pool.py` | Tester | acquire wiring/failures/cancellation |
 | Loader tests | `tests/model_runtime/model_pool/test_local_model_loader.py` | Tester | every `match/case` branch / default handlers |
+| Project summary | `README.md` | Implementer | first-read baseline and minimal ModelPool / LocalModelLoader availability wording |
+| Architecture summary | `docs/architecture.md` | Implementer | narrow model-runtime implementation-status wording |
+| Model-side specification | `docs/specs/model-side-boundary.md` | Implementer | minimal implemented ModelPool / private loader boundary wording |
+| Core-abstractions specification | `docs/specs/core-abstractions-boundary.md` | Implementer | remove the stale LocalModelLoader-only-deferred claim |
+| Canonical-input specification | `docs/specs/canonical-input-boundary.md` | Implementer | preserve model_artifact ownership while updating local-acquisition status |
+| Package runtime version | `src/async_model_gateway/__version__.py` | Implementer | exact `0.4.7` patch bump |
+| Packaging metadata version | `pyproject.toml` | Implementer | exact `0.4.7` patch bump |
+| Lockfile metadata | `uv.lock` | Implementer | synchronized package-version metadata |
+| Release evidence | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.release.yaml` | Implementer | post-tag evidence: release-commit SHA, tag resolution, remote-tag verification, no-GitHub-Release/no-publish outcome; committed and pushed separately without moving the tag |
 
-`README.md`, `pyproject.toml`, `src/async_model_gateway/__version__.py`, `uv.lock`,
-`docs/architecture.md`, all `model_artifact` paths, root package paths,
-`model_registry`, and `response_cache` are explicit no-change paths. Evidence rows
-are routing declarations only; the planning actor does not write reviewer or Human
-artifacts.
+All `model_artifact` paths, root package paths, `model_registry`, `response_cache`,
+and every documentation path not listed above are explicit no-change paths. Existing
+plan-review, human-check, RED-test, implementation-review, and code-review artifacts
+remain historical evidence and must not be edited. Evidence rows are routing
+declarations only; the planning actor does not write reviewer, Human, or Implementer
+evidence artifacts.
+
+## Stable library metadata
+
+- `README row`: update the existing 「目前階段」 / model-runtime summary and
+  「尚未實作」 wording so it names the minimal `ModelPool.acquire(...)` and private
+  explicit-dispatch `LocalModelLoader` availability, while retaining deferral of
+  artifact I/O, full lifecycle, a concrete runtime-model contract, provider
+  abstraction, `ModelGateway`, and `ModelExecution`.
+- `VERSION bump`: patch bump from `0.4.6` to `0.4.7` in the two executable version
+  sources and synchronized `uv.lock` package metadata.
+- `timing`: `release`, on `dev` after the implementation PR is merged and after the
+  fresh approved release-plan-review plus the bound release-human-check gate exist.
+- `rationale`: the bounded public `ModelPool` acquisition surface is already merged;
+  this authorized promotion aligns only stale documentation and package metadata with
+  that fact, without reopening runtime architecture or behavior.
+- `release-note expectation`: none. Commit and push the bounded docs/version change;
+  create and push lightweight git tag `v0.4.7` from that exact commit; then commit and
+  push release evidence without moving the tag. Do not create a GitHub Release and do
+  not publish a package.
 
 ## Implementation Steps
 
-1. Tester replaces `_route_mapping`-based tests in the three declared test files and
-   writes fresh RED evidence: assert the exact two-line TODO, monkeypatch each private
-   `_load_pickle`, `_load_torch`, and `_load_onnx` handler with distinct async results,
-   and prove each `LoaderFamily` follows only its own explicit branch. Retain package
-   surface, pool-factory retention, applicable TypeError/ValueError validation, default
-   NotImplementedError, route-failure, cancellation, and path-appearance coverage.
-   Remove the fabricated unforeseen-family `ValueError` expectation; tests must not
-   reference `_route_mapping` or use dynamic module loading.
-2. Implementer revises `_local_model_loader.py`: remove mapping types, construction
-   parameter, helper validation, stored mapping, and lookup dispatch; add the exact
-   TODO; implement the three explicit `match/case` branches with `await`ed matching
-   private handlers; retain no-I/O handler `NotImplementedError`; import
-   `assert_never` from `typing_extensions` and make `case _` call
-   `assert_never(artifact.loader_family)`.
-3. Implementer updates `pool.py` and `__init__.py` only as needed to conform to the
-   removed private constructor seam, preserving ModelPool's locked public contract,
-   factory-once retention, TypeError validation, direct await, and package-root export.
-4. Implementer runs the declared targeted pytest, full pytest, ruff, and pyright
-   commands and marks only the completed implementation steps in the step artifact.
+The merged Python implementation (historical sequence 1–4 in the step tracker) is not
+an action in this post-merge release plan. Only the Implementer-owned release steps
+remain here; the prerequisite reviewer and Human gates are in
+`Post-merge / release actions`.
+
+7. Implementer, only after release gates 5 and 6 are complete, updates the five declared
+   documentation files to distinguish the implemented minimal acquisition boundary
+   from deferred artifact I/O / wider runtime work, synchronizes the three declared
+   version metadata files to `0.4.7`, runs release validation, and commits and pushes
+   exactly those eight documentation/version changes on `dev` as the release commit.
+8. Implementer creates lightweight tag `v0.4.7` from the exact release commit in step
+   7 and pushes that tag. The tag must resolve locally and remotely to the release
+   commit.
+9. Implementer writes the declared release evidence with the release-commit SHA, tag
+   resolution, remote-tag verification, and no-GitHub-Release/no-publish result; then
+   commits and pushes that evidence artifact separately on `dev`. This evidence commit
+   must not move, replace, delete, or retarget `v0.4.7`.
 
 ## Validation / Acceptance Checks
 
@@ -191,16 +240,33 @@ artifacts.
   unreachable fallback.
 - `ModelPool` public API, one-time factory retention, public exports, direct await,
   `model_artifact` consumed-only contract, and all scope exclusions remain unchanged.
-- Before `pr-comment`, the Reviewer records an independent code-quality verdict at
-  `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.code-review.yaml`
-  only after the fresh implementation-review artifact is `approved`. Acceptance
-  requires that sole artifact to contain `verdict: approved`, the seven
-  `python-code-review` finding dimensions, and evidence that no covered revision has
-  occurred since review; `needs-rework`, absence, or staleness returns to the
-  applicable rework gate and cannot enter PR routing.
+- The five declared documentation files say the same limited truth: `ModelPool` is
+  the package-root public minimal local acquisition boundary; `LocalModelLoader` is
+  private, consumes `ModelArtifact`, selects only explicit current families, and has
+  no artifact I/O. They retain all deferred wider runtime boundaries.
+- `src/async_model_gateway/__version__.py`, `pyproject.toml`, and `uv.lock` all
+  record exactly `0.4.7`; no other dependency or packaging policy changes occur.
+- Before release work, the release-human-check artifact exists and identifies topic
+  `model-pool-local-loader-minimal-boundary`, revision
+  `v0.4.7-release-contract-sequenced`, and the approved declared release-plan-review
+  artifact; it records `decision: approved`, `status: cleared`, `cleared_for: release`,
+  and `cleared: true`.
+- The release evidence identifies the `dev` release commit containing the bounded
+  docs/version changes and pushed lightweight tag `v0.4.7`, confirms the tag resolves
+  locally and remotely to that commit, and records that no GitHub Release was created
+  and no package was published. The evidence is committed and pushed only after the
+  tag push; its separate commit does not move the tag.
+- The declared implementation plan-review, human-check, RED-test,
+  implementation-review, and code-review artifacts remain historical evidence for
+  the merged implementation; they are not re-opened or revalidated as release gates.
 - Targeted validation: `uv run pytest --no-cov tests/model_runtime/model_pool -v`.
   Full coverage gate: `uv run pytest -v`. Static gates: `uv run ruff check src tests
   plan/model-pool-local-loader-minimal-boundary` and `uv run pyright`.
+- Release metadata checks: `rg -n '0\\.4\\.7' README.md pyproject.toml
+  src/async_model_gateway/__version__.py uv.lock`; record the release-commit SHA
+  before tagging; `git rev-parse v0.4.7^{commit}` equals that SHA; and
+  `git ls-remote --tags origin v0.4.7` verifies the pushed tag before release evidence
+  is written, committed, and pushed without retagging.
 
 ## Reviewer Handoff
 
@@ -216,21 +282,36 @@ artifacts.
 }
 ```
 
-Plan-Reviewer must treat the existing reviewer/human evidence as stale, verify the
-explicit-dispatch contract and paths above, including the sole future code-review
-evidence path, and emit a new verdict before any fresh human check or RED-test phase.
-After fresh implementation review is `approved`, hand off to an independent Reviewer
-for `python-code-review`; that Reviewer writes only
-`plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.code-review.yaml`
-with `verdict: approved|needs-rework`, `tooling_detected`, and all seven findings
-dimensions. Only its fresh `approved` verdict hands the topic to `pr-comment`; a
-`needs-rework` verdict or later covered revision returns the topic to rework and
-requires a replacement verdict at that same path.
+This handoff applies only to fresh release Gate 5. Plan-Reviewer must review the
+post-merge release-contract delta: exact release
+paths, `0.4.7` timing, documentation boundaries, version/lock synchronization,
+lightweight tag creation/push, and explicit no-GitHub-Release/no-publish intent. It
+must write its verdict only to
+`plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.release-plan-review.json`.
+The existing planning, human, RED-test, implementation-review, and code-review
+artifacts are historical and must not be changed or treated as the release gate.
+Only after that approved release-plan review may the Human write the bound
+release-human-check artifact described in Locked Decisions. Only after the clearance
+exists may the bounded release actions in this plan proceed; any scope/contract change
+returns to `spec-and-plan-finalization`.
 
 ## Post-merge / release actions
 
-- No release workflow required. After merge, stop; all wider local-loader behavior is
-  a separate topic.
+- **Gate 5 — Plan-Reviewer**: record `verdict: approved` in the declared
+  `release-plan-review` artifact for revision `v0.4.7-release-contract-sequenced`.
+- **Gate 6 — Human**: only after Gate 5, create the bound `release-human-check`
+  artifact with the locked approval and clearance fields. No release implementation
+  work may begin before this fresh Human gate exists.
+- **Step 7 — Implementer**: update the declared docs/version/lock paths on `dev`,
+  validate them, and commit and push those eight bounded changes as the release commit.
+- **Step 8 — Implementer**: create and push lightweight `v0.4.7` from that exact
+  release commit.
+- **Step 9 — Implementer**: only after the tag push, record the release commit and
+  remote-tag verification in
+  `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.release.yaml`,
+  commits and pushes that evidence separately, and does not move the tag. Do not create
+  a GitHub Release or publish a package. All wider local-loader behavior remains a
+  separate topic.
 
 ## Open Questions / Unresolved Items
 
@@ -243,7 +324,8 @@ requires a replacement verdict at that same path.
 - No cache/reuse, close/unload, sharing, timeout, retry, batching, fan-out, or
   background ownership.
 - No ModelGateway, ModelExecution, registry/cache integration, model_artifact change,
-  new domain exception, README/version/release/tag change.
+  new domain exception, GitHub Release, package publication, or additional release
+  work beyond the declared docs/version/lock/tag paths.
 
 ## Requirements
 
@@ -262,8 +344,9 @@ requires a replacement verdict at that same path.
 - Async-planning status: triggered — cite trigger evidence: the existing public
   `async ModelPool.acquire(...)` directly awaits a private loader and this revision
   preserves cancellation/failure routing.
-- Module/package placement: only the three declared `model_pool` source paths and
-  three declared test paths may change.
+- Module/package placement: the merged implementation remains limited to the three
+  declared `model_pool` source paths and three test paths. The release delta may
+  change only its separately declared docs/version/lock/evidence paths.
 - New public API: none; existing `ModelPool.acquire(...) -> object` is preserved.
 - Interface changes: private mapping seam removed; no public contract expansion.
 - Breaking changes allowed: no public breaking change; the locked internal test seam
@@ -310,9 +393,10 @@ four declared commands before fresh implementation review.
 
 ### Handoff notes for the implementer
 
-Use the exact TODO, direct `match/case`, and matching `_load_<family>` awaits. Do not
-replace the removed mapping seam with another injection mechanism or add deferred
-types/exceptions. Stop if a required edit is outside declared paths.
+The historical implementation must retain the exact TODO, direct `match/case`, and
+matching `_load_<family>` awaits. Release work changes only its declared
+docs/version/lock/evidence paths; do not replace the removed mapping seam or add
+deferred types/exceptions.
 
 ### Async contradiction log
 
@@ -333,6 +417,15 @@ the internal dispatch/test seam is corrected.
 - `tests/model_runtime/model_pool/test_model_pool_package_surface.py`
 - `tests/model_runtime/model_pool/test_model_pool.py`
 - `tests/model_runtime/model_pool/test_local_model_loader.py`
+- `README.md`
+- `docs/architecture.md`
+- `docs/specs/model-side-boundary.md`
+- `docs/specs/core-abstractions-boundary.md`
+- `docs/specs/canonical-input-boundary.md`
+- `src/async_model_gateway/__version__.py`
+- `pyproject.toml`
+- `uv.lock`
+- `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.release.yaml`
 
 ## Test Plan
 
@@ -367,5 +460,8 @@ uv run pyright
 
 ## Rollback Plan
 
-- Revert the three declared model_pool source files, three test files, and this topic's
-  plan/spec/step/evidence artifacts as applicable. Do not alter `model_artifact`.
+- If the bounded release change must be rolled back before tagging, revert only the
+  docs/version release commit; release evidence does not yet exist. Do not alter the
+  merged model_pool source, tests, historical evidence, or `model_artifact`. If
+  `v0.4.7` has already been pushed, stop for human release remediation rather than
+  moving or deleting the tag; do not automatically revert the separate evidence commit.

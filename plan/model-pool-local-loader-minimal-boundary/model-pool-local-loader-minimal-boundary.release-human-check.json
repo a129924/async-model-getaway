@@ -1,0 +1,13 @@
+{
+  "topic": "model-pool-local-loader-minimal-boundary",
+  "gate": "release-human-check",
+  "decision": "approved",
+  "status": "cleared",
+  "revision": "v0.4.7-release-contract-sequenced",
+  "release_plan_review_path": "plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.release-plan-review.json",
+  "release_plan_review_verdict": "approved",
+  "cleared_for": "release",
+  "cleared": true,
+  "recorded_on": "2026-07-13",
+  "summary": "Human explicitly authorized the bounded v0.4.7 release contract: update the declared documentation and version metadata, push the release commit, create and push lightweight tag v0.4.7, then write and push separate release evidence. No GitHub Release will be created and no package will be published."
+}

@@ -1,0 +1,25 @@
+topic: model-pool-local-loader-minimal-boundary
+revision: v0.4.7-release-contract-sequenced
+release_commit: 96240e86efa199b26623aeff8c58705b9594aa28
+release_commit_subject: "chore(release): cut v0.4.7"
+tag:
+  name: v0.4.7
+  kind: lightweight
+  local_target: 96240e86efa199b26623aeff8c58705b9594aa28
+  remote_target: 96240e86efa199b26623aeff8c58705b9594aa28
+  targets_match_release_commit: true
+validation:
+  docs_and_version_metadata: passed
+  release_commit_paths:
+    - README.md
+    - docs/architecture.md
+    - docs/specs/canonical-input-boundary.md
+    - docs/specs/core-abstractions-boundary.md
+    - docs/specs/model-side-boundary.md
+    - pyproject.toml
+    - src/async_model_gateway/__version__.py
+    - uv.lock
+outcome:
+  github_release_created: false
+  package_published: false
+  tag_retargeted_by_evidence: false
