@@ -1,10 +1,11 @@
 verdict: approved
 review_status: COMPLETE
-reviewed_revision: explicit-match-case-dispatch-e302-format-recheck
+reviewed_revision: assert-never-explicit-dispatch
 preconditions:
   implementation_review:
     verdict: approved
-    revision: explicit-match-case-dispatch-e302-format-recheck
+    revision: assert-never-explicit-dispatch
+    artifact: plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.implementation-review.yaml
   workflow_stages:
     implementation-review: complete
     code-review: pending-reviewer-update
@@ -15,12 +16,13 @@ preconditions:
     - tests/model_runtime/model_pool/test_local_model_loader.py
     - tests/model_runtime/model_pool/test_model_pool.py
     - tests/model_runtime/model_pool/test_model_pool_package_surface.py
-  execution: "Static code review only; Ruff, Pyright, and pytest were not run by this Reviewer."
+  execution: "Static code review only; pytest, Ruff, and Pyright were not run by this Reviewer."
 
 tooling_detected:
   - "Ruff: E, W, F, N, D, UP, B, A, C4, ARG, RUF; line-length 100"
-  - "Pyright: typeCheckingMode=strict for src"
+  - "Pyright: typeCheckingMode=strict for src; Python 3.10"
   - "pytest: asyncio_mode=strict"
+  - "typing_extensions>=4.5 is a runtime dependency; uv.lock resolves 4.15.0"
 
 findings:
   typing: []
@@ -32,14 +34,14 @@ findings:
   observability: []
 
 review_notes:
-  - "_local_model_loader.py has the required two blank lines before LocalModelLoader; the earlier E302 finding is resolved."
-  - "LocalModelLoader.load retains the exact two-line deferred-contract TODO and uses object without introducing LoadedRuntimeModel, a Protocol, or a provider abstraction."
-  - "Explicit match/case branches cover PICKLE, TORCH, and ONNX; the fallback raises ValueError, and production code contains no mapping dispatch, _route_mapping seam, or KeyError dispatch behavior."
-  - "Known-family handlers remain awaited no-I/O NotImplementedError stubs; ModelPool directly awaits the loader without catching or translating failures, so cancellation propagates unchanged."
-  - "Source annotations are complete for the strict Pyright source scope and introduce no Any, cast, or type-ignore escape hatch."
-  - "Branch tests use direct imports and scoped private-handler monkeypatching as required to verify explicit dispatch; they include assertions, avoid real I/O and dynamic module loading, and retain coverage for invalid input and cancellation propagation."
-  - "Reviewed changes stay within the bounded model_pool lane; model_artifact remains consumed-only and no adjacent runtime, registry, cache, release, or public-surface scope drift is present."
+  - "The latest implementation-review is approved for assert-never-explicit-dispatch, and the canonical step tracker marks implementation-review [X] while code-review remains [ ]."
+  - "LocalModelLoader.load retains the exact two-line deferred-contract TODO and its fully annotated object return without introducing LoadedRuntimeModel, a Protocol, or a provider abstraction."
+  - "typing_extensions.assert_never is compatible with the Python 3.10 baseline through the existing runtime dependency; using it instead of typing.assert_never preserves that compatibility and supplies the strict type-checker unreachable-path assertion."
+  - "The explicit match/case covers every current closed LoaderFamily member (PICKLE, TORCH, ONNX); each branch awaits only its corresponding private handler, and case _ calls assert_never. There is no ValueError fallback, mapping lookup, _route_mapping seam, or KeyError dispatch."
+  - "Known-family handlers remain narrow no-I/O NotImplementedError stubs. ModelPool keeps direct awaiting with no exception translation or catching, so loader failures and cancellation continue to propagate unchanged."
+  - "Tests use direct imports and scoped monkeypatches of the three private family handlers to prove each dispatch branch, include assertions, avoid real I/O and dynamic module loading, and retain default-failure, invalid-input, path-appearance, package-surface, failure, and cancellation coverage."
+  - "The reviewed source and tests remain within the bounded model_pool lane; model_artifact is consumed-only and no registry, cache, gateway, execution, release, or public-surface scope drift is present."
 
 gate_status: code-review-complete
 next_role: Implementer
-next_action: "Record the approved code-review gate by marking code-review [X] in the canonical step evidence; then return the topic to the dispatcher for the next human boundary."
+next_action: "Record this approved code-review gate by marking code-review [X] in the canonical step evidence; then return the topic to the dispatcher for the next human boundary."

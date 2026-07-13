@@ -1,28 +1,23 @@
 verdict: approved
 review_status: COMPLETE
-revision: explicit-match-case-dispatch-e302-format-recheck
+revision: assert-never-explicit-dispatch
 preconditions:
-  plan_review: approved
+  plan_review:
+    verdict: approved
+    artifact: plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.plan-review.json
   human_check:
     status: cleared
     cleared_for: implement-plan
+    revision: assert-never-explicit-dispatch
   implementation_diff: present
   implementation_steps: complete
-  canonical_step_tracker: "All 4 implementation steps complete"
+  canonical_step_tracker: "All 4 implementation steps are marked [X]."
 
-fresh_recheck:
-  trigger: >-
-    The prior independent code review found only Ruff E302 in the private loader;
-    this review rechecks the corrected source revision before a new code review.
-  source_delta_since_prior_implementation_review:
-    file: src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py
-    change: "One additional top-level blank line between the import block and LocalModelLoader."
-    non_format_source_or_test_delta: no
-  validation:
-    - "uv run pytest --no-cov tests/model_runtime/model_pool -v: 17 passed"
-    - "uv run pytest -v: 157 passed; coverage 99.00%"
-    - "uv run ruff check src tests plan/model-pool-local-loader-minimal-boundary: all checks passed"
-    - "uv run pyright: 0 errors, 0 warnings, 0 informations"
+validation:
+  - "uv run pytest --no-cov tests/model_runtime/model_pool -v: 17 passed"
+  - "uv run pytest -v: 157 passed; total coverage 98.60%"
+  - "uv run ruff check src tests plan/model-pool-local-loader-minimal-boundary: all checks passed"
+  - "uv run pyright: 0 errors, 0 warnings, 0 informations"
 
 traceability_matrix:
   - step: >-
@@ -35,6 +30,7 @@ traceability_matrix:
       - tests/model_runtime/model_pool/test_local_model_loader.py:40
       - tests/model_runtime/model_pool/test_local_model_loader.py:82
       - tests/model_runtime/model_pool/test_local_model_loader.py:118
+      - tests/model_runtime/model_pool/test_local_model_loader.py:126
       - tests/model_runtime/model_pool/test_model_pool.py:26
       - tests/model_runtime/model_pool/test_model_pool.py:59
       - tests/model_runtime/model_pool/test_model_pool.py:81
@@ -42,15 +38,15 @@ traceability_matrix:
       - plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.red-tests.yaml:1
   - step: >-
       Remove mapping dispatch and its constructor/test seam; add the exact TODO, explicit
-      awaited PICKLE/TORCH/ONNX match/case branches, no-I/O handlers, and unforeseen-family
-      ValueError behavior.
+      awaited PICKLE/TORCH/ONNX match/case branches, no-I/O handlers, and assert_never
+      closed-enum fallback.
     status: done
     evidence:
-      - src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:11
+      - src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:5
       - src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:13
-      - src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:15
-      - src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:22
-      - src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:26
+      - src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:17
+      - src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:24
+      - src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:27
   - step: >-
       Update pool.py and __init__.py only as needed for the removed private seam while
       preserving ModelPool public contract, factory-once retention, TypeError validation,
@@ -63,16 +59,15 @@ traceability_matrix:
       - src/async_model_gateway/model_runtime/model_pool/__init__.py:3
       - tests/model_runtime/model_pool/test_model_pool.py:26
       - tests/model_runtime/model_pool/test_model_pool_package_surface.py:15
-      - "No current-revision change was needed in pool.py or __init__.py."
+      - "No assert_never-revision edit was needed in pool.py or __init__.py."
   - step: >-
       Run the declared targeted pytest, full pytest, Ruff, and Pyright commands and mark
       only completed implementation steps.
     status: done
     evidence:
-      - plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.step.md:33
-      - "python .agents/skills/plan-step-tracker/scripts/step_tracker.py check_impl_steps_succeeded model-pool-local-loader-minimal-boundary: all 4 complete"
+      - plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.step.md:40
       - "uv run pytest --no-cov tests/model_runtime/model_pool -v: 17 passed"
-      - "uv run pytest -v: 157 passed; coverage 99.00%"
+      - "uv run pytest -v: 157 passed; total coverage 98.60%"
       - "uv run ruff check src tests plan/model-pool-local-loader-minimal-boundary: all checks passed"
       - "uv run pyright: 0 errors, 0 warnings, 0 informations"
 
@@ -81,7 +76,7 @@ scope_creep_check:
       No artifact file read, pickle/torch/onnx integration, concrete runtime-model type,
       Protocol, or provider abstraction.
     violated: no
-    evidence: src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:11
+    evidence: src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:13
   - non_goal: >-
       No cache/reuse, close/unload, sharing, timeout, retry, batching, fan-out, or
       background ownership.
@@ -102,36 +97,36 @@ contract_check:
     detail: "__all__ remains exactly [\"ModelPool\"]; LocalModelLoader is not re-exported."
   - item: LocalModelLoader is private with no constructor injection seam.
     status: matches
-    detail: "LocalModelLoader has no explicit constructor; package-surface regression test passes."
+    detail: "LocalModelLoader has no explicit constructor; its route is not mapping-injected."
   - item: >-
       LocalModelLoader.load has the locked signature and exact two-line deferred-contract
       TODO, with no LoadedRuntimeModel, Protocol, or provider abstraction.
     status: matches
-    detail: "load signature and exact TODO are at _local_model_loader.py:11-14; regression test passes."
+    detail: "The signature and exact TODO are at _local_model_loader.py:13-16."
   - item: >-
-      All current LoaderFamily values use explicit awaited match/case branches; unforeseen
-      values raise ValueError rather than KeyError.
+      All current LoaderFamily values use explicit awaited match/case branches and the
+      only closed-enum fallback calls typing_extensions.assert_never.
     status: matches
-    detail: "PICKLE, TORCH, and ONNX branches at _local_model_loader.py:15-21; fallback ValueError at :22-24."
+    detail: "PICKLE, TORCH, and ONNX directly await matching handlers at :17-23; case _ calls assert_never at :24-25."
   - item: >-
       Known handlers remain no-I/O NotImplementedError; ModelPool keeps validation,
       factory-once retention, direct await, and unchanged failure/cancellation propagation.
     status: matches
-    detail: "Handlers at :26-36 and pool wiring at pool.py:25-35 are covered by targeted tests."
+    detail: "Handlers are at _local_model_loader.py:27-37; retained-loader wiring is at pool.py:25-35."
 
 test_plan_check:
   - case_type: happy path — every explicit family branch reaches only its matching private handler
     status: present
     location: tests/model_runtime/model_pool/test_local_model_loader.py:40
-  - case_type: invalid input — non-artifact input is TypeError; unforeseen family is ValueError
+  - case_type: invalid input — non-artifact input is TypeError; invalid artifact construction remains ValueError
     status: present
-    location: tests/model_runtime/model_pool/test_model_pool.py:59; tests/model_runtime/model_pool/test_local_model_loader.py:127
+    location: tests/model_runtime/model_pool/test_model_pool.py:59; tests/model_runtime/model_artifact/test_model_artifact.py:342
   - case_type: edge case — path appearance does not affect selected family handler
     status: present
     location: tests/model_runtime/model_pool/test_local_model_loader.py:82
-  - case_type: regression — exact TODO and removed constructor seam are retained
+  - case_type: regression — exact TODO, assert_never fallback, and removed constructor seam are retained
     status: present
-    location: tests/model_runtime/model_pool/test_local_model_loader.py:28; tests/model_runtime/model_pool/test_model_pool_package_surface.py:40
+    location: tests/model_runtime/model_pool/test_local_model_loader.py:28; tests/model_runtime/model_pool/test_local_model_loader.py:126; tests/model_runtime/model_pool/test_model_pool_package_surface.py:40
   - case_type: backward compatibility — ModelPool-only package export and unchanged public signature
     status: present
     location: tests/model_runtime/model_pool/test_model_pool_package_surface.py:15
@@ -140,9 +135,9 @@ test_plan_check:
     location: tests/model_runtime/model_pool/test_local_model_loader.py:118; tests/model_runtime/model_pool/test_model_pool.py:81
 
 review_notes:
-  - "Fresh recheck confirms the only post-review source delta is the E302 blank line at _local_model_loader.py:7."
-  - "Production code contains no _route_mapping, LoaderFamily mapping lookup, or KeyError dispatch."
-  - "Tests use direct imports and private-handler monkeypatching; no dynamic module loading is present."
-  - "Only _local_model_loader.py changes source for the explicit-dispatch revision; pool.py and __init__.py remain compatible without revision changes."
+  - "Production dispatch has three explicit LoaderFamily branches and no _route_mapping, mapping lookup, KeyError dispatch, or ValueError fallback."
+  - "typing_extensions is an existing runtime dependency; the implementation adds no dependency."
+  - "Tests use ordinary imports and private-handler monkeypatching; no dynamic module loading or fabricated non-LoaderFamily fallback is present."
+  - "The prior implementation-review and code-review artifacts describe the superseded ValueError fallback and are stale for this revision."
 next_role: Reviewer
-next_action: "Run independent python-code-review and write the sole declared code-review artifact."
+next_action: "Run an independent python-code-review and replace the stale code-review verdict before PR routing."

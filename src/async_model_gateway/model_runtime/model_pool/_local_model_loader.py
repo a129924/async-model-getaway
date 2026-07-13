@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing_extensions import assert_never
+
 from async_model_gateway.model_runtime.model_artifact import LoaderFamily, ModelArtifact
 
 
@@ -20,8 +22,7 @@ class LocalModelLoader:
             case LoaderFamily.ONNX:
                 return await self._load_onnx(artifact)
             case _:
-                msg = "artifact.loader_family must be a LoaderFamily"
-                raise ValueError(msg)
+                assert_never(artifact.loader_family)
 
     async def _load_pickle(self, _artifact: ModelArtifact) -> object:
         """Fail closed until pickle artifact I/O is implemented in a later topic."""
