@@ -1,206 +1,192 @@
-> Semantic warning: authoring 時找不到
-> `analysis/model-pool-local-loader-minimal-boundary/requirements.md` 與
-> `analysis/model-pool-local-loader-minimal-boundary/technical-spec.md`。
-> 本 plan 依據已鎖定的人類決策、現有 `model_runtime` 與
-> `model_artifact` contract 撰寫；analysis layer 為 incomplete-layer mode，
-> 不得被當作擴張 scope 或重開已鎖定決策的授權。
+> Semantic warning: `analysis/model-pool-local-loader-minimal-boundary/requirements.md`
+> 與 `analysis/model-pool-local-loader-minimal-boundary/technical-spec.md` 均不存在。
+> 本 revision 依據人類明確鎖定的 internal-seam correction 與現有
+> `model_runtime` / `model_artifact` contract；不得以此補齊 broader runtime scope。
 
 # model-pool-local-loader-minimal-boundary
 
 ## Goal / Outcome
 
-- 在 `async_model_gateway.model_runtime.model_pool` 建立最小、可測試的
-  public `ModelPool` boundary：`async ModelPool.acquire(ModelArtifact) -> object`。
-- `ModelPool` 是唯一 public local runtime-model provider / lifecycle owner；
-  private `LocalModelLoader` 只負責以既有 `LoaderFamily` 做 explicit routing。
-  此 slice 不讀 artifact、所有預設 route 都 fail closed，且不改變
-  `model_artifact` shared read contract。
+- 維持 `async_model_gateway.model_runtime.model_pool.ModelPool` 的最小 public
+  local runtime-model acquisition boundary，將 private `LocalModelLoader` 改為
+  與測試共用的 explicit `match/case` family-dispatch structure。
+- `model_artifact` 僅被消費；`LocalModelLoader.load(...) -> object` 只加註已鎖定
+  future contract TODO，不建立 `LoadedRuntimeModel` 或任何 abstraction。
 
 ## Scope
 
 - **In scope**:
-  - 新增 `model_pool` package、public `ModelPool` 與 private
-    `LocalModelLoader` collaborator。
-  - 以 direct-await acquire path 消費 `ModelArtifact`，並針對
-    `pickle`、`torch`、`onnx` 建立可觀測的 explicit internal routing。
-  - 新增該 package 的 pytest coverage，以及 Python workflow 的 RED-test、
-    step、spec 與 implementation-review evidence artifacts。
-
+  - 移除 private loader 的 `_route_mapping` construction/test seam 與所有
+    production mapping-lookup dispatch。
+  - 以 `artifact.loader_family` 的 explicit `match/case` 呼叫並 `await` 各
+    `_load_<family>` private handler；目前 `PICKLE`、`TORCH`、`ONNX` 各有一個 case。
+  - 測試 monkeypatch private family handlers，逐 branch 驗證 route，而非注入 mapping。
+  - 在 `LocalModelLoader.load(self, artifact: ModelArtifact) -> object` 加入精確
+    two-line TODO；重建本 revision 的 plan、RED-test、implementation-review 與
+    code-review gates。
 - **Out of scope**:
-  - 實體 artifact read、任何 serialization / framework import、provider adapter，
-    以及 runtime model 的具體型別。
-  - cache/reuse、close/unload、timeout、retry、background task、fan-out 或
-    broader lifecycle policy。
+  - artifact I/O、serialization/framework imports、provider adapter、runtime-model
+    concrete type、Protocol、provider abstraction。
+  - cache/reuse、close/unload、timeout、retry、background task、fan-out、broader
+    lifecycle policy。
   - `ModelGateway`、`ModelExecution`、`model_registry`、`response_cache`、
-    `model_artifact` 的欄位 / vocabulary / validation 語意，及任何 README、
-    version、release、tag 變更。
+    `model_artifact` source/tests/exports/fields/vocabulary/validation，及 README、
+    version、release、tag。
 
 ## Locked Decisions
 
-- D1 verdict: `non-trivial`；此 topic 新增 public async API、private
-  collaborator wiring、三個 `LoaderFamily` route 與跨多個 source/test files。
-- public owner 固定為
-  `async_model_gateway.model_runtime.model_pool.ModelPool`；package root 的
-  `__all__` 只可列 `ModelPool`。`async_model_gateway` 與
-  `async_model_gateway.model_runtime` 都不得 re-export 它。
-- public method 固定為
-  `async def acquire(self, artifact: ModelArtifact) -> object`。不新增第二個
-  public method、factory、Protocol、constructor injection 或 configuration API。
-- `pool.py` 固定定義 private factory
-  `def _create_local_model_loader() -> LocalModelLoader`，它零參數並回傳一個
-  `LocalModelLoader`。`ModelPool.__init__` 每次 construction 恰呼叫此 factory
-  一次，保存該次回傳的同一個 loader 至 pool instance lifetime；`acquire(...)`
-  不得重建或替換它。本 topic 不提供 close、unload、sharing、cache 或 reuse
-  semantics。
-- private collaborator 固定置於
-  `async_model_gateway.model_runtime.model_pool._local_model_loader`，不在任何
-  package root re-export。其唯一 test-only mapping construction seam 固定為
-  `LocalModelLoader(*, _route_mapping: Mapping[LoaderFamily, Callable[[ModelArtifact], Awaitable[object]]] | None = None)`；
-  production `ModelPool` 只呼叫無參數 factory，絕不暴露此 seam。當
-  `_route_mapping` 非 `None` 時，constructor 在任何 route 被 await 前驗證：
-  key set 必須恰為 `set(LoaderFamily)`（不得遺漏、額外或使用非 family key），
-  否則 raise `ValueError`；傳入非 `Mapping` 或任一 value 非 callable 則 raise
-  `TypeError`。`pool.py` factory 是 pool-wiring test seam，僅允許 tests 以
-  `async_model_gateway.model_runtime.model_pool.pool._create_local_model_loader`
-  monkeypatch，不構成 public API。
-- `LocalModelLoader.load(...)` 必須只讀取 `artifact.loader_family`，以明確 map
-  dispatch 到對應 family route；不得從 `artifact_path`、content、options 或
-  object shape 推論 family。每個 starter family 都必須有獨立且可觀測 route。
-- 預設三個 family route 都在不開檔、不 import provider、不中介執行緒的前提下
-  raise `NotImplementedError`；這是本 slice 的 no-I/O fail-closed outcome，
-  不是 fallback 或 partial load。未來真正 loader 行為必須另開 topic。
-- `acquire(...)` 對非 `ModelArtifact` input 在 routing 前 raise `TypeError`；
-  route 的 `NotImplementedError`、其他 exception 與 `asyncio.CancelledError`
-  都原樣傳遞，不包裝、不吞掉、不轉成 `None`。
-- `ModelArtifact` / `LoaderFamily` 只被 consumed：不修改其 source、tests、
-  package exports、fields、vocabulary 或 validation rules。
-- 本 topic 採 Python planning extension path。stable-library metadata 是
-  explicit no-promotion：README、version 與 release routing 均不變；不得因
-  metadata section 存在而把它們加入 implementation paths。
+- D1 verdict: `non-trivial`；此 revision changes an internal test seam and async
+  dispatch structure across source, tests, spec, and workflow evidence.
+- `ModelPool` remains the only `model_pool` package-root public export. Its public
+  signature remains exactly `async def acquire(self, artifact: ModelArtifact) -> object`.
+  No constructor injection, factory API, lifecycle method, root re-export, or
+  `model_runtime` umbrella re-export is added.
+- `pool.py` retains private `def _create_local_model_loader() -> LocalModelLoader`.
+  `ModelPool.__init__` calls it exactly once and retains its result; `acquire(...)`
+  validates `ModelArtifact` and directly awaits that loader.
+- `LocalModelLoader` stays private at
+  `async_model_gateway.model_runtime.model_pool._local_model_loader`; it accepts no
+  `_route_mapping` or replacement injection seam. The pool factory remains a
+  pool-wiring test seam only.
+- `LocalModelLoader.load(self, artifact: ModelArtifact) -> object` contains exactly:
+
+  ```python
+  # TODO: Replace `object` with the agreed runtime-model contract
+  # (tentatively `LoadedRuntimeModel`) once that boundary is defined.
+  ```
+
+  This is documentation only: do not create `LoadedRuntimeModel`, a Protocol, or a
+  provider abstraction.
+- `load(...)` reads only `artifact.loader_family` and uses explicit `match/case`:
+  `LoaderFamily.PICKLE -> await self._load_pickle(artifact)`,
+  `LoaderFamily.TORCH -> await self._load_torch(artifact)`, and
+  `LoaderFamily.ONNX -> await self._load_onnx(artifact)`. No mapping lookup, path
+  inference, content/options inference, fallback, or `KeyError` dispatch is allowed.
+  An unforeseen/invalid family is `ValueError`, not a new domain exception.
+- Known family handlers remain no-I/O and raise `NotImplementedError`. Invalid public
+  `ModelPool.acquire` input remains `TypeError`; existing invalid `ModelArtifact`
+  construction remains `ValueError`; route failures and `asyncio.CancelledError`
+  propagate unchanged. Do not add `UnsupportedLocalModelLoaderError`.
+- `ModelArtifact` / `LoaderFamily` are consumed-only shared read contracts; no source,
+  test, export, field, vocabulary, or validation change is authorized.
+- Async-planning is a focused retrofit, not a new lifecycle design: direct await,
+  caller-owned cancellation, no timeout/retry, and no external resource ownership
+  remain locked.
+- Stable-library intent is explicit no-promotion: README, version, and release paths
+  remain excluded.
+- Existing plan-review, human-check, RED-test, implementation-review, and any
+  unrecorded prior code-review result describe the superseded mapping-seam revision.
+  They must not be treated as approval for this revision; their respective owners must
+  revalidate them after plan review. The sole code-review evidence location for this
+  topic is the declared `*.code-review.yaml` path below.
+- A fresh code-review artifact is produced only after this revision's fresh
+  implementation-review artifact is `approved`, and before `pr-comment` routing. It
+  is stale if any reviewed source/test change, or any planning/spec/RED/step revision
+  that changes the implementation contract, occurs after its verdict. A stale artifact
+  cannot satisfy the quality gate; the Reviewer must issue a new verdict at the same
+  declared path.
 
 ## Boundaries / Exclusions
 
-- Planning actor 僅 author planning artifacts；Tester 先產生 RED-test evidence；
-  Implementer 只在 approved path contract 內實作；Reviewer 產生獨立 verdict；
-  Human 單獨關閉 `human check` 與 `human merge`。
-- 任何需要公開 `LocalModelLoader`、加入 loader configuration、實際 artifact I/O、
-  resource cleanup、remote provider、execution 或 gateway semantics 的需求，必須
-  回到 `spec-and-plan-finalization` 並另開 bounded topic。
-- 若實作需要修改未列出的 source、tests、docs 或 metadata path，必須停止；不得
-  用臨時 re-export、compatibility shim 或 README wording sweep 擴張本 topic。
+- Planning actor edits only planning artifacts; Tester authors fresh RED evidence;
+  Implementer changes only approved source/tests/step progress; independent reviewers
+  issue plan-, implementation-, and code-review verdicts; Human alone clears human
+  check and human merge gates.
+- If any change needs public `LocalModelLoader`, actual artifact loading, different
+  runtime-model typing, provider behavior, a new exception hierarchy, or an adjacent
+  model runtime owner, stop and return to `spec-and-plan-finalization`.
+- No implementation path outside the exact table below is authorized.
 
 ## Status / Allowed Transitions
 
-- **Current**: `review-ready`
-- **Execution model**: follow
-  `spec-and-plan-finalization -> implement-plan -> pr-comment -> pr-comment-review-pr-comments-and-fix`；
-  this topic stops at `merged` and does not enter `release`.
+- **Current**: `review-ready` — explicit-dispatch rework revision; prior approval and
+  human clearance are stale and require revalidation.
+- **Execution model**: `spec-and-plan-finalization -> implement-plan -> pr-comment ->
+  pr-comment-review-pr-comments-and-fix`; stop at `merged`, with no `release` phase.
 - **Allowed transitions**:
   - `planned` -> `creator-in-progress`
   - `creator-in-progress` -> `review-ready`
   - `review-ready` -> `reviewer-in-progress`
-  - `reviewer-in-progress` -> `approved`
-  - `reviewer-in-progress` -> `needs-rework`
+  - `reviewer-in-progress` -> `approved` | `needs-rework`
   - `needs-rework` -> `creator-in-progress`
-  - `approved` -> `creator-in-progress`
-  - `approved` -> `publish-in-progress`
-  - `publish-in-progress` -> `pr-open`
-  - `publish-in-progress` -> `merged`
-  - `pr-open` -> `needs-rework`
-  - `pr-open` -> `merged`
+  - `approved` -> `creator-in-progress` | `publish-in-progress`
+  - `publish-in-progress` -> `pr-open` | `merged`
+  - `pr-open` -> `needs-rework` | `merged`
 
-Routing notes:
-
-- `implement-plan` 只可在 plan-review artifact 為 `approved` 且 human check
-  artifact 明確 cleared 後開始；Python RED test authoring 是其第一個 mandatory
-  subphase。
-- Reviewer 不得在 review artifact 外以聊天文字取代 verdict；Human check 和
-  human merge 都不得由任何 agent 預填或推定。
-- `needs-rework` 若改變 public contract、artifact paths、async baseline 或
-  stable-library intent，必須回到 `spec-and-plan-finalization`。
+  `implement-plan` may start only after a fresh approved plan-review artifact and
+  fresh human-check clearance. RED tests are the mandatory first Python subphase. A
+  fresh approved implementation-review artifact is required before the independent
+  code review; only a fresh `approved` code-review artifact permits `pr-comment`
+  routing. Any covered revision after either reviewer verdict resets that verdict and
+  returns routing to the applicable earlier gate.
 
 ## Artifact Paths
 
 | Artifact | Path | Owner | Role |
 | --- | --- | --- | --- |
-| Topic plan | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.plan.md` | Planning actor | repo-visible execution contract |
-| Python spec | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.spec.md` | Planning actor | non-trivial behavior contract |
-| Step tracking | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.step.md` | Implementer | Python workflow progress / gate tracking |
-| Plan review | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.plan-review.json` | Plan-Reviewer | independent planning verdict |
-| Human check | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.human-check.json` | Human | explicit clearance into `implement-plan` |
-| RED-test evidence | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.red-tests.yaml` | Tester | mandatory first implementation subphase evidence |
-| Implementation review | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.implementation-review.yaml` | Reviewer | implementation-plan conformance gate before PR routing |
-| Public package root | `src/async_model_gateway/model_runtime/model_pool/__init__.py` | Implementer | re-export only `ModelPool` |
-| Public pool owner | `src/async_model_gateway/model_runtime/model_pool/pool.py` | Implementer | `ModelPool` acquire boundary and private collaborator wiring |
-| Private loader collaborator | `src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py` | Implementer | explicit family routing and no-I/O default routes |
-| Package-surface tests | `tests/model_runtime/model_pool/test_model_pool_package_surface.py` | Tester | locks exports and non-re-export boundaries |
-| Pool tests | `tests/model_runtime/model_pool/test_model_pool.py` | Tester | locks acquire delegation, lifetime/wiring, failures and cancellation |
-| Private-loader tests | `tests/model_runtime/model_pool/test_local_model_loader.py` | Tester | locks explicit family route matrix and no-I/O fail-closed behavior |
+| Topic plan | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.plan.md` | Planning actor | execution contract |
+| Python spec | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.spec.md` | Planning actor | behavior contract |
+| Step tracking | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.step.md` | Implementer | progress/gate tracking |
+| Plan review | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.plan-review.json` | Plan-Reviewer | fresh planning verdict |
+| Human check | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.human-check.json` | Human | fresh clearance into implement-plan |
+| RED-test evidence | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.red-tests.yaml` | Tester | fresh first-subphase evidence |
+| Implementation review | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.implementation-review.yaml` | Reviewer | fresh plan-conformance gate |
+| Code review | `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.code-review.yaml` | Reviewer | sole fresh Python-quality verdict after implementation review, before PR routing |
+| Package root | `src/async_model_gateway/model_runtime/model_pool/__init__.py` | Implementer | `ModelPool` re-export only |
+| Public pool | `src/async_model_gateway/model_runtime/model_pool/pool.py` | Implementer | public acquisition / retained loader |
+| Private loader | `src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py` | Implementer | explicit family dispatch |
+| Package tests | `tests/model_runtime/model_pool/test_model_pool_package_surface.py` | Tester | public surface / TODO regression |
+| Pool tests | `tests/model_runtime/model_pool/test_model_pool.py` | Tester | acquire wiring/failures/cancellation |
+| Loader tests | `tests/model_runtime/model_pool/test_local_model_loader.py` | Tester | every `match/case` branch / default handlers |
 
-Artifact path notes:
-
-- `README.md`, `pyproject.toml`, `src/async_model_gateway/__version__.py`, `uv.lock`,
-  `docs/architecture.md`, all `model_artifact` files, root package files,
-  `model_registry`, and `response_cache` are explicit no-change paths.
-- Reviewer-owned and human-owned evidence paths are declared for routing but must not
-  be pre-created or written by the planning actor or Implementer.
-- Any path outside this table is a plan-alignment failure and must return to
-  `spec-and-plan-finalization`.
-
-## Stable library metadata
-
-- `README row`: no change. This no-I/O minimal boundary does not promote README
-  feature wording in this topic.
-- `VERSION bump`: no bump; `pyproject.toml`, `src/async_model_gateway/__version__.py`,
-  and `uv.lock` remain untouched.
-- `timing`: no `publish-in-progress` metadata promotion and no release action.
-- `rationale`: public API scope is deliberately bounded to the initialization-stage
-  minimal boundary; versioning, README promotion, and release policy require a
-  separate release-facing topic.
+`README.md`, `pyproject.toml`, `src/async_model_gateway/__version__.py`, `uv.lock`,
+`docs/architecture.md`, all `model_artifact` paths, root package paths,
+`model_registry`, and `response_cache` are explicit no-change paths. Evidence rows
+are routing declarations only; the planning actor does not write reviewer or Human
+artifacts.
 
 ## Implementation Steps
 
-1. Tester adds RED coverage in `tests/model_runtime/model_pool/test_model_pool_package_surface.py`, `test_model_pool.py`, and `test_local_model_loader.py`, then records the failing contract in `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.red-tests.yaml`: only `ModelPool` is package-public; construct `LocalModelLoader(_route_mapping=...)` with a complete mapping containing exactly the three `LoaderFamily` keys and unique async sentinel routes; monkeypatch `async_model_gateway.model_runtime.model_pool.pool._create_local_model_loader` before `ModelPool()` construction with a zero-argument callable returning that loader; assert factory-once retention, direct family routing, no-I/O default failures, and the locked invalid-input, mapping-validation, route-failure, and cancellation surfaces.
-2. Implementer adds `src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py` with private `LocalModelLoader(*, _route_mapping=...)`: a supplied mapping must have all and only `LoaderFamily` keys before any route is awaited (`ValueError` otherwise), while a non-`Mapping` or non-callable route value raises `TypeError`; it dispatches explicitly and supplies no-I/O defaults that raise `NotImplementedError`.
-3. Implementer adds `src/async_model_gateway/model_runtime/model_pool/pool.py` and `__init__.py`: define `def _create_local_model_loader() -> LocalModelLoader`, have each `ModelPool.__init__` call it exactly once and retain that returned instance, have `acquire(...)` validate `ModelArtifact` then directly await the retained loader, and re-export only `ModelPool` from the topic package root.
-4. Implementer runs `uv run pytest --no-cov tests/model_runtime/model_pool -v` for targeted behavior validation, `uv run pytest -v` as the repository-wide coverage gate, `uv run ruff check src tests plan/model-pool-local-loader-minimal-boundary`, and `uv run pyright`; after all pass, update only the Implementer-owned progress in `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.step.md`.
+1. Tester replaces `_route_mapping`-based tests in the three declared test files and
+   writes fresh RED evidence: assert the exact two-line TODO, monkeypatch each private
+   `_load_pickle`, `_load_torch`, and `_load_onnx` handler with distinct async results,
+   and prove each `LoaderFamily` follows only its own explicit branch. Retain package
+   surface, pool-factory retention, TypeError, ValueError, default NotImplementedError,
+   route-failure, cancellation, and path-appearance coverage. Tests must not reference
+   `_route_mapping` or use dynamic module loading.
+2. Implementer revises `_local_model_loader.py`: remove mapping types, construction
+   parameter, helper validation, stored mapping, and lookup dispatch; add the exact
+   TODO; implement the three explicit `match/case` branches with `await`ed matching
+   private handlers; retain no-I/O handler `NotImplementedError`; raise `ValueError`
+   for an unforeseen family instead of allowing `KeyError`.
+3. Implementer updates `pool.py` and `__init__.py` only as needed to conform to the
+   removed private constructor seam, preserving ModelPool's locked public contract,
+   factory-once retention, TypeError validation, direct await, and package-root export.
+4. Implementer runs the declared targeted pytest, full pytest, ruff, and pyright
+   commands and marks only the completed implementation steps in the step artifact.
 
 ## Validation / Acceptance Checks
 
-- All canonical topic-plan sections, status transitions, declared artifact paths, and
-  reviewer handoff JSON match `plan/agent-handoff-workflow.md` and
-  `plan/topic-plan-contract.md`.
-- Package root re-exports exactly `ModelPool`; root package, `model_runtime` umbrella,
-  and `model_artifact` do not re-export `ModelPool` or `LocalModelLoader`.
-- `inspect.signature(ModelPool.acquire)` is exactly async
-  `acquire(self, artifact: ModelArtifact) -> object`; no extra public acquire options
-  or lifecycle methods are added.
-- `pool.py` defines exactly `def _create_local_model_loader() -> LocalModelLoader`.
-  Tests monkeypatch exactly
-  `async_model_gateway.model_runtime.model_pool.pool._create_local_model_loader`
-  with a zero-argument callable before construction; each `ModelPool.__init__`
-  calls it once and retains its exact returned loader for that pool lifetime.
-- `acquire` delegates the same `ModelArtifact` object to that retained loader and
-  returns the route's object unchanged.
-- Each `LoaderFamily` value follows its own injected route; explicit family wins even
-  when `artifact_path` suggests a different serialization format. No route performs
-  filesystem or provider I/O in this slice.
-- `LocalModelLoader(*, _route_mapping=...)` is the sole test-only mapping seam.
-  A supplied mapping is validated before any route await: it has all and only the
-  current `LoaderFamily` keys or raises `ValueError`; a non-`Mapping` argument or
-  non-callable route value raises `TypeError`.
-- Default routes raise `NotImplementedError`; non-`ModelArtifact` input raises
-  `TypeError`; route exceptions and cancellation propagate unchanged. No `None`,
-  fallback, cache, retry, timeout, or wrapper semantics are introduced.
-- Targeted behavior validation runs `uv run pytest --no-cov
-  tests/model_runtime/model_pool -v` so the package-level test result is not
-  coupled to the repository-wide coverage threshold. `uv run pytest -v` then
-  passes as the repository-wide coverage gate; ruff and pyright also pass.
-  Tests use ordinary imports and monkeypatch only private seams; they do not use
-  dynamic module loading.
-- Before PR routing, independent implementation review records plan conformance in
-  the declared `.implementation-review.yaml`; it does not replace the later code
-  review or human merge gate.
+- `LocalModelLoader.load` has exactly the specified signature and two-line TODO;
+  neither `LoadedRuntimeModel` nor a Protocol/provider abstraction exists.
+- Production dispatch contains explicit `match artifact.loader_family` cases for all
+  three current families. Each case directly awaits only its matching private handler;
+  no `_route_mapping`, mapping lookup, or `KeyError` dispatch remains.
+- Tests monkeypatch the three private handler methods and demonstrate every branch,
+  path-independent family choice, default `NotImplementedError`, TypeError/ValueError
+  surfaces, unchanged route failures, and unchanged cancellation.
+- `ModelPool` public API, one-time factory retention, public exports, direct await,
+  `model_artifact` consumed-only contract, and all scope exclusions remain unchanged.
+- Before `pr-comment`, the Reviewer records an independent code-quality verdict at
+  `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.code-review.yaml`
+  only after the fresh implementation-review artifact is `approved`. Acceptance
+  requires that sole artifact to contain `verdict: approved`, the seven
+  `python-code-review` finding dimensions, and evidence that no covered revision has
+  occurred since review; `needs-rework`, absence, or staleness returns to the
+  applicable rework gate and cannot enter PR routing.
+- Targeted validation: `uv run pytest --no-cov tests/model_runtime/model_pool -v`.
+  Full coverage gate: `uv run pytest -v`. Static gates: `uv run ruff check src tests
+  plan/model-pool-local-loader-minimal-boundary` and `uv run pyright`.
 
 ## Reviewer Handoff
 
@@ -216,11 +202,21 @@ Artifact path notes:
 }
 ```
 
+Plan-Reviewer must treat the existing reviewer/human evidence as stale, verify the
+explicit-dispatch contract and paths above, including the sole future code-review
+evidence path, and emit a new verdict before any fresh human check or RED-test phase.
+After fresh implementation review is `approved`, hand off to an independent Reviewer
+for `python-code-review`; that Reviewer writes only
+`plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.code-review.yaml`
+with `verdict: approved|needs-rework`, `tooling_detected`, and all seven findings
+dimensions. Only its fresh `approved` verdict hands the topic to `pr-comment`; a
+`needs-rework` verdict or later covered revision returns the topic to rework and
+requires a replacement verdict at that same path.
+
 ## Post-merge / release actions
 
-- No release workflow required.
-- Merge 後停止；README、version、tag、release note 與 broader local-loader behavior
-  都必須另開 topic。
+- No release workflow required. After merge, stop; all wider local-loader behavior is
+  a separate topic.
 
 ## Open Questions / Unresolved Items
 
@@ -228,128 +224,92 @@ Artifact path notes:
 
 ## Non-goals
 
-- 不實作任何 artifact file read、pickle / torch / onnx provider integration 或
-  runtime model concrete type。
-- 不實作 pool cache/reuse、close/unload、resource sharing、timeout、retry、
-  batching、fan-out 或 background ownership。
-- 不新增 `ModelGateway`、`ModelExecution`、provider framework、registry/cache
-  integration，亦不修改 `ModelArtifact` shared read contract。
-- 不修改 README、version、release metadata、tag 或 release workflow。
-
-## Current Context
-
-- `src/async_model_gateway/model_runtime/__init__.py` 是無 re-export 的 umbrella
-  root；唯一已落地 child module 是 `model_artifact`。
-- `src/async_model_gateway/model_runtime/model_artifact/` 已公開 immutable
-  `ModelArtifact` 與 explicit `LoaderFamily` (`pickle`、`torch`、`onnx`)。
-  `ModelArtifact` 已保證 `artifact_path` 與 `loader_options` 的 read contract；
-  本 topic 只能消費這個 contract。
-- `pyproject.toml` 已啟用 strict pytest asyncio mode、ruff 與 strict pyright；
-  沒有可重用的 `ModelPool`、`LocalModelLoader` 或 provider adapter implementation。
+- No artifact file read, pickle/torch/onnx integration, concrete runtime-model type,
+  Protocol, or provider abstraction.
+- No cache/reuse, close/unload, sharing, timeout, retry, batching, fan-out, or
+  background ownership.
+- No ModelGateway, ModelExecution, registry/cache integration, model_artifact change,
+  new domain exception, README/version/release/tag change.
 
 ## Requirements
 
-1. `ModelPool.acquire` 是唯一新增 public local acquisition method，並只接收
-   `ModelArtifact`、回傳 `object`。
-2. `LocalModelLoader` 必須保持 private，且每個 locked `LoaderFamily` 都經由
-   explicit mapping route 處理，不允許 path inference。
-3. 沒有 injected test route 時，三個 default route 都不得 I/O，且必須
-   `NotImplementedError` fail closed。
-4. async boundary 只允許 direct await；cancellation 與 route failure 必須原樣
-   傳播。
-5. 所有新增 tests 必須覆蓋 happy path、invalid input、edge case、regression 與
-   backward compatibility，且不得使用 dynamic module loading。
+1. `ModelPool.acquire` remains the sole new public local acquisition method.
+2. `LocalModelLoader` remains private and dispatches each current family through its
+   matching explicit `match/case` branch only.
+3. The exact TODO records future typing without creating the deferred contract.
+4. Default handlers remain no-I/O `NotImplementedError`; invalid input uses existing
+   TypeError/ValueError classes and async failures/cancellation are unwrapped.
+5. Tests cover happy path, invalid input, edge case, regression, backward
+   compatibility, and async safety without dynamic loading.
 
 ## Decisions
 
-- Async-planning status: triggered — cite trigger evidence: the locked public API is `async ModelPool.acquire(...)`, it owns an async collaborator boundary, and cancellation/failure propagation must be frozen before implementation.
-- Module/package placement: add `src/async_model_gateway/model_runtime/model_pool/` with public `pool.py`, private `_local_model_loader.py`, and narrow `__init__.py`.
-- New public API: yes — `class ModelPool` with `async def acquire(self, artifact: ModelArtifact) -> object`; constructor remains `ModelPool()` with no public injection parameters.
-- Interface changes: no existing interface changes; `ModelArtifact` and `LoaderFamily` are imported and consumed unchanged.
-- Breaking changes allowed: no; existing public surfaces remain unchanged, while `ModelPool` is a new package-local public surface only.
-- New dependencies: no; use the standard library and existing project dependencies only.
-- Error handling strategy: non-`ModelArtifact` input raises `TypeError`; no-I/O default routes raise `NotImplementedError`; route failures and cancellation propagate unchanged without wrapping, fallback, or `None` conversion.
-- Typing strategy: strict typed annotations; `ModelArtifact` is the public argument type, `object` is the intentionally opaque return type, `_create_local_model_loader() -> LocalModelLoader` is the private pool factory contract, and `_route_mapping` uses `Mapping[LoaderFamily, Callable[[ModelArtifact], Awaitable[object]]] | None` without `Any`, public Protocols, or generic runtime-model abstraction.
+- Async-planning status: triggered — cite trigger evidence: the existing public
+  `async ModelPool.acquire(...)` directly awaits a private loader and this revision
+  preserves cancellation/failure routing.
+- Module/package placement: only the three declared `model_pool` source paths and
+  three declared test paths may change.
+- New public API: none; existing `ModelPool.acquire(...) -> object` is preserved.
+- Interface changes: private mapping seam removed; no public contract expansion.
+- Breaking changes allowed: no public breaking change; the locked internal test seam
+  is deliberately replaced and must be re-reviewed.
+- New dependencies: none.
+- Error handling strategy: TypeError for non-ModelArtifact acquire input, ValueError
+  for invalid artifact/family conditions, NotImplementedError for known no-I/O families,
+  and unwrapped route exceptions/cancellation; no domain exception.
+- Typing strategy: keep `object`; record only the exact deferred-contract TODO.
 
 ### Async boundary decision
 
-`ModelPool.acquire(...)` and private `LocalModelLoader.load(...)` are async so the
-public local acquisition seam is fixed now. This slice performs one direct await
-into an in-memory private route; it introduces no file, network, thread, process,
-or provider async I/O.
+`ModelPool.acquire` and `LocalModelLoader.load` stay async. `load` performs one direct
+await of its selected private handler; no external I/O is introduced.
 
 ### Resource lifecycle decision
 
-Each `ModelPool.__init__` calls `_create_local_model_loader()` exactly once and owns
-the returned `LocalModelLoader` for that pool's lifetime. The loader owns no external
-resource in this slice, so neither class exposes `close`, `aclose`, unload, reset,
-or context-manager behavior.
+`ModelPool` owns one retained in-memory loader returned by its private factory. No
+external resource exists, so no close/unload/context-manager surface is added.
 
 ### Concurrency model
 
-Each `acquire(...)` directly awaits one loader call. No task creation, fan-out,
-locking, queue, semaphore, cache, reuse, batching, or coalescing is permitted;
-concurrent-call behavior is deliberately not established.
+One acquisition directly awaits one matching handler. No task creation, fan-out,
+locks, queue, semaphore, batching, cache, or coalescing is established.
 
 ### Failure model
 
-The boundary validates the public argument before dispatch. After dispatch begins,
-the selected route's result or exception is returned/raised unchanged. Default
-routes fail closed with `NotImplementedError`; this is not a retryable fallback and
-does not imply support for any serialized artifact.
+Known selected family handlers raise `NotImplementedError` until later I/O work.
+Unexpected family values raise `ValueError`; route result and exception surfaces remain
+unwrapped.
 
 ### Cancellation / timeout policy
 
-The caller owns cancellation. `ModelPool` and `LocalModelLoader` must not catch or
-translate `asyncio.CancelledError`, and this slice introduces no timeout or retry
-wrapper. Cleanup requirements are absent because no external resource is acquired.
+Caller owns cancellation. Neither boundary catches `asyncio.CancelledError`; no timeout
+or retry wrapper is introduced.
 
 ### Validation plan
 
-Async pytest tests create `LocalModelLoader(_route_mapping=...)` with a distinct
-async route for each family, then monkeypatch
-`async_model_gateway.model_runtime.model_pool.pool._create_local_model_loader` before
-`ModelPool()` construction. They assert zero-argument factory-once retention, direct
-await delegation, unchanged sentinel return, cancellation and generic route failure
-propagation, plus `ValueError` for missing/extra/non-family mapping keys and
-`TypeError` for non-`Mapping` or non-callable mapping input. Default-route tests prove
-all families fail closed without using a file or provider seam.
-
-Targeted behavior validation uses `uv run pytest --no-cov
-tests/model_runtime/model_pool -v` so its result is independent of the
-repository-wide coverage threshold. `uv run pytest -v` remains the required
-full-suite coverage gate, followed by the declared ruff and pyright checks.
+Monkeypatch each private family handler and assert every explicit branch independently,
+then validate retained loader wiring and unchanged error/cancellation behavior. Run all
+four declared commands before fresh implementation review.
 
 ### Handoff notes for the implementer
 
-Keep `_create_local_model_loader()` and `_route_mapping` private and exact; do not
-rename either seam or add public injection. Do not replace the opaque `object` return
-type with a runtime-model abstraction, add lifecycle methods, or make default routes
-load artifacts. If a required change needs any excluded behavior, stop and return to
-planning.
+Use the exact TODO, direct `match/case`, and matching `_load_<family>` awaits. Do not
+replace the removed mapping seam with another injection mechanism or add deferred
+types/exceptions. Stop if a required edit is outside declared paths.
 
 ### Async contradiction log
 
-No async contradictions: the locked acquire-only scope, no-I/O fail-closed routes,
-direct await, caller-owned cancellation, and absence of timeout/retry are consistent
-with the existing `model_runtime` umbrella and `model_artifact` read contract.
+None: user-locked direct-await/no-I/O/caller-cancellation baseline is unchanged; only
+the internal dispatch/test seam is corrected.
 
 ## Public Contract / API Changes
 
-- Add `async_model_gateway.model_runtime.model_pool.ModelPool`.
-- `ModelPool()` has no public configuration or lifecycle surface.
-- `async def acquire(self, artifact: ModelArtifact) -> object` returns exactly the
-  selected internal route's opaque object. It raises `TypeError` before routing for a
-  non-`ModelArtifact`, otherwise preserves the selected route's result, exception,
-  or cancellation unchanged.
-- `LocalModelLoader`, `LocalModelLoader(*, _route_mapping=...)`,
-  `_create_local_model_loader()`, and individual family handlers are private
-  implementation details. No existing API changes and no compatibility layer are
-  required.
+- No new public API or public signature change.
+- `ModelPool` remains package-root public; `LocalModelLoader` and family handlers stay
+  private. Removal of `_route_mapping` is an intentional internal seam change only.
 
 ## Affected Files / Modules
 
-Likely affected files:
 - `src/async_model_gateway/model_runtime/model_pool/__init__.py`
 - `src/async_model_gateway/model_runtime/model_pool/pool.py`
 - `src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py`
@@ -357,38 +317,18 @@ Likely affected files:
 - `tests/model_runtime/model_pool/test_model_pool.py`
 - `tests/model_runtime/model_pool/test_local_model_loader.py`
 
-Candidate files to inspect:
-- `src/async_model_gateway/model_runtime/model_artifact/artifact.py`
-- `src/async_model_gateway/model_runtime/model_artifact/loader_family.py`
-- `pyproject.toml`
-
 ## Test Plan
 
-Test files: `tests/model_runtime/model_pool/test_model_pool_package_surface.py`,
-`tests/model_runtime/model_pool/test_model_pool.py`, and
-`tests/model_runtime/model_pool/test_local_model_loader.py`.
-
-Test cases:
-- Happy path: construct `LocalModelLoader(_route_mapping=...)` with exactly all three
-  `LoaderFamily` keys and unique async routes; monkeypatch
-  `async_model_gateway.model_runtime.model_pool.pool._create_local_model_loader` with
-  a zero-argument callable returning it before `ModelPool()`; `await acquire(...)`
-  returns the exact corresponding sentinel and passes the same artifact object.
-- Invalid input: `await acquire(object())` raises `TypeError` before the loader route;
-  `_route_mapping` with a missing, extra, or non-family key raises `ValueError` before
-  any route is awaited, while a non-`Mapping` input or non-callable route value raises
-  `TypeError`.
-- Edge case: a `PICKLE` artifact whose path ends in `.onnx` still selects the PICKLE
-  route; every default family route raises `NotImplementedError` without I/O.
-- Regression: monkeypatch target
-  `async_model_gateway.model_runtime.model_pool.pool._create_local_model_loader` is
-  called exactly once per `ModelPool()` construction; repeated calls use its same
-  returned collaborator rather than creating a new loader or cache.
-- Backward compatibility: only `model_pool` package re-exports `ModelPool`; root,
-  umbrella, and `model_artifact` package surfaces stay unchanged, and
-  `LocalModelLoader` is absent from package exports.
-- Async safety: an injected generic exception and `asyncio.CancelledError` each
-  propagate unchanged; no timeout, retry, or cancellation wrapper exists.
+- Happy path: monkeypatch each private family handler with distinct async sentinel
+  result and verify its corresponding `LoaderFamily` case only.
+- Invalid input: non-artifact acquire input is TypeError; invalid artifact/family
+  surfaces remain ValueError without a new exception class.
+- Edge case: a PICKLE artifact path ending in `.onnx` still reaches `_load_pickle`.
+- Regression: exact TODO remains; `_route_mapping` is absent; factory retention and
+  ModelPool-only package export remain locked.
+- Backward compatibility: root, umbrella, and model_artifact exports remain unchanged.
+- Async safety: known default handlers raise NotImplementedError and generic failure /
+  `asyncio.CancelledError` propagate unchanged.
 
 ## Validation Commands
 
@@ -401,16 +341,12 @@ uv run pyright
 
 ## Risks
 
-- A seemingly harmless test injection or package re-export could expose
-  `LocalModelLoader` as a second public owner, weakening the `ModelPool` boundary.
-- Catching `CancelledError` or adding a fallback while making default routes more
-  convenient would silently change the frozen failure and cancellation contract.
-- Adding artifact I/O to satisfy a route test would broaden this minimal boundary
-  into provider behavior and invalidate the no-I/O scope.
+- A replacement injection seam or mapping lookup would make test and production
+  dispatch diverge again.
+- A catch/fallback around a handler would alter failure/cancellation semantics.
+- Actual loading or typing abstraction would widen this bounded topic.
 
 ## Rollback Plan
 
-- Revert `src/async_model_gateway/model_runtime/model_pool/__init__.py`, `pool.py`,
-  `_local_model_loader.py`, the three matching test files, and this topic's
-  plan/spec/step/RED-test evidence artifacts. Do not alter `model_artifact` to roll
-  back this additive boundary.
+- Revert the three declared model_pool source files, three test files, and this topic's
+  plan/spec/step/evidence artifacts as applicable. Do not alter `model_artifact`.

@@ -7,5 +7,5 @@
   "cleared_for": "implement-plan",
   "cleared": true,
   "recorded_on": "2026-07-13",
-  "summary": "Human explicitly authorized the validation-only plan revision and cleared the approved topic to enter implement-plan."
+  "summary": "Human explicitly approved the explicit-dispatch revision and cleared the approved topic to enter implement-plan, beginning with the mandatory RED-test subphase."
 }

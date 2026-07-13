@@ -3,17 +3,14 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
 from typing import cast
 
 import pytest
 
 from async_model_gateway.model_runtime.model_artifact import LoaderFamily, ModelArtifact
 from async_model_gateway.model_runtime.model_pool import ModelPool
+from async_model_gateway.model_runtime.model_pool import pool as pool_module
 from async_model_gateway.model_runtime.model_pool._local_model_loader import LocalModelLoader
-
-
-Route = Callable[[ModelArtifact], Awaitable[object]]
 
 
 def _artifact(loader_family: LoaderFamily) -> ModelArtifact:
@@ -25,36 +22,26 @@ def _artifact(loader_family: LoaderFamily) -> ModelArtifact:
     )
 
 
-def _route_mapping(
-    calls: list[ModelArtifact],
-    result: object,
-) -> dict[LoaderFamily, Route]:
-    """Create complete routes that prove the exact artifact reaches a loader."""
-    async def route(artifact: ModelArtifact) -> object:
-        calls.append(artifact)
-        return result
-
-    return dict.fromkeys(LoaderFamily, route)
-
-
 @pytest.mark.asyncio
-async def test_model_pool_acquire_retains_factory_loader_and_returns_route_object(
+async def test_model_pool_acquire_retains_factory_loader_and_returns_loader_object(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """One pool construction must retain one factory-created loader for all acquires."""
     factory_calls: list[None] = []
-    route_calls: list[ModelArtifact] = []
+    loader_calls: list[ModelArtifact] = []
     sentinel = object()
-    loader = LocalModelLoader(_route_mapping=_route_mapping(route_calls, sentinel))
+    loader = LocalModelLoader()
+
+    async def load(artifact: ModelArtifact) -> object:
+        loader_calls.append(artifact)
+        return sentinel
 
     def create_loader() -> LocalModelLoader:
         factory_calls.append(None)
         return loader
 
-    monkeypatch.setattr(
-        "async_model_gateway.model_runtime.model_pool.pool._create_local_model_loader",
-        create_loader,
-    )
+    monkeypatch.setattr(loader, "load", load)
+    monkeypatch.setattr(pool_module, "_create_local_model_loader", create_loader)
     pool = ModelPool()
     first_artifact = _artifact(LoaderFamily.PICKLE)
     second_artifact = _artifact(LoaderFamily.ONNX)
@@ -65,46 +52,44 @@ async def test_model_pool_acquire_retains_factory_loader_and_returns_route_objec
     assert first_result is sentinel
     assert second_result is sentinel
     assert factory_calls == [None]
-    assert route_calls == [first_artifact, second_artifact]
+    assert loader_calls == [first_artifact, second_artifact]
 
 
 @pytest.mark.asyncio
-async def test_model_pool_acquire_rejects_non_artifact_before_loader_route(
+async def test_model_pool_acquire_rejects_non_artifact_before_loader_call(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Invalid public input must fail before the retained loader receives a route call."""
-    route_calls: list[ModelArtifact] = []
-    loader = LocalModelLoader(_route_mapping=_route_mapping(route_calls, object()))
+    """Invalid public input must fail before the retained loader receives a call."""
+    loader_calls: list[ModelArtifact] = []
+    loader = LocalModelLoader()
 
-    monkeypatch.setattr(
-        "async_model_gateway.model_runtime.model_pool.pool._create_local_model_loader",
-        lambda: loader,
-    )
+    async def load(artifact: ModelArtifact) -> object:
+        loader_calls.append(artifact)
+        return object()
+
+    monkeypatch.setattr(loader, "load", load)
+    monkeypatch.setattr(pool_module, "_create_local_model_loader", lambda: loader)
     pool = ModelPool()
 
     with pytest.raises(TypeError):
         await pool.acquire(cast(ModelArtifact, object()))
 
-    assert route_calls == []
+    assert loader_calls == []
 
 
 @pytest.mark.asyncio
-async def test_model_pool_acquire_propagates_route_failure_unchanged(
+async def test_model_pool_acquire_propagates_loader_failure_unchanged(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A selected route exception must escape without boundary translation."""
-    failure = RuntimeError("route failed")
+    """A retained loader exception must escape without boundary translation."""
+    failure = RuntimeError("loader failed")
+    loader = LocalModelLoader()
 
-    async def failing_route(_artifact: ModelArtifact) -> object:
+    async def load(_artifact: ModelArtifact) -> object:
         raise failure
 
-    loader = LocalModelLoader(
-        _route_mapping=dict.fromkeys(LoaderFamily, failing_route),
-    )
-    monkeypatch.setattr(
-        "async_model_gateway.model_runtime.model_pool.pool._create_local_model_loader",
-        lambda: loader,
-    )
+    monkeypatch.setattr(loader, "load", load)
+    monkeypatch.setattr(pool_module, "_create_local_model_loader", lambda: loader)
 
     with pytest.raises(RuntimeError) as raised:
         await ModelPool().acquire(_artifact(LoaderFamily.TORCH))
@@ -116,19 +101,15 @@ async def test_model_pool_acquire_propagates_route_failure_unchanged(
 async def test_model_pool_acquire_propagates_cancellation_unchanged(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Cancellation must remain owned by the selected route awaitable."""
+    """Cancellation must remain owned by the retained loader awaitable."""
     cancellation = asyncio.CancelledError()
+    loader = LocalModelLoader()
 
-    async def cancelling_route(_artifact: ModelArtifact) -> object:
+    async def load(_artifact: ModelArtifact) -> object:
         raise cancellation
 
-    loader = LocalModelLoader(
-        _route_mapping=dict.fromkeys(LoaderFamily, cancelling_route),
-    )
-    monkeypatch.setattr(
-        "async_model_gateway.model_runtime.model_pool.pool._create_local_model_loader",
-        lambda: loader,
-    )
+    monkeypatch.setattr(loader, "load", load)
+    monkeypatch.setattr(pool_module, "_create_local_model_loader", lambda: loader)
 
     with pytest.raises(asyncio.CancelledError) as raised:
         await ModelPool().acquire(_artifact(LoaderFamily.ONNX))

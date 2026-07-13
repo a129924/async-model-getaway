@@ -2,74 +2,79 @@
 
 ## Acceptance Criteria
 
-1. `async_model_gateway.model_runtime.model_pool` re-exports only `ModelPool`; no
-   other package root re-exports `ModelPool` or private `LocalModelLoader`.
-2. `ModelPool.acquire` is `async def acquire(self, artifact: ModelArtifact) -> object`.
-3. `pool.py` defines `def _create_local_model_loader() -> LocalModelLoader`; every
-   `ModelPool.__init__` calls it exactly once and owns its exact returned private local
-   loader for the pool instance lifetime, then directly awaits it without cache,
-   reuse, close/unload, timeout, retry, or task orchestration.
-4. `LocalModelLoader` dispatches only from explicit `artifact.loader_family`; every
-   locked `LoaderFamily` has its own observable internal route and no path inference.
-5. Default routes perform no I/O and raise `NotImplementedError`; non-artifact input
-   raises `TypeError`, while route failures and cancellation propagate unchanged.
-6. `ModelArtifact` and `LoaderFamily` remain consumed shared read contracts with no
-   changes to their source, tests, package exports, fields, or vocabulary.
-7. The only test-only loader construction seam is
-   `LocalModelLoader(*, _route_mapping: Mapping[LoaderFamily, Callable[[ModelArtifact], Awaitable[object]]] | None = None)`.
-   A supplied mapping must contain all and only current `LoaderFamily` keys before
-   any route is awaited; missing, extra, or non-family keys raise `ValueError`, while
-   a non-`Mapping` input or non-callable route value raises `TypeError`.
-8. Targeted `model_pool` behavior validation runs
-   `uv run pytest --no-cov tests/model_runtime/model_pool -v`; `uv run pytest -v`
-   remains the required repository-wide coverage gate before ruff and pyright.
+1. `ModelPool.acquire(self, artifact: ModelArtifact) -> object` and ModelPool-only
+   package exports remain unchanged.
+2. `LocalModelLoader` is private, accepts no `_route_mapping` injection seam, and
+   `load(self, artifact: ModelArtifact) -> object` contains exactly:
+
+   ```python
+   # TODO: Replace `object` with the agreed runtime-model contract
+   # (tentatively `LoadedRuntimeModel`) once that boundary is defined.
+   ```
+
+3. `load(...)` dispatches only with explicit `match artifact.loader_family` cases for
+   `PICKLE`, `TORCH`, and `ONNX`; each directly awaits its matching private
+   `_load_<family>(artifact)` method. No mapping lookup, path inference, or KeyError
+   dispatch exists.
+4. Tests monkeypatch each private family method and prove each LoaderFamily follows the
+   matching branch only. The three default handlers perform no I/O and raise
+   `NotImplementedError`.
+5. TypeError for invalid `ModelPool.acquire` input, existing ValueError invalid-artifact
+   behavior, unforeseen-family ValueError, native route failures, and cancellation are
+   retained. No domain exception is added.
+6. `ModelArtifact` and `LoaderFamily` remain consumed unchanged; no runtime-model
+   concrete type, Protocol, provider abstraction, ModelGateway, or ModelExecution is
+   added.
+7. The sole code-review evidence artifact is
+   `plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.code-review.yaml`.
+   An independent Reviewer writes it only after this revision's implementation review
+   is approved and before PR routing. It accepts the revision only with a fresh
+   `verdict: approved`; any covered source/test or implementation-contract planning
+   revision after that verdict makes it stale and requires a replacement review.
 
 ## Behavioral Scenarios
 
-### Scenario 1: explicit family route is acquired through ModelPool
+### Scenario 1: each explicit family branch awaits its own handler
 
-- **Given**: `LocalModelLoader(_route_mapping=...)` with a distinct async sentinel
-  route for each locked `LoaderFamily`, and a zero-argument monkeypatch of
-  `async_model_gateway.model_runtime.model_pool.pool._create_local_model_loader`
-  that returns that loader before `ModelPool()` construction
-- **When**: a caller awaits `pool.acquire(artifact)` for an artifact with one family
-- **Then**: the factory is called once during construction and the pool awaits its
-  retained returned loader exactly once
-- **And**: the loader invokes only the route for `artifact.loader_family`
-- **And**: the caller receives the identical opaque sentinel object
+- **Given**: a `LocalModelLoader` whose `_load_pickle`, `_load_torch`, and `_load_onnx`
+  methods are monkeypatched with unique async sentinel handlers
+- **When**: `load(...)` receives a valid artifact for each current `LoaderFamily`
+- **Then**: only that family's matching handler receives the same artifact and its
+  sentinel is returned
 
-### Scenario 2: explicit family overrides path appearance
+### Scenario 2: family wins over artifact-path appearance
 
-- **Given**: an artifact with `loader_family=LoaderFamily.PICKLE` and an artifact path
-  ending in `.onnx`
-- **When**: the private loader dispatches it through an injected route mapping
-- **Then**: only the PICKLE route is observed
-- **And**: no suffix, content, loader options, or object-shape inference occurs
+- **Given**: a PICKLE artifact with a path ending in `.onnx` and monkeypatched private
+  handlers
+- **When**: the loader is awaited
+- **Then**: `_load_pickle` alone is awaited; the path/options/content do not affect
+  dispatch
 
-### Scenario 3: default routes stay intentionally unavailable
+### Scenario 3: ModelPool preserves its existing retained-loader boundary
 
-- **Given**: an ordinary `ModelPool()` with no test route injection
-- **When**: the caller awaits acquire for any locked family
-- **Then**: the selected default route raises `NotImplementedError`
-- **And**: no artifact file, serialization library, provider adapter, cache, or
-  lifecycle cleanup is touched
-
-### Scenario 4: failures retain their native async surface
-
-- **Given**: an injected route that raises a specific exception or
-  `asyncio.CancelledError`
-- **When**: the caller awaits `pool.acquire(artifact)`
-- **Then**: the exact exception propagates unchanged
-- **And**: no timeout, retry, fallback, wrapping, or `None` conversion occurs
+- **Given**: a factory monkeypatch installed before `ModelPool()` construction
+- **When**: one or more artifacts are acquired
+- **Then**: the factory was called once, the retained loader receives each artifact,
+  and no new public injection/lifecycle surface appears
 
 ## Error / Edge Cases
 
-- `acquire` rejects a non-`ModelArtifact` before route dispatch with `TypeError`.
-- A private `_route_mapping` with missing, extra, or non-family keys raises
-  `ValueError` before any route is awaited; non-`Mapping` input and non-callable route
-  values raise `TypeError`, rather than silently falling back.
-- The default no-I/O `NotImplementedError` is deliberate and does not claim that the
-  artifact is malformed or that a different family should be guessed.
-- Concurrent acquisition, loader cache/reuse, resource ownership beyond the retained
-  in-memory collaborator, close/unload, timeout, retry, and provider-specific errors
-  are not established by this topic.
+- Each known default family handler is no-I/O and raises `NotImplementedError`.
+- `ModelPool.acquire` rejects a non-`ModelArtifact` with `TypeError` before loader
+  dispatch; invalid artifact construction remains `ValueError`.
+- An unforeseen family value raises `ValueError`, never `KeyError` or a custom domain
+  exception.
+- Generic handler exceptions and `asyncio.CancelledError` propagate unchanged; no
+  timeout, retry, fallback, wrapper, or `None` conversion exists.
+- Tests use ordinary imports and monkeypatch private methods only; no dynamic module
+  loading or `_route_mapping` reference is permitted.
+
+## Review Evidence Contract
+
+- The code-review artifact named in Acceptance Criterion 7 is Reviewer-owned and is
+  the unique evidence location for `python-code-review` on this topic.
+- It records `verdict`, `tooling_detected`, and findings for typing, lint,
+  readability, error handling, anti-patterns, test quality, and observability.
+- `needs-rework`, an absent artifact, or a stale artifact blocks `pr-comment`; a fresh
+  `approved` verdict follows fresh approved implementation review and is the only
+  quality-gate handoff to PR routing.

@@ -9,6 +9,7 @@ import async_model_gateway.model_runtime as model_runtime_root_module
 import async_model_gateway.model_runtime.model_pool as model_pool_module
 import async_model_gateway.model_runtime.model_pool.pool as pool_module
 from async_model_gateway.model_runtime.model_pool import ModelPool
+from async_model_gateway.model_runtime.model_pool._local_model_loader import LocalModelLoader
 
 
 def test_model_pool_package_reexports_only_model_pool() -> None:
@@ -34,3 +35,8 @@ def test_model_pool_acquire_has_the_locked_async_public_signature() -> None:
     assert acquire_signature.return_annotation == "object"
     assert tuple(inspect.signature(ModelPool).parameters) == ()
     assert pool_module.ModelPool is ModelPool
+
+
+def test_private_local_model_loader_has_no_constructor_injection_seam() -> None:
+    """The private loader must not retain a replaceable routing constructor input."""
+    assert tuple(inspect.signature(LocalModelLoader).parameters) == ()
