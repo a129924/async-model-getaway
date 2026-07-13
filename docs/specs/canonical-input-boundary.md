@@ -116,8 +116,9 @@ flow 仍不屬於這份 spec 的實作範圍。
 
 `model_artifact` 是 producer 與 local model side 之間的 read contract，不是 identity material。
 
-目前 repo 已以 `async_model_gateway.model_artifact` 落地最小 public owner，
-package root 只 re-export `ModelArtifact` 與 `LoaderFamily`。
+目前 repo 已以 `async_model_gateway.model_runtime.model_artifact` 落地最小
+public owner；`model_runtime` 是 umbrella root，而 `model_artifact` package
+root 只 re-export `ModelArtifact` 與 `LoaderFamily`。
 
 在這個最小 boundary 中：
 

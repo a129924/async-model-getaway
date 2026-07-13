@@ -6,8 +6,8 @@ import copy
 from dataclasses import asdict, replace
 import inspect
 import pickle
-import async_model_gateway.model_artifact.artifact as artifact_module
-import async_model_gateway.model_artifact.loader_family as loader_family_module
+import async_model_gateway.model_runtime.model_artifact.artifact as artifact_module
+import async_model_gateway.model_runtime.model_artifact.loader_family as loader_family_module
 from typing import cast
 
 import pytest
