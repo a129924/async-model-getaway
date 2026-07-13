@@ -1,5 +1,6 @@
 verdict: approved
 review_status: COMPLETE
+revision: explicit-match-case-dispatch-e302-format-recheck
 preconditions:
   plan_review: approved
   human_check:
@@ -7,119 +8,141 @@ preconditions:
     cleared_for: implement-plan
   implementation_diff: present
   implementation_steps: complete
+  canonical_step_tracker: "All 4 implementation steps complete"
+
+fresh_recheck:
+  trigger: >-
+    The prior independent code review found only Ruff E302 in the private loader;
+    this review rechecks the corrected source revision before a new code review.
+  source_delta_since_prior_implementation_review:
+    file: src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py
+    change: "One additional top-level blank line between the import block and LocalModelLoader."
+    non_format_source_or_test_delta: no
+  validation:
+    - "uv run pytest --no-cov tests/model_runtime/model_pool -v: 17 passed"
+    - "uv run pytest -v: 157 passed; coverage 99.00%"
+    - "uv run ruff check src tests plan/model-pool-local-loader-minimal-boundary: all checks passed"
+    - "uv run pyright: 0 errors, 0 warnings, 0 informations"
 
 traceability_matrix:
   - step: >-
-      Tester adds RED coverage and records the failing contract for package surface,
-      explicit routes, factory retention, default failures, invalid input, mapping
-      validation, route failure, and cancellation.
+      Replace _route_mapping-based tests with exact-TODO, private-handler monkeypatch,
+      branch, path-appearance, default-failure, input, propagation, and package-surface
+      coverage; record fresh RED evidence without dynamic module loading.
     status: done
     evidence:
-      - tests/model_runtime/model_pool/test_model_pool_package_surface.py:14
-      - tests/model_runtime/model_pool/test_model_pool.py:41
-      - tests/model_runtime/model_pool/test_local_model_loader.py:51
+      - tests/model_runtime/model_pool/test_local_model_loader.py:28
+      - tests/model_runtime/model_pool/test_local_model_loader.py:40
+      - tests/model_runtime/model_pool/test_local_model_loader.py:82
+      - tests/model_runtime/model_pool/test_local_model_loader.py:118
+      - tests/model_runtime/model_pool/test_model_pool.py:26
+      - tests/model_runtime/model_pool/test_model_pool.py:59
+      - tests/model_runtime/model_pool/test_model_pool.py:81
+      - tests/model_runtime/model_pool/test_model_pool_package_surface.py:15
       - plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.red-tests.yaml:1
   - step: >-
-      Add private LocalModelLoader with exact supplied-mapping validation, explicit
-      LoaderFamily dispatch, and no-I/O NotImplementedError defaults.
+      Remove mapping dispatch and its constructor/test seam; add the exact TODO, explicit
+      awaited PICKLE/TORCH/ONNX match/case branches, no-I/O handlers, and unforeseen-family
+      ValueError behavior.
     status: done
     evidence:
-      - src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:33
-      - src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:45
-      - src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:49
-      - src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:59
+      - src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:11
+      - src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:13
+      - src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:15
+      - src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:22
+      - src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:26
   - step: >-
-      Add ModelPool, private zero-argument factory, one-time retained loader,
-      ModelArtifact validation, direct await, and ModelPool-only package re-export.
+      Update pool.py and __init__.py only as needed for the removed private seam while
+      preserving ModelPool public contract, factory-once retention, TypeError validation,
+      direct await, and ModelPool-only export.
     status: done
     evidence:
       - src/async_model_gateway/model_runtime/model_pool/pool.py:12
       - src/async_model_gateway/model_runtime/model_pool/pool.py:25
       - src/async_model_gateway/model_runtime/model_pool/pool.py:29
       - src/async_model_gateway/model_runtime/model_pool/__init__.py:3
-      - tests/model_runtime/model_pool/test_model_pool.py:41
-      - tests/model_runtime/model_pool/test_model_pool_package_surface.py:14
+      - tests/model_runtime/model_pool/test_model_pool.py:26
+      - tests/model_runtime/model_pool/test_model_pool_package_surface.py:15
+      - "No current-revision change was needed in pool.py or __init__.py."
   - step: >-
-      Run targeted and repository-wide pytest, ruff, and pyright validation, then
-      update Implementer-owned step progress.
+      Run the declared targeted pytest, full pytest, Ruff, and Pyright commands and mark
+      only completed implementation steps.
     status: done
     evidence:
-      - plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.step.md:24
-      - "uv run pytest --no-cov tests/model_runtime/model_pool -v: 18 passed"
-      - "uv run pytest -v: 158 passed; coverage 99.02%"
-      - "uv run ruff check src tests plan/model-pool-local-loader-minimal-boundary: passed"
+      - plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.step.md:33
+      - "python .agents/skills/plan-step-tracker/scripts/step_tracker.py check_impl_steps_succeeded model-pool-local-loader-minimal-boundary: all 4 complete"
+      - "uv run pytest --no-cov tests/model_runtime/model_pool -v: 17 passed"
+      - "uv run pytest -v: 157 passed; coverage 99.00%"
+      - "uv run ruff check src tests plan/model-pool-local-loader-minimal-boundary: all checks passed"
       - "uv run pyright: 0 errors, 0 warnings, 0 informations"
 
 scope_creep_check:
   - non_goal: >-
-      No artifact file read, pickle/torch/onnx provider integration, or concrete
-      runtime-model type.
+      No artifact file read, pickle/torch/onnx integration, concrete runtime-model type,
+      Protocol, or provider abstraction.
     violated: no
-    evidence: src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:18
+    evidence: src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:11
   - non_goal: >-
-      No cache/reuse, close/unload, resource sharing, timeout, retry, batching,
-      fan-out, or background ownership.
+      No cache/reuse, close/unload, sharing, timeout, retry, batching, fan-out, or
+      background ownership.
     violated: no
     evidence: clean
   - non_goal: >-
-      No ModelGateway, ModelExecution, provider framework, registry/cache
-      integration, or ModelArtifact shared-read-contract modification.
+      No ModelGateway, ModelExecution, registry/cache integration, model_artifact change,
+      new domain exception, README/version/release/tag change.
     violated: no
-    evidence: clean; implementation adds only model_pool source and topic artifacts
-  - non_goal: No README, version, release metadata, tag, or release-workflow change.
-    violated: no
-    evidence: clean
+    evidence: "Changed paths are limited to declared topic artifacts, model_pool, and model_pool tests."
 
 contract_check:
-  - item: ModelPool is the only model_pool package-root public export.
+  - item: No new public API or public signature change.
     status: matches
-    detail: __all__ is exactly ["ModelPool"]; LocalModelLoader remains private.
+    detail: "ModelPool.acquire remains async acquire(self, artifact: ModelArtifact) -> object."
+  - item: ModelPool remains the only model_pool package-root public export.
+    status: matches
+    detail: "__all__ remains exactly [\"ModelPool\"]; LocalModelLoader is not re-exported."
+  - item: LocalModelLoader is private with no constructor injection seam.
+    status: matches
+    detail: "LocalModelLoader has no explicit constructor; package-surface regression test passes."
   - item: >-
-      ModelPool.acquire is async acquire(self, artifact: ModelArtifact) -> object
-      with no added public options.
+      LocalModelLoader.load has the locked signature and exact two-line deferred-contract
+      TODO, with no LoadedRuntimeModel, Protocol, or provider abstraction.
     status: matches
-    detail: pool.py exposes the locked signature and targeted package-surface test passes.
+    detail: "load signature and exact TODO are at _local_model_loader.py:11-14; regression test passes."
   - item: >-
-      ModelPool construction calls the zero-argument private factory once and retains
-      that returned loader; acquire directly awaits it.
+      All current LoaderFamily values use explicit awaited match/case branches; unforeseen
+      values raise ValueError rather than KeyError.
     status: matches
-    detail: pool.py constructs once in __init__ and delegates through direct await.
+    detail: "PICKLE, TORCH, and ONNX branches at _local_model_loader.py:15-21; fallback ValueError at :22-24."
   - item: >-
-      LocalModelLoader is internal-only; its sole test seam validates exact
-      LoaderFamily mapping keys and callable values before awaiting a route.
+      Known handlers remain no-I/O NotImplementedError; ModelPool keeps validation,
+      factory-once retention, direct await, and unchanged failure/cancellation propagation.
     status: matches
-    detail: >-
-      _local_model_loader.py validates Mapping, exact set(LoaderFamily), and callables
-      before load dispatch; the package root does not re-export it.
-  - item: >-
-      ModelArtifact is consumed unchanged; non-artifact input fails before routing;
-      selected route result, failure, and cancellation propagate unchanged.
-    status: matches
-    detail: >-
-      acquire type-checks before direct await; no exception translation is present;
-      targeted tests cover TypeError, identity-preserving route failure, and cancellation.
+    detail: "Handlers at :26-36 and pool wiring at pool.py:25-35 are covered by targeted tests."
 
 test_plan_check:
-  - case_type: Happy path — explicit route per LoaderFamily returns its opaque object.
+  - case_type: happy path — every explicit family branch reaches only its matching private handler
     status: present
-    location: tests/model_runtime/model_pool/test_local_model_loader.py:51
-  - case_type: Invalid input — non-artifact and invalid mapping configurations fail.
+    location: tests/model_runtime/model_pool/test_local_model_loader.py:40
+  - case_type: invalid input — non-artifact input is TypeError; unforeseen family is ValueError
     status: present
-    location: tests/model_runtime/model_pool/test_model_pool.py:71
-  - case_type: Edge case — explicit LoaderFamily overrides artifact-path appearance.
+    location: tests/model_runtime/model_pool/test_model_pool.py:59; tests/model_runtime/model_pool/test_local_model_loader.py:127
+  - case_type: edge case — path appearance does not affect selected family handler
     status: present
-    location: tests/model_runtime/model_pool/test_local_model_loader.py:69
-  - case_type: Regression — factory monkeypatch target and retained-loader lifetime.
+    location: tests/model_runtime/model_pool/test_local_model_loader.py:82
+  - case_type: regression — exact TODO and removed constructor seam are retained
     status: present
-    location: tests/model_runtime/model_pool/test_model_pool.py:41
-  - case_type: Backward compatibility — ModelPool-only package export and no umbrella export.
+    location: tests/model_runtime/model_pool/test_local_model_loader.py:28; tests/model_runtime/model_pool/test_model_pool_package_surface.py:40
+  - case_type: backward compatibility — ModelPool-only package export and unchanged public signature
     status: present
-    location: tests/model_runtime/model_pool/test_model_pool_package_surface.py:14
-  - case_type: >-
-      Async safety — route failure and asyncio.CancelledError propagate unchanged;
-      default routes fail closed.
+    location: tests/model_runtime/model_pool/test_model_pool_package_surface.py:15
+  - case_type: async safety — default handlers fail closed; loader failure and cancellation propagate unchanged
     status: present
-    location: tests/model_runtime/model_pool/test_model_pool.py:91
+    location: tests/model_runtime/model_pool/test_local_model_loader.py:118; tests/model_runtime/model_pool/test_model_pool.py:81
 
+review_notes:
+  - "Fresh recheck confirms the only post-review source delta is the E302 blank line at _local_model_loader.py:7."
+  - "Production code contains no _route_mapping, LoaderFamily mapping lookup, or KeyError dispatch."
+  - "Tests use direct imports and private-handler monkeypatching; no dynamic module loading is present."
+  - "Only _local_model_loader.py changes source for the explicit-dispatch revision; pool.py and __init__.py remain compatible without revision changes."
 next_role: Reviewer
-next_action: Run python-code-review; no implementation rework is required.
+next_action: "Run independent python-code-review and write the sole declared code-review artifact."
