@@ -1,0 +1,47 @@
+verdict: approved
+review_status: COMPLETE
+reviewed_revision: assert-never-explicit-dispatch
+preconditions:
+  implementation_review:
+    verdict: approved
+    revision: assert-never-explicit-dispatch
+    artifact: plan/model-pool-local-loader-minimal-boundary/model-pool-local-loader-minimal-boundary.implementation-review.yaml
+  workflow_stages:
+    implementation-review: complete
+    code-review: complete
+  review_scope:
+    - src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py
+    - src/async_model_gateway/model_runtime/model_pool/pool.py
+    - src/async_model_gateway/model_runtime/model_pool/__init__.py
+    - tests/model_runtime/model_pool/test_local_model_loader.py
+    - tests/model_runtime/model_pool/test_model_pool.py
+    - tests/model_runtime/model_pool/test_model_pool_package_surface.py
+  execution: "Static code review only; pytest, Ruff, and Pyright were not run by this Reviewer."
+
+tooling_detected:
+  - "Ruff: E, W, F, N, D, UP, B, A, C4, ARG, RUF; line-length 100"
+  - "Pyright: typeCheckingMode=strict for src; Python 3.10"
+  - "pytest: asyncio_mode=strict"
+  - "typing_extensions>=4.5 is a runtime dependency; uv.lock resolves 4.15.0"
+
+findings:
+  typing: []
+  lint: []
+  readability: []
+  error_handling: []
+  anti_patterns: []
+  test_quality: []
+  observability: []
+
+review_notes:
+  - "The latest implementation-review is approved for assert-never-explicit-dispatch, and the canonical step tracker marks both implementation-review and code-review [X]."
+  - "LocalModelLoader.load retains the exact two-line deferred-contract TODO and its fully annotated object return without introducing LoadedRuntimeModel, a Protocol, or a provider abstraction."
+  - "typing_extensions.assert_never is compatible with the Python 3.10 baseline through the existing runtime dependency; using it instead of typing.assert_never preserves that compatibility and supplies the strict type-checker unreachable-path assertion."
+  - "The explicit match/case covers every current closed LoaderFamily member (PICKLE, TORCH, ONNX); each branch awaits only its corresponding private handler, and case _ calls assert_never. There is no ValueError fallback, mapping lookup, _route_mapping seam, or KeyError dispatch."
+  - "Known-family handlers remain narrow no-I/O NotImplementedError stubs. ModelPool keeps direct awaiting with no exception translation or catching, so loader failures and cancellation continue to propagate unchanged."
+  - "Tests use direct imports and scoped monkeypatches of the three private family handlers to prove each dispatch branch, include assertions, avoid real I/O and dynamic module loading, and retain default-failure, invalid-input, path-appearance, package-surface, failure, and cancellation coverage."
+  - "The reviewed source and tests remain within the bounded model_pool lane; model_artifact is consumed-only and no registry, cache, gateway, execution, release, or public-surface scope drift is present."
+
+gate_status: code-review-complete
+next_role: Implementer
+next_action: "No outstanding code-review action remains; all workflow stages and review gates are complete."
