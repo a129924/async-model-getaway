@@ -15,13 +15,16 @@
 3. `load(...)` dispatches only with explicit `match artifact.loader_family` cases for
    `PICKLE`, `TORCH`, and `ONNX`; each directly awaits its matching private
    `_load_<family>(artifact)` method. No mapping lookup, path inference, or KeyError
-   dispatch exists.
+   dispatch exists. Its sole fallback is
+   `typing_extensions.assert_never(artifact.loader_family)`, the type-checker-aware
+   unreachable path for the closed `LoaderFamily` enum; it is not a runtime
+   invalid-family policy or domain exception.
 4. Tests monkeypatch each private family method and prove each LoaderFamily follows the
    matching branch only. The three default handlers perform no I/O and raise
    `NotImplementedError`.
 5. TypeError for invalid `ModelPool.acquire` input, existing ValueError invalid-artifact
-   behavior, unforeseen-family ValueError, native route failures, and cancellation are
-   retained. No domain exception is added.
+   behavior, native route failures, and cancellation are retained. No domain exception
+   is added; no test manufactures a non-`LoaderFamily` fallback input.
 6. `ModelArtifact` and `LoaderFamily` remain consumed unchanged; no runtime-model
    concrete type, Protocol, provider abstraction, ModelGateway, or ModelExecution is
    added.
@@ -62,8 +65,9 @@
 - Each known default family handler is no-I/O and raises `NotImplementedError`.
 - `ModelPool.acquire` rejects a non-`ModelArtifact` with `TypeError` before loader
   dispatch; invalid artifact construction remains `ValueError`.
-- An unforeseen family value raises `ValueError`, never `KeyError` or a custom domain
-  exception.
+- `case _` calls `typing_extensions.assert_never(artifact.loader_family)` as the
+  closed-enum unreachable path. It must not become a `ValueError`, `KeyError`, or
+  custom-domain-exception dispatch policy.
 - Generic handler exceptions and `asyncio.CancelledError` propagate unchanged; no
   timeout, retry, fallback, wrapper, or `None` conversion exists.
 - Tests use ordinary imports and monkeypatch private methods only; no dynamic module

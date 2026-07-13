@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import inspect
-from types import SimpleNamespace
-from typing import cast
 
 import pytest
+from typing_extensions import assert_never
 
 from async_model_gateway.model_runtime.model_artifact import LoaderFamily, ModelArtifact
+import async_model_gateway.model_runtime.model_pool._local_model_loader as local_model_loader_module
 from async_model_gateway.model_runtime.model_pool._local_model_loader import LocalModelLoader
 
 
@@ -123,10 +123,14 @@ async def test_local_model_loader_default_handlers_fail_closed_without_loading(
         await LocalModelLoader().load(_artifact(loader_family))
 
 
-@pytest.mark.asyncio
-async def test_local_model_loader_rejects_an_unforeseen_family_with_value_error() -> None:
-    """An invalid runtime family must not fall through to mapping-style KeyError."""
-    invalid_artifact = cast(ModelArtifact, SimpleNamespace(loader_family=object()))
+def test_local_model_loader_uses_typing_extensions_assert_never_for_the_unreachable_case() -> None:
+    """The closed-enum fallback must remain the static exhaustiveness contract."""
+    module_source = inspect.getsource(local_model_loader_module)
+    load_source = inspect.getsource(LocalModelLoader.load)
 
-    with pytest.raises(ValueError):
-        await LocalModelLoader().load(invalid_artifact)
+    assert local_model_loader_module.assert_never is assert_never
+    assert "from typing_extensions import assert_never" in module_source
+    assert (
+        "            case _:\n"
+        "                assert_never(artifact.loader_family)"
+    ) in load_source

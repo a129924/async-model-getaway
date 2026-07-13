@@ -31,8 +31,8 @@ test_mapping:
     test_case_name: test_local_model_loader_default_handlers_fail_closed_without_loading
     coverage_category: error_exception
   - requirement_id: Req#4
-    test_case_name: test_local_model_loader_rejects_an_unforeseen_family_with_value_error
-    coverage_category: error_exception
+    test_case_name: test_local_model_loader_uses_typing_extensions_assert_never_for_the_unreachable_case
+    coverage_category: regression
   - requirement_id: Req#4
     test_case_name: test_model_pool_acquire_propagates_loader_failure_unchanged
     coverage_category: integration_point
@@ -63,11 +63,8 @@ validation_checks:
     result: no uncommitted production changes before RED-test authoring
   pytest_red_evidence:
     command: uv run pytest --no-cov tests/model_runtime/model_pool -v
-    result: 7 failed, 10 passed
+    result: 1 failed, 16 passed
     causes:
-      - LocalModelLoader.load lacks the exact two-line TODO.
-      - LocalModelLoader lacks _load_pickle, _load_torch, and _load_onnx methods.
-      - LocalModelLoader retains a constructor injection parameter.
-      - An unforeseen family currently reaches mapping-style KeyError instead of ValueError.
+      - The LocalModelLoader module does not import typing_extensions.assert_never and case _ does not call it.
 issues: []
 next_step: Implementer may change only the approved model_pool source paths to make the explicit-dispatch RED tests green.

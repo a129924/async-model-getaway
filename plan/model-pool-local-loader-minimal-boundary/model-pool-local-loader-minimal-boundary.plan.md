@@ -9,7 +9,8 @@
 
 - 維持 `async_model_gateway.model_runtime.model_pool.ModelPool` 的最小 public
   local runtime-model acquisition boundary，將 private `LocalModelLoader` 改為
-  與測試共用的 explicit `match/case` family-dispatch structure。
+  由 type-checker-aware `assert_never(...)` 收束的 explicit `match/case`
+  family-dispatch structure。
 - `model_artifact` 僅被消費；`LocalModelLoader.load(...) -> object` 只加註已鎖定
   future contract TODO，不建立 `LoadedRuntimeModel` 或任何 abstraction。
 
@@ -19,7 +20,8 @@
   - 移除 private loader 的 `_route_mapping` construction/test seam 與所有
     production mapping-lookup dispatch。
   - 以 `artifact.loader_family` 的 explicit `match/case` 呼叫並 `await` 各
-    `_load_<family>` private handler；目前 `PICKLE`、`TORCH`、`ONNX` 各有一個 case。
+    `_load_<family>` private handler；目前 `PICKLE`、`TORCH`、`ONNX` 各有一個 case，
+    並以 `typing_extensions.assert_never(...)` 表示 enum 窮舉後不可達的 fallback。
   - 測試 monkeypatch private family handlers，逐 branch 驗證 route，而非注入 mapping。
   - 在 `LocalModelLoader.load(self, artifact: ModelArtifact) -> object` 加入精確
     two-line TODO；重建本 revision 的 plan、RED-test、implementation-review 與
@@ -62,11 +64,17 @@
   `LoaderFamily.TORCH -> await self._load_torch(artifact)`, and
   `LoaderFamily.ONNX -> await self._load_onnx(artifact)`. No mapping lookup, path
   inference, content/options inference, fallback, or `KeyError` dispatch is allowed.
-  An unforeseen/invalid family is `ValueError`, not a new domain exception.
+  `case _` must call `typing_extensions.assert_never(artifact.loader_family)`;
+  it is the type-checker-aware unreachable path for the closed `LoaderFamily` enum,
+  not input validation and not a new domain exception. `typing_extensions` is an
+  existing runtime dependency required by the Python 3.10 baseline; do not add a
+  dependency or use `typing.assert_never`.
 - Known family handlers remain no-I/O and raise `NotImplementedError`. Invalid public
   `ModelPool.acquire` input remains `TypeError`; existing invalid `ModelArtifact`
   construction remains `ValueError`; route failures and `asyncio.CancelledError`
-  propagate unchanged. Do not add `UnsupportedLocalModelLoaderError`.
+  propagate unchanged. No test or behavior contract is added for a fabricated
+  non-`LoaderFamily` value at the unreachable fallback. Do not add
+  `UnsupportedLocalModelLoaderError`.
 - `ModelArtifact` / `LoaderFamily` are consumed-only shared read contracts; no source,
   test, export, field, vocabulary, or validation change is authorized.
 - Async-planning is a focused retrofit, not a new lifecycle design: direct await,
@@ -74,8 +82,8 @@
   remain locked.
 - Stable-library intent is explicit no-promotion: README, version, and release paths
   remain excluded.
-- Existing plan-review, human-check, RED-test, implementation-review, and any
-  unrecorded prior code-review result describe the superseded mapping-seam revision.
+- Existing plan-review, human-check, RED-test, implementation-review, and code-review
+  evidence describe the superseded ValueError-fallback revision.
   They must not be treated as approval for this revision; their respective owners must
   revalidate them after plan review. The sole code-review evidence location for this
   topic is the declared `*.code-review.yaml` path below.
@@ -151,14 +159,16 @@ artifacts.
    writes fresh RED evidence: assert the exact two-line TODO, monkeypatch each private
    `_load_pickle`, `_load_torch`, and `_load_onnx` handler with distinct async results,
    and prove each `LoaderFamily` follows only its own explicit branch. Retain package
-   surface, pool-factory retention, TypeError, ValueError, default NotImplementedError,
-   route-failure, cancellation, and path-appearance coverage. Tests must not reference
-   `_route_mapping` or use dynamic module loading.
+   surface, pool-factory retention, applicable TypeError/ValueError validation, default
+   NotImplementedError, route-failure, cancellation, and path-appearance coverage.
+   Remove the fabricated unforeseen-family `ValueError` expectation; tests must not
+   reference `_route_mapping` or use dynamic module loading.
 2. Implementer revises `_local_model_loader.py`: remove mapping types, construction
    parameter, helper validation, stored mapping, and lookup dispatch; add the exact
    TODO; implement the three explicit `match/case` branches with `await`ed matching
-   private handlers; retain no-I/O handler `NotImplementedError`; raise `ValueError`
-   for an unforeseen family instead of allowing `KeyError`.
+   private handlers; retain no-I/O handler `NotImplementedError`; import
+   `assert_never` from `typing_extensions` and make `case _` call
+   `assert_never(artifact.loader_family)`.
 3. Implementer updates `pool.py` and `__init__.py` only as needed to conform to the
    removed private constructor seam, preserving ModelPool's locked public contract,
    factory-once retention, TypeError validation, direct await, and package-root export.
@@ -171,10 +181,14 @@ artifacts.
   neither `LoadedRuntimeModel` nor a Protocol/provider abstraction exists.
 - Production dispatch contains explicit `match artifact.loader_family` cases for all
   three current families. Each case directly awaits only its matching private handler;
-  no `_route_mapping`, mapping lookup, or `KeyError` dispatch remains.
+  no `_route_mapping`, mapping lookup, or `KeyError` dispatch remains. The only
+  fallback is `typing_extensions.assert_never(artifact.loader_family)`, preserving
+  static enum exhaustiveness rather than defining a runtime invalid-family policy.
 - Tests monkeypatch the three private handler methods and demonstrate every branch,
   path-independent family choice, default `NotImplementedError`, TypeError/ValueError
-  surfaces, unchanged route failures, and unchanged cancellation.
+  surfaces that remain applicable, unchanged route failures, and unchanged cancellation;
+  they do not fabricate an unforeseen family or expect `ValueError` from the
+  unreachable fallback.
 - `ModelPool` public API, one-time factory retention, public exports, direct await,
   `model_artifact` consumed-only contract, and all scope exclusions remain unchanged.
 - Before `pr-comment`, the Reviewer records an independent code-quality verdict at
@@ -237,8 +251,9 @@ requires a replacement verdict at that same path.
 2. `LocalModelLoader` remains private and dispatches each current family through its
    matching explicit `match/case` branch only.
 3. The exact TODO records future typing without creating the deferred contract.
-4. Default handlers remain no-I/O `NotImplementedError`; invalid input uses existing
-   TypeError/ValueError classes and async failures/cancellation are unwrapped.
+4. Default handlers remain no-I/O `NotImplementedError`; applicable invalid input uses
+   existing TypeError/ValueError validation, the enum fallback is `assert_never(...)`,
+   and async failures/cancellation are unwrapped.
 5. Tests cover happy path, invalid input, edge case, regression, backward
    compatibility, and async safety without dynamic loading.
 
@@ -254,9 +269,10 @@ requires a replacement verdict at that same path.
 - Breaking changes allowed: no public breaking change; the locked internal test seam
   is deliberately replaced and must be re-reviewed.
 - New dependencies: none.
-- Error handling strategy: TypeError for non-ModelArtifact acquire input, ValueError
-  for invalid artifact/family conditions, NotImplementedError for known no-I/O families,
-  and unwrapped route exceptions/cancellation; no domain exception.
+- Error handling strategy: TypeError for non-ModelArtifact acquire input, existing
+  ValueError validation for invalid artifact construction, NotImplementedError for
+  known no-I/O families, `assert_never(...)` for the statically unreachable enum
+  fallback, and unwrapped route exceptions/cancellation; no domain exception.
 - Typing strategy: keep `object`; record only the exact deferred-contract TODO.
 
 ### Async boundary decision
@@ -276,9 +292,10 @@ locks, queue, semaphore, batching, cache, or coalescing is established.
 
 ### Failure model
 
-Known selected family handlers raise `NotImplementedError` until later I/O work.
-Unexpected family values raise `ValueError`; route result and exception surfaces remain
-unwrapped.
+Known selected family handlers raise `NotImplementedError` until later I/O work. The
+closed enum's fallback calls `assert_never(...)`; it does not define support or
+validation behavior for fabricated family values. Route result and exception surfaces
+remain unwrapped.
 
 ### Cancellation / timeout policy
 
@@ -321,8 +338,9 @@ the internal dispatch/test seam is corrected.
 
 - Happy path: monkeypatch each private family handler with distinct async sentinel
   result and verify its corresponding `LoaderFamily` case only.
-- Invalid input: non-artifact acquire input is TypeError; invalid artifact/family
-  surfaces remain ValueError without a new exception class.
+- Invalid input: non-artifact acquire input is TypeError; existing invalid artifact
+  construction remains ValueError without a new exception class. Tests do not
+  manufacture a non-`LoaderFamily` fallback input.
 - Edge case: a PICKLE artifact path ending in `.onnx` still reaches `_load_pickle`.
 - Regression: exact TODO remains; `_route_mapping` is absent; factory retention and
   ModelPool-only package export remain locked.
@@ -343,7 +361,8 @@ uv run pyright
 
 - A replacement injection seam or mapping lookup would make test and production
   dispatch diverge again.
-- A catch/fallback around a handler would alter failure/cancellation semantics.
+- A catch, runtime fallback policy, or replacement exception around a handler would
+  alter failure/cancellation semantics and undermine closed-enum exhaustiveness.
 - Actual loading or typing abstraction would widen this bounded topic.
 
 ## Rollback Plan

@@ -4,6 +4,11 @@
   "copilot_feedback_triage": {
     "ADDRESS": [],
     "DISCUSS": [],
-    "SKIP": []
+    "SKIP": [
+      {
+        "comment": "No external Copilot feedback was supplied for the assert_never re-review.",
+        "why": "The plan, specification, and step tracker fully incorporate the user-locked explicit-dispatch correction; all prior ValueError-fallback gate evidence is correctly treated as stale."
+      }
+    ]
   }
 }
