@@ -129,6 +129,8 @@ root 只 re-export `ModelArtifact` 與 `LoaderFamily`。
 
 `model_artifact` 不參與 `payload-hash` authority，也不應與 `model-payload` 混用。
 
-`LocalModelLoader` 仍維持 docs-level deferred boundary；這個 shared read
-contract 的存在不代表 artifact read、existence probing、resource lifecycle 或
-runtime-model acquisition behavior 已在 repo 中落地。
+repo 已落地最小 `ModelPool` acquisition slice：其 private `LocalModelLoader`
+消費這個 shared read contract，僅依 explicit `LoaderFamily` 的 `pickle`、`torch`、
+`onnx` 分支路由，並以 `assert_never(...)` 表示 closed enum 的不可達 fallback。
+這不代表 artifact read、existence probing、concrete runtime-model contract、provider
+abstraction、resource lifecycle 或其他 runtime behavior 已在 repo 中落地。

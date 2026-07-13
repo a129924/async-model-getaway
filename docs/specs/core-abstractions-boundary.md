@@ -41,8 +41,8 @@
 
 1. `canonical input boundary` 定義 `model_name`、`model_source_kind`、`model-payload`、`features`
 2. `ModelRegistry` 擁有 `payload-hash`、identity context 與 freshness authority
-3. `ModelPool` 擁有 local `runtime-model` provider / lifecycle
-4. `LocalModelLoader` 作為 `ModelPool` 內部的 local acquisition sub-boundary，只消費 `model_artifact`
+3. `ModelPool` 是 local `runtime-model` 的最小 public acquisition boundary；目前只提供 async `acquire(...)`
+4. private `LocalModelLoader` 作為 `ModelPool` 內部的 local acquisition sub-boundary，只消費 `model_artifact` 並依 explicit `LoaderFamily` dispatch
 5. `ModelGateway` 擁有 remote `runtime-model` provider / access boundary
 6. `runtime-model` 是 provider boundary 交付給 `ModelExecution` 的 unified consumption surface
 7. `ModelExecution` 擁有 `runtime-model` invocation semantics
@@ -58,6 +58,8 @@
 - `async_model_gateway.model_runtime.model_artifact` 只公開 `ModelArtifact` 與 `LoaderFamily`
 - `ModelArtifact` 只承載 `loader_family`、`artifact_path`、`loader_options`
 - `LoaderFamily` starter vocabulary 只允許 `pickle`、`torch`、`onnx`
+- `LocalModelLoader` 對這三個 family 使用 explicit `match/case`；closed enum 的不可達 fallback 使用 `assert_never(...)`
+- artifact I/O、concrete runtime-model type、provider abstraction 與完整 local lifecycle 仍 deferred
 - `async_model_gateway.model_registry.stores.InMemoryRegistryStore` 已作為
   process-local concrete store 提供，但不改變 `model_registry` root package
   的 re-export boundary

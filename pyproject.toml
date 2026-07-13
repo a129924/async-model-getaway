@@ -1,6 +1,6 @@
 [project]
 name = "async-model-gateway"
-version = "0.4.6"
+version = "0.4.7"
 description = "Async-first foundation for a model gateway project."
 readme = "README.md"
 requires-python = ">=3.10,<3.11"

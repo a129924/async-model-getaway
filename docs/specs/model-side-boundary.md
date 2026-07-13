@@ -59,18 +59,16 @@ gateway / registry 不做語意等價判斷；只要 `model-payload` material �
 
 ## `ModelPool`
 
-`ModelPool` 是 local `runtime-model` provider / lifecycle owner。
+`ModelPool` 是 local 路徑的最小 public acquisition boundary。
 
-它只屬於 `local` 路徑。
+目前 repo 已在 `async_model_gateway.model_runtime.model_pool` package root
+公開 `ModelPool`，其唯一 public acquisition method 是 async
+`acquire(self, artifact: ModelArtifact) -> object`。一個 pool instance 在建立時保有
+一個 private `LocalModelLoader`，並直接 await 其 load 結果。
 
-它負責：
-
-- local `runtime-model` provider
-- local model availability
-- local model 上下架
-- local `runtime-model` 的取得與生命週期責任
-- 在內部消化 local runtime 種類、backend 差異與生命週期細節
-- 透過 `LocalModelLoader` 完成 local acquisition，再交付統一的 `runtime-model`
+這個實作 slice 只負責將有效 `ModelArtifact` 交給 retained private loader；它不宣稱
+local model availability、cache/reuse、上下載、close/unload 或其他 lifecycle policy
+已完成，也不定義 concrete `runtime-model` type、Protocol 或 provider abstraction。
 
 它不負責：
 
@@ -82,7 +80,8 @@ gateway / registry 不做語意等價判斷；只要 `model-payload` material �
 
 ## `LocalModelLoader`
 
-`LocalModelLoader` 是 `ModelPool` 內部的 local acquisition sub-boundary。
+`LocalModelLoader` 是 `ModelPool` 內部的 private local acquisition sub-boundary，
+不是 top-level public owner。
 
 它的輸入是 `model_artifact`，而不是 `model-payload`。
 
@@ -97,31 +96,32 @@ root，而 `model_artifact` package root 只公開 `ModelArtifact` 與
 - `LoaderFamily` 是 bounded enum，starter vocabulary 只允許 `pickle`、`torch`、`onnx`
 - loader family 必須由 producer 顯式提供，不得由 path、副檔名、artifact content 或 fallback heuristics 推導
 
-它負責：
+目前實作只根據 `artifact.loader_family` 作 explicit dispatch：
 
-- 根據 `model_artifact` 選 loader family
-- 定位要讀的 artifact
-- 接收讀取所需的額外資訊
-- 讀取 local artifact
-- 轉成 Python object
-- 再統一包裝成 `runtime-model`
+- `LoaderFamily.PICKLE` 直接 await private `_load_pickle(...)`
+- `LoaderFamily.TORCH` 直接 await private `_load_torch(...)`
+- `LoaderFamily.ONNX` 直接 await private `_load_onnx(...)`
+- closed enum 的不可達 fallback 使用 `assert_never(...)`
+
+三個目前 handler 都是 no-I/O placeholder，維持 `NotImplementedError`。它們不讀取
+local artifact、不根據 `artifact_path`、副檔名或內容推導 family，也不包裝成 concrete
+`runtime-model`。
 
 它不負責：
 
 - 依賴 `model-payload` 猜 loader
 - 擁有 identity authority
 - 對外暴露 top-level business owner 身分
+- 實作 artifact I/O、runtime-model concrete type 或 lifecycle policy
 
 ## Fail-Closed 原則
 
-若 `model_artifact` 缺失、矛盾或資訊不足，`LocalModelLoader` 應直接 fail。
+已知 family 的目前 no-I/O handler 會以 `NotImplementedError` fail closed。未知
+enum fallback 是 static unreachable path，而非新的 runtime invalid-family policy。
 
-猜副檔名、猜 pickle、猜 object shape 不能作為正式主路徑。
-
-最多只能保留為 deferred fallback note，而不能寫成標準行為。
-
-因此，即使 `artifact_path` 看起來像既有格式，shared read contract 仍不得省略
-explicit `LoaderFamily`，也不得把 `loader_options` 升格成 identity material。
+猜副檔名、猜 pickle、猜 object shape 不能作為正式主路徑。因此，即使
+`artifact_path` 看起來像既有格式，shared read contract 仍不得省略 explicit
+`LoaderFamily`，也不得把 `loader_options` 升格成 identity material。
 
 ## `ModelGateway`
 

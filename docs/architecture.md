@@ -96,6 +96,14 @@ local 與 remote 被視為 model-source concern，而不是不同的 gateway mod
 explicit `LoaderFamily` 與最小 artifact metadata，不承擔 loader runtime、
 artifact I/O 或 identity authority。
 
+repo 已落地其中最小的 local acquisition slice：
+`async_model_gateway.model_runtime.model_pool.ModelPool` 提供 async
+`acquire(...)`，並保有私有 `LocalModelLoader`。loader 只消費 `ModelArtifact`，以
+`LoaderFamily.PICKLE`、`LoaderFamily.TORCH`、`LoaderFamily.ONNX` 的 explicit
+`match/case` 分支選擇對應 private handler；closed enum 的不可達 fallback 使用
+`assert_never(...)`。這個 slice 不讀取 artifact、不定義 concrete
+`runtime-model` contract，也不實作 cache、close/unload 或其他 lifecycle policy。
+
 ## Shared Vocabulary
 
 以下詞彙是目前專案共享語彙的一部分：
@@ -116,7 +124,8 @@ artifact I/O 或 identity authority。
 
 這些詞彙大多仍維持在概念層，還不對應到最終定案的 Python class、protocol
 或 API schema；目前已落地的狹義實作，限於最小 `ModelRegistry`
-boundary 與 `model-payload` 的 canonical hashing core。
+boundary、`model-payload` 的 canonical hashing core，以及最小 `ModelPool`
+local acquisition slice。
 
 ## Initialization 階段的 Out Of Scope
 
@@ -127,7 +136,7 @@ initialization 階段不包含：
 - provider-specific contracts
 - adapter schemas
 - framework integration
-- model pool implementation
+- artifact I/O、concrete runtime-model contract 與完整 model pool lifecycle
 - response cache implementation
 - execution runtime behavior
 - infrastructure selection
