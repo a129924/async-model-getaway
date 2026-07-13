@@ -56,7 +56,7 @@ validation_checks:
   expected_initial_status: red
   production_code_modified: false
   pytest_red_evidence:
-    command: uv run pytest --no-header -rN tests/model_runtime/model_pool -v
+    command: uv run pytest --no-cov --no-header -rN tests/model_runtime/model_pool -v
     result: 3 collection errors before execution
     cause: model_pool package does not exist before the implementation phase
 issues: []
