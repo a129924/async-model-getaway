@@ -101,8 +101,12 @@ repo 已落地其中最小的 local acquisition slice：
 `acquire(...)`，並保有私有 `LocalModelLoader`。loader 只消費 `ModelArtifact`，以
 `LoaderFamily.PICKLE`、`LoaderFamily.TORCH`、`LoaderFamily.ONNX` 的 explicit
 `match/case` 分支選擇對應 private handler；closed enum 的不可達 fallback 使用
-`assert_never(...)`。這個 slice 不讀取 artifact、不定義 concrete
-`runtime-model` contract，也不實作 cache、close/unload 或其他 lifecycle policy。
+`assert_never(...)`。`async_model_gateway.model_runtime.runtime_model` 已提供 abstract
+`LoadedRuntimeModel` consumption contract；它只公開 readonly `loader_family`，並以
+non-public `_provider_runtime()` 保留給 future `ModelExecution` 的 internal handoff。
+provider runtime 只存在於同一 module 的 private local implementation，`ModelPool`
+與 private loader 均以此 contract 作 return type。這個 slice 不讀取 artifact，亦不
+實作 execution、provider framework、cache、close/unload 或其他 lifecycle policy。
 
 ## Shared Vocabulary
 
@@ -122,10 +126,10 @@ repo 已落地其中最小的 local acquisition slice：
 - local model source
 - remote model source
 
-這些詞彙大多仍維持在概念層，還不對應到最終定案的 Python class、protocol
-或 API schema；目前已落地的狹義實作，限於最小 `ModelRegistry`
-boundary、`model-payload` 的 canonical hashing core，以及最小 `ModelPool`
-local acquisition slice。
+這些詞彙大多仍維持在概念層，還不對應到完整的 Python API schema；目前已落地的
+狹義實作，限於最小 `ModelRegistry` boundary、`model-payload` 的 canonical hashing
+core、最小 `ModelPool` local acquisition slice，以及 abstract `LoadedRuntimeModel`
+consumption contract。
 
 ## Initialization 階段的 Out Of Scope
 
@@ -136,7 +140,7 @@ initialization 階段不包含：
 - provider-specific contracts
 - adapter schemas
 - framework integration
-- artifact I/O、concrete runtime-model contract 與完整 model pool lifecycle
+- artifact I/O、provider framework 與完整 model pool lifecycle
 - response cache implementation
 - execution runtime behavior
 - infrastructure selection

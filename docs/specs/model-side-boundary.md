@@ -63,12 +63,14 @@ gateway / registry 不做語意等價判斷；只要 `model-payload` material �
 
 目前 repo 已在 `async_model_gateway.model_runtime.model_pool` package root
 公開 `ModelPool`，其唯一 public acquisition method 是 async
-`acquire(self, artifact: ModelArtifact) -> object`。一個 pool instance 在建立時保有
-一個 private `LocalModelLoader`，並直接 await 其 load 結果。
+`acquire(self, artifact: ModelArtifact) -> LoadedRuntimeModel`。一個 pool instance
+在建立時保有一個 private `LocalModelLoader`，並直接 await 其 typed load 結果。
 
 這個實作 slice 只負責將有效 `ModelArtifact` 交給 retained private loader；它不宣稱
 local model availability、cache/reuse、上下載、close/unload 或其他 lifecycle policy
-已完成，也不定義 concrete `runtime-model` type、Protocol 或 provider abstraction。
+已完成。它以 `LoadedRuntimeModel` 作 abstract consumption contract；provider runtime
+不穿透 public boundary，僅由 runtime-model module 的 private local implementation
+保存，並保留 non-public internal handoff 給 future `ModelExecution`。
 
 它不負責：
 
@@ -105,14 +107,14 @@ root，而 `model_artifact` package root 只公開 `ModelArtifact` 與
 
 三個目前 handler 都是 no-I/O placeholder，維持 `NotImplementedError`。它們不讀取
 local artifact、不根據 `artifact_path`、副檔名或內容推導 family，也不包裝成 concrete
-`runtime-model`。
+loaded runtime handle。
 
 它不負責：
 
 - 依賴 `model-payload` 猜 loader
 - 擁有 identity authority
 - 對外暴露 top-level business owner 身分
-- 實作 artifact I/O、runtime-model concrete type 或 lifecycle policy
+- 實作 artifact I/O、provider framework 或 lifecycle policy
 
 ## Fail-Closed 原則
 
@@ -174,6 +176,11 @@ unified consumption surface。
 
 它不是 system-level execution owner。
 
-目前只固定其邊界角色，不定義最終 class、protocol 或 provider contract。
+目前 `async_model_gateway.model_runtime.runtime_model` 已公開 abstract nominal
+`LoadedRuntimeModel`。它唯一的 public semantic 是 readonly `loader_family`；
+`_provider_runtime()` 是非 public 的 model-side internal handoff，供 future
+`ModelExecution` topic 消費。private `_LocalLoadedRuntimeModel` 與 factory 不會從
+package root export，因此 provider-specific object 不會成為 package consumer contract。
+這不建立 execution API、provider framework、artifact I/O 或 lifecycle policy。
 
 對外能力邊界在目前階段採統一入口；能力差異先收斂在 `features`，不先拆成多方法名公開 surface。

@@ -23,7 +23,7 @@
 - packaged application scaffold
 - 最小 CLI entrypoint
 
-目前 package version baseline 為 `0.4.7`。repo 目前已落地最小
+目前 package version baseline 為 `0.5.0`。repo 目前已落地最小
 `ModelRegistry` boundary，並補齊最小 operational `ResponseCache`
 boundary：`async_model_gateway.response_cache` 公開
 `ResponseCache`、`ResponseCacheEntry`、`ResponseCacheKey` 與
@@ -39,8 +39,13 @@ loader family vocabulary。repo 也已落地最小 local acquisition boundary：
 `acquire(...)` 消費 `ModelArtifact`，並保有私有的 `LocalModelLoader`。該 loader
 只依 `LoaderFamily` 的顯式 `pickle`、`torch`、`onnx` 分支路由，且以
 `assert_never(...)` 收束 closed enum 的不可達 fallback；它不依 path 或內容猜測
-family。這不代表 artifact I/O、concrete `runtime-model` contract、provider
-abstraction 或 lifecycle behavior 已完成。
+family。repo 也已在
+`async_model_gateway.model_runtime.runtime_model` 落地 abstract
+`LoadedRuntimeModel` consumption contract：其唯一 public semantic 是
+`loader_family`；provider runtime 只由私有 local implementation 保存，並透過
+non-public internal handoff 留給 future `ModelExecution` topic。`ModelPool.acquire(...)`
+與 private loader 的 return type 已收窄為這個 contract。這不代表 artifact I/O、
+execution、provider framework 或 lifecycle behavior 已完成。
 root package 目前只公開 `__version__` 與 `main`；`ModelRegistry` 由
 `async_model_gateway.model_registry` 提供，
 `async_model_gateway.model_registry.stores` 提供 submodule public 的
@@ -99,8 +104,8 @@ architecture、`orchestrator` 與 `runtime-model` flow 仍不是已完成的 Pyt
 
 其中 `ModelArtifact` 只負責 shared read contract。最小 `ModelPool` 只提供
 async local acquisition；其私有 `LocalModelLoader` 消費這個 contract 並作 explicit
-family dispatch。artifact I/O、concrete runtime-model typing 與完整 lifecycle
-仍 deferred。
+family dispatch，並以 `LoadedRuntimeModel` 作 typed return boundary。artifact I/O、
+execution、provider framework 與完整 lifecycle 仍 deferred。
 
 在目前階段，`model_source_kind` 只鎖 `local | remote`，而 capability 差異先收斂在 `features`，不先拆成多方法名公開介面。
 
@@ -123,7 +128,7 @@ core abstractions 的 boundary spec 入口整理在 [docs/specs/core-abstraction
 - artifact I/O
 - cache、reuse、close/unload 與其他 `ModelPool` lifecycle behavior
 - broader response cache runtime logic
-- `runtime-model` acquisition
+- 真實 local `runtime-model` acquisition
 - provider adapters
 - infrastructure components
 - framework-specific service surface
