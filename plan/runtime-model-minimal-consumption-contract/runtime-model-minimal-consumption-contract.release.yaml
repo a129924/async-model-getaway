@@ -1,0 +1,27 @@
+topic: runtime-model-minimal-consumption-contract
+revision: abc-contract-correction
+release:
+  version: v0.5.0
+  commit: 60c5a470cdf02e03c0ebb7be3dc5f371896f0ee7
+  commit_subject: "chore(release): cut v0.5.0"
+tag:
+  name: v0.5.0
+  kind: lightweight
+  local_target: 60c5a470cdf02e03c0ebb7be3dc5f371896f0ee7
+  remote_target: 60c5a470cdf02e03c0ebb7be3dc5f371896f0ee7
+  targets_match_release_commit: true
+remote_verification:
+  dev_target: 60c5a470cdf02e03c0ebb7be3dc5f371896f0ee7
+  dev_matches_release_commit: true
+validation:
+  focused_pytest: "26 passed"
+  full_pytest: "166 passed; coverage 98.67%"
+  ruff: passed
+  pyright: passed
+  lock_check: passed
+  version_consistency: passed
+  diff_check: passed
+outcome:
+  github_release_created: false
+  package_published: false
+  tag_retargeted_by_evidence: false
