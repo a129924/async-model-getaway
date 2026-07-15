@@ -59,6 +59,17 @@ def test_loaded_runtime_model_has_no_public_payload_or_lifecycle_api() -> None:
     assert not hasattr(handle, "serialize")
 
 
+def test_loaded_runtime_model_rejects_accidental_public_surface_expansion() -> None:
+    """The abstract base must not leave an instance dictionary on local handles."""
+    handle = _create_loaded_runtime_model(
+        loader_family=LoaderFamily.ONNX,
+        provider_model=object(),
+    )
+
+    with pytest.raises(AttributeError):
+        handle.provider_model = object()  # type: ignore[attr-defined]
+
+
 def test_loaded_runtime_model_private_implementation_uses_ordinary_construction() -> None:
     """The corrected private concrete class must not recreate the rejected immutable design."""
     module_source = inspect.getsource(loaded_runtime_model_module)

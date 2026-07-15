@@ -12,6 +12,8 @@ __all__ = ["LoadedRuntimeModel"]
 class LoadedRuntimeModel(ABC):
     """Define the opaque consumption boundary for an acquired runtime model."""
 
+    __slots__ = ()
+
     @property
     @abstractmethod
     def loader_family(self) -> LoaderFamily:
