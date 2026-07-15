@@ -1,0 +1,85 @@
+verdict: approved
+review_status: complete
+topic: runtime-model-minimal-consumption-contract
+revision: abc-contract-correction
+preconditions:
+  implementation_review:
+    verdict: approved
+    artifact: plan/runtime-model-minimal-consumption-contract/runtime-model-minimal-consumption-contract.implementation-review.yaml
+  red_tests:
+    verdict: red-tests-ready
+    revision: abc-contract-correction
+    artifact: plan/runtime-model-minimal-consumption-contract/runtime-model-minimal-consumption-contract.red-tests.yaml
+review_scope:
+  - src/async_model_gateway/model_runtime/runtime_model/__init__.py
+  - src/async_model_gateway/model_runtime/runtime_model/loaded_runtime_model.py
+  - src/async_model_gateway/model_runtime/model_pool/pool.py
+  - src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py
+  - tests/model_runtime/runtime_model/test_loaded_runtime_model.py
+  - tests/model_runtime/runtime_model/test_runtime_model_package_surface.py
+  - tests/model_runtime/model_pool/test_model_pool.py
+  - tests/model_runtime/model_pool/test_local_model_loader.py
+  - tests/model_runtime/model_pool/test_model_pool_package_surface.py
+tooling_detected:
+  - "Ruff: E, W, F, N, D, UP, B, A, C4, ARG, RUF; line-length 100"
+  - "Pyright: strict; Python 3.10"
+  - "pytest: asyncio_mode=strict; coverage threshold 90%"
+findings:
+  typing: []
+  lint: []
+  readability: []
+  error_handling: []
+  anti_patterns: []
+  test_quality: []
+  observability: []
+contract_and_boundary_checks:
+  public_abc: >-
+    LoadedRuntimeModel is a nominal ABC with abstract readonly loader_family and a
+    non-public _provider_runtime() handoff. It is neither a dataclass, alias, Protocol,
+    nor Generic.
+  private_implementation: >-
+    _LocalLoadedRuntimeModel and _create_loaded_runtime_model remain module-private;
+    the concrete implementation uses ordinary keyword-only __init__ and no __new__,
+    custom __setattr__, frozen-dataclass, constructor-token, or immutability mechanism.
+  payload_isolation: >-
+    The provider runtime is held only by the private concrete implementation and is
+    unavailable through the runtime_model package public surface; the underscore handoff
+    is limited to model-side internal consumption.
+  typed_acquisition: >-
+    ModelPool.acquire, LocalModelLoader.load, and all three private family handlers
+    return LoadedRuntimeModel. Existing validation, retained loader, direct await,
+    explicit match/case, assert_never, and no-I/O stubs are preserved.
+  failure_and_cancellation: >-
+    No exception translation or task management is introduced. Generic loader failures
+    and asyncio.CancelledError continue to propagate unchanged.
+  tests_and_scope: >-
+    Runtime-model and modified model-pool tests use static imports, assertions, and no
+    real I/O or dynamic module loading. No artifact, registry, cache, gateway,
+    execution, release, or documentation scope drift was found.
+validation:
+  - command: uv run pytest --no-cov tests/model_runtime/runtime_model tests/model_runtime/model_pool -v
+    result: "25 passed"
+  - command: uv run pytest -q
+    result: "165 passed; total coverage 98.67%"
+  - command: uv run ruff check src tests plan/runtime-model-minimal-consumption-contract
+    result: passed
+  - command: uv run pyright
+    result: "0 errors, 0 warnings, 0 informations"
+  - command: uv lock --check
+    result: passed
+  - command: git diff --check
+    result: passed
+  - command: static review scan
+    result: >-
+      No TypeVar, Generic, provider generic annotation, dynamic module loading,
+      __new__, custom __setattr__, or frozen-dataclass implementation was found in the
+      reviewed source or test paths.
+blocking_issues: []
+gate_status: code-review-complete
+next_role: Human
+next_action: >-
+  Stop at the commit and PR-routing decision. Do not merge, release, tag, create a
+  GitHub Release, or publish a package without applicable human authorization.
+stop_condition: >-
+  This approval covers only the pre-merge ABC contract correction. Post-merge v0.5.0
+  documentation and release work still require the separate fresh release human check.

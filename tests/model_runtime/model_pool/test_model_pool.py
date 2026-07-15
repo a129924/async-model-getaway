@@ -11,6 +11,10 @@ from async_model_gateway.model_runtime.model_artifact import LoaderFamily, Model
 from async_model_gateway.model_runtime.model_pool import ModelPool
 from async_model_gateway.model_runtime.model_pool import pool as pool_module
 from async_model_gateway.model_runtime.model_pool._local_model_loader import LocalModelLoader
+from async_model_gateway.model_runtime.runtime_model import LoadedRuntimeModel
+from async_model_gateway.model_runtime.runtime_model.loaded_runtime_model import (
+    _create_loaded_runtime_model,
+)
 
 
 def _artifact(loader_family: LoaderFamily) -> ModelArtifact:
@@ -23,16 +27,19 @@ def _artifact(loader_family: LoaderFamily) -> ModelArtifact:
 
 
 @pytest.mark.asyncio
-async def test_model_pool_acquire_retains_factory_loader_and_returns_loader_object(
+async def test_model_pool_acquire_retains_factory_loader_and_returns_typed_handle(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """One pool construction must retain one factory-created loader for all acquires."""
     factory_calls: list[None] = []
     loader_calls: list[ModelArtifact] = []
-    sentinel = object()
+    sentinel = _create_loaded_runtime_model(
+        loader_family=LoaderFamily.PICKLE,
+        provider_model=object(),
+    )
     loader = LocalModelLoader()
 
-    async def load(artifact: ModelArtifact) -> object:
+    async def load(artifact: ModelArtifact) -> LoadedRuntimeModel:
         loader_calls.append(artifact)
         return sentinel
 
@@ -63,9 +70,12 @@ async def test_model_pool_acquire_rejects_non_artifact_before_loader_call(
     loader_calls: list[ModelArtifact] = []
     loader = LocalModelLoader()
 
-    async def load(artifact: ModelArtifact) -> object:
+    async def load(artifact: ModelArtifact) -> LoadedRuntimeModel:
         loader_calls.append(artifact)
-        return object()
+        return _create_loaded_runtime_model(
+            loader_family=artifact.loader_family,
+            provider_model=object(),
+        )
 
     monkeypatch.setattr(loader, "load", load)
     monkeypatch.setattr(pool_module, "_create_local_model_loader", lambda: loader)
@@ -85,7 +95,7 @@ async def test_model_pool_acquire_propagates_loader_failure_unchanged(
     failure = RuntimeError("loader failed")
     loader = LocalModelLoader()
 
-    async def load(_artifact: ModelArtifact) -> object:
+    async def load(_artifact: ModelArtifact) -> LoadedRuntimeModel:
         raise failure
 
     monkeypatch.setattr(loader, "load", load)
@@ -105,7 +115,7 @@ async def test_model_pool_acquire_propagates_cancellation_unchanged(
     cancellation = asyncio.CancelledError()
     loader = LocalModelLoader()
 
-    async def load(_artifact: ModelArtifact) -> object:
+    async def load(_artifact: ModelArtifact) -> LoadedRuntimeModel:
         raise cancellation
 
     monkeypatch.setattr(loader, "load", load)

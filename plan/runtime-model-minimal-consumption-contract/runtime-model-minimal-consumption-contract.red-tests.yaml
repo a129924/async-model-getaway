@@ -1,0 +1,104 @@
+verdict: red-tests-ready
+red_status: red-confirmed
+revision: abc-contract-correction
+d1_verdict:
+  verdict: non-trivial
+  reason: >-
+    The correction replaces a concrete immutable public handle with an abstract nominal
+    boundary, adds an internal provider-runtime handoff, and requires a private concrete
+    implementation while preserving the existing async acquisition contract.
+test_mapping:
+  - requirement_id: AC-1
+    test_case_name: test_loaded_runtime_model_is_abstract_and_rejects_direct_construction
+    coverage_category: error-exception
+  - requirement_id: AC-1
+    test_case_name: test_runtime_model_package_exports_only_loaded_runtime_model
+    coverage_category: integration
+  - requirement_id: AC-2
+    test_case_name: test_loaded_runtime_model_private_helper_has_the_locked_internal_signature
+    coverage_category: public-contract
+  - requirement_id: AC-3
+    test_case_name: test_loaded_runtime_model_private_helper_preserves_loader_family_provenance
+    coverage_category: happy-path
+  - requirement_id: AC-3
+    test_case_name: test_loaded_runtime_model_has_no_public_payload_or_lifecycle_api
+    coverage_category: boundary-edge
+  - requirement_id: AC-4
+    test_case_name: test_loaded_runtime_model_private_implementation_uses_ordinary_construction
+    coverage_category: implementation-boundary
+  - requirement_id: AC-5
+    test_case_name: test_model_pool_acquire_has_the_locked_async_public_signature
+    coverage_category: public-contract
+  - requirement_id: AC-5
+    test_case_name: test_local_model_loader_methods_have_the_locked_typed_return_contract
+    coverage_category: public-contract
+  - requirement_id: AC-6
+    test_case_name: test_model_pool_acquire_retains_factory_loader_and_returns_typed_handle
+    coverage_category: state-side-effects
+  - requirement_id: AC-6
+    test_case_name: test_local_model_loader_routes_each_family_to_its_matching_private_handler
+    coverage_category: integration
+  - requirement_id: AC-6
+    test_case_name: test_local_model_loader_uses_family_not_artifact_path_appearance
+    coverage_category: boundary-edge
+  - requirement_id: AC-6
+    test_case_name: test_local_model_loader_default_handlers_fail_closed_without_loading
+    coverage_category: error-exception
+  - requirement_id: AC-6
+    test_case_name: test_local_model_loader_uses_typing_extensions_assert_never_for_the_unreachable_case
+    coverage_category: regression
+  - requirement_id: AC-7
+    test_case_name: test_model_pool_acquire_rejects_non_artifact_before_loader_call
+    coverage_category: error-exception
+  - requirement_id: AC-7
+    test_case_name: test_model_pool_acquire_propagates_loader_failure_unchanged
+    coverage_category: error-exception
+  - requirement_id: AC-7
+    test_case_name: test_model_pool_acquire_propagates_cancellation_unchanged
+    coverage_category: error-exception
+  - requirement_id: AC-8
+    test_case_name: test_loaded_runtime_model_does_not_introduce_a_generic_contract
+    coverage_category: boundary-edge
+  - requirement_id: AC-8
+    test_case_name: static imports in all runtime-model and modified model-pool tests
+    coverage_category: workflow
+validation_checks:
+  d1_decision: non-trivial
+  behavior_contract_source: plan/runtime-model-minimal-consumption-contract/runtime-model-minimal-consumption-contract.spec.md
+  approved_plan_and_fresh_human_gate: true
+  tester_production_code_modified: false
+  rejected_immutable_revision_present_before_test_authoring: true
+  requirements_mapped: true
+  public_contract_coverage: true
+  test_categories_present:
+    happy_path: true
+    error_exception: true
+    boundary_edge: true
+    state_side_effects: true
+    integration_points: true
+  expected_initial_status: red
+  static_imports_only: true
+  dynamic_module_loading: prohibited-and-not-used
+  command: uv run pytest --no-cov tests/model_runtime/runtime_model tests/model_runtime/model_pool -v
+  exit_status: 1
+  result: >-
+    RED confirmed: 3 tests failed and 22 passed against the rejected immutable concrete
+    revision. Failures prove the missing abstract ABC boundary, missing _provider_runtime()
+    internal handoff, and missing ordinary private _LocalLoadedRuntimeModel implementation.
+  failing_tests:
+    - tests/model_runtime/runtime_model/test_loaded_runtime_model.py::test_loaded_runtime_model_private_helper_preserves_loader_family_provenance
+    - tests/model_runtime/runtime_model/test_loaded_runtime_model.py::test_loaded_runtime_model_is_abstract_and_rejects_direct_construction
+    - tests/model_runtime/runtime_model/test_loaded_runtime_model.py::test_loaded_runtime_model_private_implementation_uses_ordinary_construction
+  passing_tests: 22
+  test_paths:
+    - tests/model_runtime/runtime_model/test_loaded_runtime_model.py
+    - tests/model_runtime/runtime_model/test_runtime_model_package_surface.py
+    - tests/model_runtime/model_pool/test_model_pool.py
+    - tests/model_runtime/model_pool/test_local_model_loader.py
+    - tests/model_runtime/model_pool/test_model_pool_package_surface.py
+  static_quality_check: uv run ruff check tests/model_runtime/runtime_model tests/model_runtime/model_pool/test_model_pool.py tests/model_runtime/model_pool/test_local_model_loader.py tests/model_runtime/model_pool/test_model_pool_package_surface.py
+  static_quality_result: passed
+issues: []
+next_step: >-
+  Implementer may correct only the approved runtime-model source contract and preserve the
+  already-passing acquisition regressions, then rerun the RED command until all 25 tests pass.

@@ -1,0 +1,11 @@
+{
+  "topic": "runtime-model-minimal-consumption-contract",
+  "gate": "human-check",
+  "decision": "approved",
+  "status": "cleared",
+  "plan_review_verdict": "approved",
+  "cleared_for": "implement-plan",
+  "cleared": true,
+  "revision": "abc-contract-correction",
+  "recorded_on": "2026-07-15"
+}
