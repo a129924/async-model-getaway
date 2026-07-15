@@ -1,0 +1,140 @@
+verdict: approved
+review_status: complete
+topic: runtime-model-minimal-consumption-contract
+revision: abc-contract-correction
+step_gate:
+  command: >-
+    python .agents/skills/plan-step-tracker/scripts/step_tracker.py
+    check_impl_steps_succeeded runtime-model-minimal-consumption-contract
+  status: passed
+  detail: All 10 historical and correction implementation entries are marked [X].
+traceability_matrix:
+  - step: >-
+      Tester authors fresh replacement RED tests/evidence first, static-importing the
+      private factory without dynamic loading.
+    status: done
+    evidence: >-
+      plan/runtime-model-minimal-consumption-contract/runtime-model-minimal-consumption-contract.red-tests.yaml;
+      tests/model_runtime/runtime_model/test_loaded_runtime_model.py:10-91
+  - step: >-
+      Implementer corrects the runtime handle source/package export to a public ABC
+      contract, private ordinary-init local implementation, and private factory seam.
+    status: done
+    evidence: >-
+      src/async_model_gateway/model_runtime/runtime_model/loaded_runtime_model.py:5-54;
+      src/async_model_gateway/model_runtime/runtime_model/__init__.py:3-5
+  - step: >-
+      Implementer preserves pool.py return type and validation, retention, and direct-await
+      behavior while adapting corrected-handle tests.
+    status: done
+    evidence: >-
+      src/async_model_gateway/model_runtime/model_pool/pool.py:13-36;
+      tests/model_runtime/model_pool/test_model_pool.py:29-127
+  - step: >-
+      Implementer preserves the private loader return types, explicit dispatch, assert_never,
+      and no-I/O stubs while adapting corrected-handle tests.
+    status: done
+    evidence: >-
+      src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:14-36;
+      tests/model_runtime/model_pool/test_local_model_loader.py:32-149
+  - step: Implementer runs the declared validation and records new truthful progress.
+    status: done
+    evidence: >-
+      focused pytest: 25 passed; full pytest: 165 passed; Ruff: passed; Pyright: 0 errors;
+      uv lock --check: passed; diff check: passed
+scope_creep_check:
+  - non_goal: No real artifact I/O or pickle security policy.
+    violated: no
+    evidence: src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:26-36
+  - non_goal: No ModelExecution, invocation API, or provider framework.
+    violated: no
+    evidence: src/async_model_gateway/model_runtime/runtime_model/loaded_runtime_model.py:12-54
+  - non_goal: No lifecycle, cache/reuse, timeout, retry, or background-task behavior.
+    violated: no
+    evidence: src/async_model_gateway/model_runtime/runtime_model/loaded_runtime_model.py:12-42
+  - non_goal: No ModelGateway, model_registry, response_cache, ModelArtifact, or LoaderFamily drift.
+    violated: no
+    evidence: git diff --name-only contains no adjacent-owner or model_artifact path
+  - non_goal: No unapproved docs, version, lockfile, release, tag, or publishing work.
+    violated: no
+    evidence: git diff --name-only contains no release-only path
+contract_check:
+  - item: LoadedRuntimeModel is an ABC-based abstract nominal contract, not a dataclass, alias, Protocol, or Generic.
+    status: matches
+    detail: >-
+      loaded_runtime_model.py:5-22 imports ABC and abstractmethod, declares the abstract
+      class, and has no TypeVar or Generic surface; focused contract tests pass.
+  - item: loader_family is the sole public semantic and _provider_runtime() is a non-public internal handoff.
+    status: matches
+    detail: >-
+      The abstract property and underscore-prefixed handoff are declared at
+      loaded_runtime_model.py:15-22; provenance and internal runtime identity are verified
+      through the static private-factory test seam.
+  - item: >-
+      _LocalLoadedRuntimeModel and _create_loaded_runtime_model are private; factory has the
+      exact keyword-only signature and returns LoadedRuntimeModel.
+    status: matches
+    detail: >-
+      Private implementation/factory are at loaded_runtime_model.py:25-54, omitted from
+      __all__, and signature/export tests pass.
+  - item: >-
+      Private local implementation uses ordinary __init__ and does not introduce __new__,
+      custom __setattr__, frozen dataclass, constructor-token, or immutable behavior.
+    status: matches
+    detail: >-
+      Ordinary initialization and storage are at loaded_runtime_model.py:28-42; correction
+      regression test verifies the rejected immutable mechanisms are absent.
+  - item: >-
+      ModelPool.acquire, LocalModelLoader.load, and all family handlers return
+      LoadedRuntimeModel while preserving control flow and failures.
+    status: matches
+    detail: >-
+      Annotations are at pool.py:30 and _local_model_loader.py:14,26,30,34; routing,
+      TypeError, NotImplementedError, generic failure, and CancelledError tests pass.
+  - item: No dynamic test loading or generic provider contract is introduced.
+    status: matches
+    detail: >-
+      Tests use static imports; scan of runtime-model and modified model-pool tests finds no
+      importlib, spec_from_file_location, module_from_spec, SourceFileLoader, runpy, or
+      __import__ usage.
+test_plan_check:
+  - case_type: happy path
+    status: present
+    location: tests/model_runtime/runtime_model/test_loaded_runtime_model.py:20-30
+  - case_type: invalid input
+    status: present
+    location: >-
+      tests/model_runtime/runtime_model/test_loaded_runtime_model.py:33-39;
+      tests/model_runtime/model_pool/test_model_pool.py:65-87;
+      tests/model_runtime/model_artifact/test_model_artifact.py:304-312
+  - case_type: edge case
+    status: present
+    location: tests/model_runtime/runtime_model/test_loaded_runtime_model.py:42-79
+  - case_type: regression
+    status: present
+    location: tests/model_runtime/model_pool/test_local_model_loader.py:32-149
+  - case_type: failure and backward compatibility
+    status: present
+    location: >-
+      tests/model_runtime/model_pool/test_model_pool.py:90-127;
+      tests/model_runtime/runtime_model/test_runtime_model_package_surface.py:11-23;
+      tests/model_runtime/model_pool/test_model_pool_package_surface.py:15-42
+validation:
+  - command: uv run pytest --no-cov tests/model_runtime/runtime_model tests/model_runtime/model_pool -v
+    result: 25 passed
+  - command: uv run pytest -v
+    result: 165 passed
+  - command: uv run ruff check src tests plan/runtime-model-minimal-consumption-contract
+    result: passed
+  - command: uv run pyright
+    result: 0 errors, 0 warnings
+  - command: uv lock --check
+    result: passed
+  - command: git diff --check
+    result: passed
+blocking_issues: []
+next_role: Reviewer
+next_action: Perform a fresh independent code-quality review of the ABC contract-correction before PR routing.
+stop_condition: >-
+  Do not route to PR, merge, release, tag, GitHub Release, or package publication until
+  the independent code review is approved and the applicable later human gates are met.

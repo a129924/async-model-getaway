@@ -32,7 +32,7 @@ def test_model_pool_acquire_has_the_locked_async_public_signature() -> None:
     assert inspect.iscoroutinefunction(ModelPool.acquire)
     assert tuple(acquire_signature.parameters) == ("self", "artifact")
     assert acquire_signature.parameters["artifact"].annotation == "ModelArtifact"
-    assert acquire_signature.return_annotation == "object"
+    assert acquire_signature.return_annotation == "LoadedRuntimeModel"
     assert tuple(inspect.signature(ModelPool).parameters) == ()
     assert pool_module.ModelPool is ModelPool
 

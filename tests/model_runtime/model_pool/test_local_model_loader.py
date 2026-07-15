@@ -10,6 +10,10 @@ from typing_extensions import assert_never
 from async_model_gateway.model_runtime.model_artifact import LoaderFamily, ModelArtifact
 import async_model_gateway.model_runtime.model_pool._local_model_loader as local_model_loader_module
 from async_model_gateway.model_runtime.model_pool._local_model_loader import LocalModelLoader
+from async_model_gateway.model_runtime.runtime_model import LoadedRuntimeModel
+from async_model_gateway.model_runtime.runtime_model.loaded_runtime_model import (
+    _create_loaded_runtime_model,
+)
 
 
 def _artifact(
@@ -25,14 +29,15 @@ def _artifact(
     )
 
 
-def test_local_model_loader_load_keeps_the_exact_deferred_contract_todo() -> None:
-    """The deferred runtime-model type must stay documentation-only."""
-    source = inspect.getsource(LocalModelLoader.load)
-
+def test_local_model_loader_methods_have_the_locked_typed_return_contract() -> None:
+    """All local-acquisition routes must return the concrete consumption handle."""
+    assert inspect.signature(LocalModelLoader.load).return_annotation == "LoadedRuntimeModel"
     assert (
-        "# TODO: Replace `object` with the agreed runtime-model contract\n"
-        "        # (tentatively `LoadedRuntimeModel`) once that boundary is defined."
-    ) in source
+        inspect.signature(LocalModelLoader._load_pickle).return_annotation
+        == "LoadedRuntimeModel"
+    )
+    assert inspect.signature(LocalModelLoader._load_torch).return_annotation == "LoadedRuntimeModel"
+    assert inspect.signature(LocalModelLoader._load_onnx).return_annotation == "LoadedRuntimeModel"
 
 
 @pytest.mark.asyncio
@@ -43,26 +48,32 @@ async def test_local_model_loader_routes_each_family_to_its_matching_private_han
 ) -> None:
     """Every family must await only the private handler named for that family."""
     calls = {family: [] for family in LoaderFamily}
-    results = {family: object() for family in LoaderFamily}
+    results = {
+        family: _create_loaded_runtime_model(
+            loader_family=family,
+            provider_model=object(),
+        )
+        for family in LoaderFamily
+    }
 
     async def load_pickle(
         _self: LocalModelLoader,
         artifact: ModelArtifact,
-    ) -> object:
+    ) -> LoadedRuntimeModel:
         calls[LoaderFamily.PICKLE].append(artifact)
         return results[LoaderFamily.PICKLE]
 
     async def load_torch(
         _self: LocalModelLoader,
         artifact: ModelArtifact,
-    ) -> object:
+    ) -> LoadedRuntimeModel:
         calls[LoaderFamily.TORCH].append(artifact)
         return results[LoaderFamily.TORCH]
 
     async def load_onnx(
         _self: LocalModelLoader,
         artifact: ModelArtifact,
-    ) -> object:
+    ) -> LoadedRuntimeModel:
         calls[LoaderFamily.ONNX].append(artifact)
         return results[LoaderFamily.ONNX]
 
@@ -84,19 +95,22 @@ async def test_local_model_loader_uses_family_not_artifact_path_appearance(
 ) -> None:
     """An explicit family must win when the path suggests another format."""
     calls = {family: [] for family in LoaderFamily}
-    pickle_result = object()
+    pickle_result = _create_loaded_runtime_model(
+        loader_family=LoaderFamily.PICKLE,
+        provider_model=object(),
+    )
 
     async def load_pickle(
         _self: LocalModelLoader,
         artifact: ModelArtifact,
-    ) -> object:
+    ) -> LoadedRuntimeModel:
         calls[LoaderFamily.PICKLE].append(artifact)
         return pickle_result
 
     async def unexpected_handler(
         _self: LocalModelLoader,
         artifact: ModelArtifact,
-    ) -> object:
+    ) -> LoadedRuntimeModel:
         calls[artifact.loader_family].append(artifact)
         raise AssertionError("a non-pickle handler must not be selected")
 

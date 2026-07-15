@@ -4,6 +4,11 @@
   "copilot_feedback_triage": {
     "ADDRESS": [],
     "DISCUSS": [],
-    "SKIP": []
+    "SKIP": [
+      {
+        "comment": "Historical immutable-handle review evidence",
+        "why": "It is superseded and not relied on; this verdict independently reviews the ABC contract-correction revision."
+      }
+    ]
   }
 }
