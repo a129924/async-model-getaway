@@ -33,8 +33,7 @@ def test_local_model_loader_methods_have_the_locked_typed_return_contract() -> N
     """All local-acquisition routes must return the concrete consumption handle."""
     assert inspect.signature(LocalModelLoader.load).return_annotation == "LoadedRuntimeModel"
     assert (
-        inspect.signature(LocalModelLoader._load_pickle).return_annotation
-        == "LoadedRuntimeModel"
+        inspect.signature(LocalModelLoader._load_pickle).return_annotation == "LoadedRuntimeModel"
     )
     assert inspect.signature(LocalModelLoader._load_torch).return_annotation == "LoadedRuntimeModel"
     assert inspect.signature(LocalModelLoader._load_onnx).return_annotation == "LoadedRuntimeModel"
