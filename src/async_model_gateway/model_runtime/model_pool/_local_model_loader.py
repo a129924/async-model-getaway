@@ -11,7 +11,7 @@ from async_model_gateway.model_runtime.runtime_model import LoadedRuntimeModel
 class LocalModelLoader:
     """Dispatch a shared model artifact through its explicit loader family."""
 
-    async def load(self, artifact: ModelArtifact) -> LoadedRuntimeModel:
+    async def load(self, artifact: ModelArtifact) -> LoadedRuntimeModel[object]:
         """Await the route selected by the artifact's explicit loader family."""
         match artifact.loader_family:
             case LoaderFamily.PICKLE:
@@ -23,14 +23,14 @@ class LocalModelLoader:
             case _:
                 assert_never(artifact.loader_family)
 
-    async def _load_pickle(self, _artifact: ModelArtifact) -> LoadedRuntimeModel:
+    async def _load_pickle(self, _artifact: ModelArtifact) -> LoadedRuntimeModel[object]:
         """Fail closed until pickle artifact I/O is implemented in a later topic."""
         raise NotImplementedError
 
-    async def _load_torch(self, _artifact: ModelArtifact) -> LoadedRuntimeModel:
+    async def _load_torch(self, _artifact: ModelArtifact) -> LoadedRuntimeModel[object]:
         """Fail closed until torch artifact I/O is implemented in a later topic."""
         raise NotImplementedError
 
-    async def _load_onnx(self, _artifact: ModelArtifact) -> LoadedRuntimeModel:
+    async def _load_onnx(self, _artifact: ModelArtifact) -> LoadedRuntimeModel[object]:
         """Fail closed until ONNX artifact I/O is implemented in a later topic."""
         raise NotImplementedError
