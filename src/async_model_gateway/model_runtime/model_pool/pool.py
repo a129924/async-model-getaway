@@ -27,7 +27,7 @@ class ModelPool:
         """Create and retain this pool's private local loader."""
         self._local_model_loader = _create_local_model_loader()
 
-    async def acquire(self, artifact: ModelArtifact) -> LoadedRuntimeModel:
+    async def acquire(self, artifact: ModelArtifact) -> LoadedRuntimeModel[object]:
         """Acquire a runtime model through the retained private local loader."""
         if not _is_model_artifact(artifact):
             msg = "artifact must be a ModelArtifact"

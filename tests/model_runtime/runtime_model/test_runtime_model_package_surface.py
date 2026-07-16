@@ -14,6 +14,7 @@ def test_runtime_model_package_exports_only_loaded_runtime_model() -> None:
     assert runtime_model_module.LoadedRuntimeModel is LoadedRuntimeModel
     assert not hasattr(runtime_model_module, "_create_loaded_runtime_model")
     assert not hasattr(runtime_model_module, "_LocalLoadedRuntimeModel")
+    assert not hasattr(runtime_model_module, "RuntimeT")
     assert not hasattr(runtime_model_module, "provider_model")
 
 

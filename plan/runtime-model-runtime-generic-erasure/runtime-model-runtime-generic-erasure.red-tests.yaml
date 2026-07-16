@@ -1,0 +1,152 @@
+verdict: red-tests-ready
+red_status: red-confirmed
+d1_verdict:
+  verdict: non-trivial
+  reason: >-
+    The existing public LoadedRuntimeModel static type and annotation-introspection
+    contract changes from non-generic to covariant generic, while pool and local-loader
+    acquisition signatures gain exact erased return types. The change needs coordinated
+    runtime, static-analysis, export-boundary, and behavior-regression coverage.
+test_mapping:
+  - requirement_id: AC-1
+    test_case_name: test_loaded_runtime_model_has_a_covariant_generic_runtime_parameter
+    coverage_category: boundary_edge
+  - requirement_id: AC-1
+    test_case_name: check_private_factory_precision_and_covariance
+    coverage_category: happy_path
+  - requirement_id: AC-2
+    test_case_name: test_loaded_runtime_model_private_helpers_have_the_locked_generic_signatures
+    coverage_category: public_contract
+  - requirement_id: AC-2
+    test_case_name: test_loaded_runtime_model_private_helper_preserves_loader_family_provenance
+    coverage_category: state_side_effects
+  - requirement_id: AC-3
+    test_case_name: test_model_pool_acquire_has_the_locked_async_public_signature
+    coverage_category: public_contract
+  - requirement_id: AC-3
+    test_case_name: test_local_model_loader_methods_have_the_locked_typed_return_contract
+    coverage_category: public_contract
+  - requirement_id: AC-3
+    test_case_name: check_public_acquisition_erasure
+    coverage_category: integration_points
+  - requirement_id: AC-4
+    test_case_name: test_shared_read_contracts_remain_non_generic
+    coverage_category: boundary_edge
+  - requirement_id: AC-4
+    test_case_name: test_runtime_model_package_exports_only_loaded_runtime_model
+    coverage_category: integration_points
+  - requirement_id: AC-5
+    test_case_name: test_model_pool_acquire_rejects_non_artifact_before_loader_call
+    coverage_category: error_exception
+  - requirement_id: AC-5
+    test_case_name: test_local_model_loader_routes_each_family_to_its_matching_private_handler
+    coverage_category: integration_points
+  - requirement_id: AC-5
+    test_case_name: test_local_model_loader_default_handlers_fail_closed_without_loading
+    coverage_category: error_exception
+  - requirement_id: AC-5
+    test_case_name: test_model_pool_acquire_propagates_loader_failure_unchanged
+    coverage_category: error_exception
+  - requirement_id: AC-5
+    test_case_name: test_model_pool_acquire_propagates_cancellation_unchanged
+    coverage_category: error_exception
+validation_checks:
+  d1_decision: non-trivial
+  behavior_contract_source: plan/runtime-model-runtime-generic-erasure/runtime-model-runtime-generic-erasure.spec.md
+  approved_plan_review: true
+  fresh_human_gate: true
+  requirements_mapped: true
+  public_contract_coverage: true
+  test_categories_present:
+    happy_path: true
+    error_exception: true
+    boundary_edge: true
+    state_side_effects: true
+    integration_points: true
+  expected_initial_status: red
+  production_code_modified: false
+  production_baseline_guard:
+    checked_paths:
+      - src/async_model_gateway/model_runtime/runtime_model/loaded_runtime_model.py
+      - src/async_model_gateway/model_runtime/model_pool/pool.py
+      - src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py
+    result: git diff -- src produced no output before and after RED authoring
+  static_imports_only: true
+  dynamic_module_loading: prohibited-and-not-used
+  private_usage_suppression: line-local-reportPrivateUsage-only
+  pytest_red_evidence:
+    command: uv run pytest --no-cov tests/model_runtime/runtime_model tests/model_runtime/model_pool -v
+    exit_status: 1
+    result: 4 failed, 23 passed
+    failing_tests:
+      - tests/model_runtime/runtime_model/test_loaded_runtime_model.py::test_loaded_runtime_model_has_a_covariant_generic_runtime_parameter
+      - tests/model_runtime/runtime_model/test_loaded_runtime_model.py::test_loaded_runtime_model_private_helpers_have_the_locked_generic_signatures
+      - tests/model_runtime/model_pool/test_local_model_loader.py::test_local_model_loader_methods_have_the_locked_typed_return_contract
+      - tests/model_runtime/model_pool/test_model_pool_package_surface.py::test_model_pool_acquire_has_the_locked_async_public_signature
+  pyright_red_evidence:
+    command: uv run pyright --project plan/runtime-model-runtime-generic-erasure/pyrightconfig.json tests/typecheck/runtime_model_generic_erasure.py
+    exit_status: 1
+    result: 8 errors, 0 warnings, 0 informations
+    fixture_analysis_evidence: >-
+      Pyright printed tests/typecheck/runtime_model_generic_erasure.py as its analysed
+      source and reported errors at lines 39, 41, 44, and 57 through 61.
+    failing_checks:
+      - LoadedRuntimeModel rejects all required type arguments because it is still non-generic.
+      - _provider_runtime is inferred as object instead of the concrete _ProviderRuntime.
+      - Pool, loader, and all three local handlers cannot satisfy erased LoadedRuntimeModel[object] assertions.
+  ruff_quality_check:
+    command: uv run ruff check tests/model_runtime/runtime_model tests/model_runtime/model_pool tests/typecheck plan/runtime-model-runtime-generic-erasure
+    status: passed
+post_implementation_test_correction:
+  timing: after-Implementer-production-source-changes
+  correction: >-
+    Removed the incorrect assertion that the private factory result is
+    LoadedRuntimeModel[object]. The locked contract requires the private factory to retain
+    LoadedRuntimeModel[_ProviderRuntime]; only pool, loader, and handler acquisition
+    assertions are type-erased as LoadedRuntimeModel[object].
+  evidence_caveat: >-
+    The recorded pytest_red_evidence and pyright_red_evidence remain the truthful
+    pre-implementation RED evidence. Any validation run after this correction is not fresh
+    RED evidence because production source had already been modified by the Implementer.
+  implementation_review_required: >-
+    Verify this correction, the private-factory precision assertion, and the distinction
+    between historical pre-implementation RED evidence and post-implementation validation.
+  current_validation:
+    purpose: post-implementation-validation-not-fresh-red
+    pyright:
+      command: uv run pyright --project plan/runtime-model-runtime-generic-erasure/pyrightconfig.json tests/typecheck/runtime_model_generic_erasure.py
+      exit_status: 0
+      result: 0 errors, 0 warnings, 0 informations
+    focused_pytest:
+      command: uv run pytest --no-cov tests/model_runtime/runtime_model tests/model_runtime/model_pool -v
+      exit_status: 0
+      result: 27 passed
+corrected_private_factory_baseline_red_evidence:
+  baseline_branch: chore/andrew/runtime-model-generic-erasure-red-baseline
+  target_branch: fix/andrew/runtime-model-generic-erasure
+  common_head: 84bac5cfd81cde6a6af9fa562b0f1834b4f03998
+  source_baseline: >-
+    The baseline source had no diff in the three approved production paths and retained the
+    non-generic LoadedRuntimeModel, object-returning _provider_runtime, and bare local
+    acquisition annotations.
+  command: uv run pyright --project plan/runtime-model-runtime-generic-erasure/pyrightconfig.json tests/typecheck/runtime_model_generic_erasure.py
+  exit_status: 1
+  result: 7 errors, 0 warnings, 0 informations
+  corrected_failing_assertion: >-
+    check_private_factory_precision_and_covariance asserts
+    LoadedRuntimeModel[_ProviderRuntime] for the private factory result and
+    _ProviderRuntime for _provider_runtime(); the baseline rejects the generic argument and
+    reports object for the handoff.
+  fixture_analysis_evidence: >-
+    Pyright printed tests/typecheck/runtime_model_generic_erasure.py as the analysed source
+    and reported the corrected factory failures at lines 39 and 41, plus the erased public
+    acquisition assertions at lines 56 through 60.
+  fresh_red_gap_resolution: >-
+    This independent, unchanged-source baseline provides genuine pre-implementation RED
+    evidence for the corrected private-factory assertion. It resolves the prior caveat that
+    the target correction occurred only after the Implementer had changed production source.
+  baseline_artifacts_left_untracked: true
+issues: []
+next_step: >-
+  Implementation Reviewer must verify the corrected static contract and evidence caveat,
+  then classify the current implementation and validation results independently.
