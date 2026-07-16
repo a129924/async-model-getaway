@@ -87,7 +87,7 @@ def test_loaded_runtime_model_has_a_covariant_generic_runtime_parameter() -> Non
 
     assert LoadedRuntimeModel.__parameters__[0].__name__ == "RuntimeT"
     assert LoadedRuntimeModel.__parameters__[0].__covariant__
-    assert "TypeVar(\"RuntimeT\", covariant=True)" in module_source
+    assert 'TypeVar("RuntimeT", covariant=True)' in module_source
     assert "Generic[RuntimeT]" in module_source
     assert LoadedRuntimeModel[object]
 
