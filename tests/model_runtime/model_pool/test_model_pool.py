@@ -39,7 +39,7 @@ async def test_model_pool_acquire_retains_factory_loader_and_returns_typed_handl
     )
     loader = LocalModelLoader()
 
-    async def load(artifact: ModelArtifact) -> LoadedRuntimeModel:
+    async def load(artifact: ModelArtifact) -> LoadedRuntimeModel[object]:
         loader_calls.append(artifact)
         return sentinel
 
@@ -70,7 +70,7 @@ async def test_model_pool_acquire_rejects_non_artifact_before_loader_call(
     loader_calls: list[ModelArtifact] = []
     loader = LocalModelLoader()
 
-    async def load(artifact: ModelArtifact) -> LoadedRuntimeModel:
+    async def load(artifact: ModelArtifact) -> LoadedRuntimeModel[object]:
         loader_calls.append(artifact)
         return _create_loaded_runtime_model(
             loader_family=artifact.loader_family,
@@ -95,7 +95,7 @@ async def test_model_pool_acquire_propagates_loader_failure_unchanged(
     failure = RuntimeError("loader failed")
     loader = LocalModelLoader()
 
-    async def load(_artifact: ModelArtifact) -> LoadedRuntimeModel:
+    async def load(_artifact: ModelArtifact) -> LoadedRuntimeModel[object]:
         raise failure
 
     monkeypatch.setattr(loader, "load", load)
@@ -115,7 +115,7 @@ async def test_model_pool_acquire_propagates_cancellation_unchanged(
     cancellation = asyncio.CancelledError()
     loader = LocalModelLoader()
 
-    async def load(_artifact: ModelArtifact) -> LoadedRuntimeModel:
+    async def load(_artifact: ModelArtifact) -> LoadedRuntimeModel[object]:
         raise cancellation
 
     monkeypatch.setattr(loader, "load", load)

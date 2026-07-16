@@ -1,0 +1,115 @@
+review: python-implementation-review
+review_status: COMPLETE
+verdict: approved
+blocking_issues: []
+
+traceability_matrix:
+  - step: >-
+      Tester updates the five declared runtime-model/model-pool test files, adds
+      tests/typecheck/runtime_model_generic_erasure.py and the topic-local
+      pyrightconfig.json, then records fresh focused pytest and dedicated Pyright
+      RED evidence before production source changes.
+    status: done
+    evidence: >-
+      tests/typecheck/runtime_model_generic_erasure.py:31-60;
+      plan/runtime-model-runtime-generic-erasure/runtime-model-runtime-generic-erasure.red-tests.yaml:
+      corrected_private_factory_baseline_red_evidence records 7 Pyright errors on
+      the unchanged common baseline, including factory precision at lines 39 and 41.
+  - step: >-
+      Implementer changes loaded_runtime_model.py to define covariant RuntimeT,
+      genericise the ABC and private local implementation, and make the private
+      factory preserve RuntimeT without exporting private symbols.
+    status: done
+    evidence: src/async_model_gateway/model_runtime/runtime_model/loaded_runtime_model.py:12-63
+  - step: >-
+      Implementer changes pool.py only to make ModelPool.acquire() return
+      LoadedRuntimeModel[object], retaining validation, retained loader, and
+      direct-await behavior.
+    status: done
+    evidence: src/async_model_gateway/model_runtime/model_pool/pool.py:26-36
+  - step: >-
+      Implementer changes _local_model_loader.py only to make load() and the three
+      handlers return LoadedRuntimeModel[object], retaining explicit dispatch,
+      assert_never, no-I/O, and propagation behavior.
+    status: done
+    evidence: src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:14-36
+  - step: >-
+      Implementer runs the declared validation commands, confirms focused RED is
+      GREEN, confirms ReadOnly and historical paths have no diff, and marks only
+      actually completed entries in the step tracker.
+    status: done
+    evidence: >-
+      Focused pytest 27 passed; full pytest 167 passed; dedicated and root Pyright
+      report 0 errors; Ruff and lock checks pass; git diff --check passes; changed
+      tracked paths are limited to the declared three source and five test files.
+
+scope_creep_check:
+  - non_goal: Do not genericise ModelArtifact, LoaderFamily, or shared read contracts.
+    violated: no
+    evidence: clean; shared-contract paths have no diff and regression coverage is at tests/model_runtime/runtime_model/test_loaded_runtime_model.py:113-116
+  - non_goal: Do not add I/O, execution, provider adapters, lifecycle, cache, remote acquisition, timeout, retry, or concurrency semantics.
+    violated: no
+    evidence: clean; production changes are limited to generic and return annotations in the three authorised source files
+  - non_goal: Do not add package-root exports or public provider-runtime access.
+    violated: no
+    evidence: tests/model_runtime/runtime_model/test_runtime_model_package_surface.py:11-24
+  - non_goal: Do not modify stable metadata, documentation, historical artifacts, or release state.
+    violated: no
+    evidence: clean; the diff contains only declared topic source, test, static-fixture, configuration, and evidence paths
+
+contract_check:
+  - item: LoadedRuntimeModel becomes a covariant generic boundary and _provider_runtime returns RuntimeT.
+    status: matches
+    detail: LoadedRuntimeModel[RuntimeT] and abstract/concrete handoffs use RuntimeT at src/async_model_gateway/model_runtime/runtime_model/loaded_runtime_model.py:12-52.
+  - item: Private local implementation and factory preserve RuntimeT without package-root export.
+    status: matches
+    detail: The factory returns LoadedRuntimeModel[RuntimeT] at src/async_model_gateway/model_runtime/runtime_model/loaded_runtime_model.py:55-63; the static assertion is at tests/typecheck/runtime_model_generic_erasure.py:31-43 and package non-export is at tests/model_runtime/runtime_model/test_runtime_model_package_surface.py:11-18.
+  - item: ModelPool.acquire returns LoadedRuntimeModel[object] with unchanged validation and direct await.
+    status: matches
+    detail: Exact signature and retained TypeError/direct-await path are at src/async_model_gateway/model_runtime/model_pool/pool.py:30-36.
+  - item: LocalModelLoader.load and all three handlers return LoadedRuntimeModel[object] with unchanged dispatch/no-I/O behavior.
+    status: matches
+    detail: Exact annotations and retained match/assert_never/NotImplementedError behavior are at src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:14-36.
+  - item: ModelArtifact and LoaderFamily remain non-generic and provider types remain outside public acquisition.
+    status: matches
+    detail: ReadOnly shared-contract files have no diff; non-generic and public-erasure checks are at tests/model_runtime/runtime_model/test_loaded_runtime_model.py:113-116 and tests/typecheck/runtime_model_generic_erasure.py:46-60.
+
+test_plan_check:
+  - case_type: Happy path — private factory preserves provider identity and precise runtime type.
+    status: present
+    location: tests/model_runtime/runtime_model/test_loaded_runtime_model.py:20-30; tests/typecheck/runtime_model_generic_erasure.py:31-43
+  - case_type: Invalid input — abstract construction and invalid acquisition behavior remains unchanged.
+    status: present
+    location: tests/model_runtime/runtime_model/test_loaded_runtime_model.py:33-39; tests/model_runtime/model_pool/test_model_pool.py:65-87
+  - case_type: Edge case — covariance, runtime subscription, non-generic shared contracts, and private exports.
+    status: present
+    location: tests/model_runtime/runtime_model/test_loaded_runtime_model.py:84-116; tests/model_runtime/runtime_model/test_runtime_model_package_surface.py:11-24
+  - case_type: Regression — exact erasure, dispatch, path independence, assert_never, retained loader, and no-I/O behavior.
+    status: present
+    location: tests/model_runtime/model_pool/test_local_model_loader.py:32-158; tests/model_runtime/model_pool/test_model_pool.py:29-62; tests/model_runtime/model_pool/test_model_pool_package_surface.py:28-42
+  - case_type: Backward compatibility — generic failure and CancelledError propagation with unchanged public semantic.
+    status: present
+    location: tests/model_runtime/model_pool/test_model_pool.py:90-127; tests/model_runtime/runtime_model/test_loaded_runtime_model.py:42-59
+  - case_type: Static typing — strict private precision, covariance, and public erasure.
+    status: present
+    location: tests/typecheck/runtime_model_generic_erasure.py:31-60; plan/runtime-model-runtime-generic-erasure/pyrightconfig.json:1-6
+
+evidence_caveat:
+  classification: resolved-baseline-red-evidence
+  prior_caveat_truthful: yes
+  disposition: >-
+    The original post-implementation correction caveat remains historically true.
+    It is resolved for this review because the isolated baseline shares the target's
+    committed HEAD, has no production-source diff, uses the identical corrected
+    fixture/configuration, and independently reproduces the relevant RED failures.
+  sufficient_for_approval: yes
+
+validation:
+  isolated_baseline_pyright: 7 errors, 0 warnings, 0 informations
+  target_dedicated_pyright: 0 errors, 0 warnings, 0 informations
+  target_focused_pytest: 27 passed
+  target_full_pytest: 167 passed
+  target_root_pyright: 0 errors, 0 warnings, 0 informations
+  target_ruff: all checks passed
+  target_lock_check: passed
+  target_diff_check: passed

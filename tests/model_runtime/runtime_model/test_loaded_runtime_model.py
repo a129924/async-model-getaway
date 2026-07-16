@@ -7,7 +7,7 @@ from abc import ABC
 
 import pytest
 
-from async_model_gateway.model_runtime.model_artifact import LoaderFamily
+from async_model_gateway.model_runtime.model_artifact import LoaderFamily, ModelArtifact
 from async_model_gateway.model_runtime.runtime_model import LoadedRuntimeModel
 from async_model_gateway.model_runtime.runtime_model import (
     loaded_runtime_model as loaded_runtime_model_module,
@@ -81,22 +81,36 @@ def test_loaded_runtime_model_private_implementation_uses_ordinary_construction(
     assert "@dataclass(frozen=True" not in module_source
 
 
-def test_loaded_runtime_model_does_not_introduce_a_generic_contract() -> None:
-    """The bounded consumption handle must not pre-commit provider-type generics."""
+def test_loaded_runtime_model_has_a_covariant_generic_runtime_parameter() -> None:
+    """The private runtime seam must preserve one covariant provider type."""
     module_source = inspect.getsource(loaded_runtime_model_module)
 
-    assert not hasattr(LoadedRuntimeModel, "__parameters__")
-    assert "TypeVar" not in module_source
-    assert "Generic[" not in module_source
+    assert LoadedRuntimeModel.__parameters__[0].__name__ == "RuntimeT"
+    assert LoadedRuntimeModel.__parameters__[0].__covariant__
+    assert "TypeVar(\"RuntimeT\", covariant=True)" in module_source
+    assert "Generic[RuntimeT]" in module_source
+    assert LoadedRuntimeModel[object]
 
 
-def test_loaded_runtime_model_private_helper_has_the_locked_internal_signature() -> None:
+def test_loaded_runtime_model_private_helpers_have_the_locked_generic_signatures() -> None:
     """The provider payload can enter only through the typed private factory seam."""
     helper_signature = inspect.signature(_create_loaded_runtime_model)
+    abstract_handoff_signature = inspect.signature(LoadedRuntimeModel._provider_runtime)
+    local_handoff_signature = inspect.signature(
+        loaded_runtime_model_module._LocalLoadedRuntimeModel._provider_runtime,
+    )
 
     assert tuple(helper_signature.parameters) == ("loader_family", "provider_model")
     assert helper_signature.parameters["loader_family"].kind is inspect.Parameter.KEYWORD_ONLY
     assert helper_signature.parameters["loader_family"].annotation == "LoaderFamily"
     assert helper_signature.parameters["provider_model"].kind is inspect.Parameter.KEYWORD_ONLY
-    assert helper_signature.parameters["provider_model"].annotation == "object"
-    assert helper_signature.return_annotation == "LoadedRuntimeModel"
+    assert helper_signature.parameters["provider_model"].annotation == "RuntimeT"
+    assert helper_signature.return_annotation == "LoadedRuntimeModel[RuntimeT]"
+    assert abstract_handoff_signature.return_annotation == "RuntimeT"
+    assert local_handoff_signature.return_annotation == "RuntimeT"
+
+
+def test_shared_read_contracts_remain_non_generic() -> None:
+    """Artifact metadata and family vocabulary must not own provider runtime typing."""
+    assert not hasattr(ModelArtifact, "__parameters__")
+    assert not hasattr(LoaderFamily, "__parameters__")

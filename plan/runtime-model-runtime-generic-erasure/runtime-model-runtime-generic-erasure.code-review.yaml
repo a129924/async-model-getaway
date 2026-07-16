@@ -1,0 +1,15 @@
+review: python-code-review
+review_status: COMPLETE
+verdict: approved
+tooling_detected:
+  - pyright (strict; Python 3.10; source includes src)
+  - ruff (E, W, F, N, D, UP, B, A, C4, ARG, RUF)
+  - pytest (asyncio strict; coverage threshold 90)
+findings:
+  typing: []
+  lint: []
+  readability: []
+  error_handling: []
+  anti_patterns: []
+  test_quality: []
+  observability: []

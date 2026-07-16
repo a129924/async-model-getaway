@@ -31,12 +31,22 @@ def _artifact(
 
 def test_local_model_loader_methods_have_the_locked_typed_return_contract() -> None:
     """All local-acquisition routes must return the concrete consumption handle."""
-    assert inspect.signature(LocalModelLoader.load).return_annotation == "LoadedRuntimeModel"
     assert (
-        inspect.signature(LocalModelLoader._load_pickle).return_annotation == "LoadedRuntimeModel"
+        inspect.signature(LocalModelLoader.load).return_annotation
+        == "LoadedRuntimeModel[object]"
     )
-    assert inspect.signature(LocalModelLoader._load_torch).return_annotation == "LoadedRuntimeModel"
-    assert inspect.signature(LocalModelLoader._load_onnx).return_annotation == "LoadedRuntimeModel"
+    assert (
+        inspect.signature(LocalModelLoader._load_pickle).return_annotation
+        == "LoadedRuntimeModel[object]"
+    )
+    assert (
+        inspect.signature(LocalModelLoader._load_torch).return_annotation
+        == "LoadedRuntimeModel[object]"
+    )
+    assert (
+        inspect.signature(LocalModelLoader._load_onnx).return_annotation
+        == "LoadedRuntimeModel[object]"
+    )
 
 
 @pytest.mark.asyncio
@@ -58,21 +68,21 @@ async def test_local_model_loader_routes_each_family_to_its_matching_private_han
     async def load_pickle(
         _self: LocalModelLoader,
         artifact: ModelArtifact,
-    ) -> LoadedRuntimeModel:
+    ) -> LoadedRuntimeModel[object]:
         calls[LoaderFamily.PICKLE].append(artifact)
         return results[LoaderFamily.PICKLE]
 
     async def load_torch(
         _self: LocalModelLoader,
         artifact: ModelArtifact,
-    ) -> LoadedRuntimeModel:
+    ) -> LoadedRuntimeModel[object]:
         calls[LoaderFamily.TORCH].append(artifact)
         return results[LoaderFamily.TORCH]
 
     async def load_onnx(
         _self: LocalModelLoader,
         artifact: ModelArtifact,
-    ) -> LoadedRuntimeModel:
+    ) -> LoadedRuntimeModel[object]:
         calls[LoaderFamily.ONNX].append(artifact)
         return results[LoaderFamily.ONNX]
 
@@ -102,14 +112,14 @@ async def test_local_model_loader_uses_family_not_artifact_path_appearance(
     async def load_pickle(
         _self: LocalModelLoader,
         artifact: ModelArtifact,
-    ) -> LoadedRuntimeModel:
+    ) -> LoadedRuntimeModel[object]:
         calls[LoaderFamily.PICKLE].append(artifact)
         return pickle_result
 
     async def unexpected_handler(
         _self: LocalModelLoader,
         artifact: ModelArtifact,
-    ) -> LoadedRuntimeModel:
+    ) -> LoadedRuntimeModel[object]:
         calls[artifact.loader_family].append(artifact)
         raise AssertionError("a non-pickle handler must not be selected")
 
