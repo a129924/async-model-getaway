@@ -1,0 +1,156 @@
+topic: model-execution-minimal-consumption-boundary
+phase: tdd-test-authoring
+status: COMPLETE
+verdict: red-tests-ready
+authored_on: "2026-07-17"
+d1_verdict: {"verdict": "non-trivial", "reason": "feature"}
+evidence_level: sufficient
+behavior_contract:
+  source: plan/model-execution-minimal-consumption-boundary/model-execution-minimal-consumption-boundary.spec.md
+  active_acceptance_criteria:
+    - AC-1
+    - AC-2
+    - AC-3
+    - AC-4
+    - AC-5
+    - AC-6
+    - AC-7
+    - AC-8
+    - AC-9
+  phase_deferred_acceptance_criteria:
+    - AC-10
+    - AC-11
+    - AC-12
+    - AC-13
+    - AC-14
+    - AC-15
+    - AC-16
+    - AC-17
+    - AC-18
+  phase_deferred_reason: post-merge release contract; not part of implement-plan RED authoring
+test_mapping:
+  - requirement_id: AC-1
+    test_case_name: test_model_execution_package_exports_only_model_execution
+    coverage_category: integration_points
+  - requirement_id: AC-1
+    test_case_name: test_existing_package_roots_do_not_reexport_model_execution
+    coverage_category: boundary_edge
+  - requirement_id: AC-2
+    test_case_name: test_model_execution_has_the_locked_generic_async_signatures
+    coverage_category: public_contract
+  - requirement_id: AC-2
+    test_case_name: check_execution_preserves_all_concrete_types
+    coverage_category: static_typing
+  - requirement_id: AC-3
+    test_case_name: test_execute_direct_awaits_once_and_preserves_all_identities
+    coverage_category: happy_path
+  - requirement_id: AC-3
+    test_case_name: test_execute_direct_awaits_once_and_preserves_all_identities
+    coverage_category: state_side_effects
+  - requirement_id: AC-4
+    test_case_name: test_execute_direct_awaits_once_and_preserves_all_identities
+    coverage_category: happy_path
+  - requirement_id: AC-4
+    test_case_name: test_execute_propagates_the_same_invoker_exception_once
+    coverage_category: error_exception
+  - requirement_id: AC-4
+    test_case_name: test_execute_propagates_the_same_cancelled_error_once
+    coverage_category: error_exception
+  - requirement_id: AC-4
+    test_case_name: test_execute_propagates_the_same_cancelled_error_once
+    coverage_category: boundary_edge
+  - requirement_id: AC-5
+    test_case_name: test_model_execution_source_has_no_dispatch_io_or_lifecycle_dependencies
+    coverage_category: regression
+  - requirement_id: AC-6
+    test_case_name: test_model_execution_is_the_only_production_private_handoff_consumer
+    coverage_category: regression
+  - requirement_id: AC-7
+    test_case_name: check_execution_preserves_all_concrete_types
+    coverage_category: static_typing
+  - requirement_id: AC-7
+    test_case_name: check_model_pool_acquisition_remains_erased
+    coverage_category: backward_compatibility
+  - requirement_id: AC-8
+    test_case_name: static_import_governance_scan
+    coverage_category: integration_points
+  - requirement_id: AC-9
+    test_case_name: fresh_red_baseline_guard
+    coverage_category: state_side_effects
+validation_checks:
+  d1_decision: passed
+  behavior_contract_source: plan/model-execution-minimal-consumption-boundary/model-execution-minimal-consumption-boundary.spec.md
+  requirements_mapped: true
+  public_contract_coverage: true
+  test_categories_present:
+    happy_path: true
+    error_exception: true
+    boundary_edge: true
+    state_side_effects: true
+    integration_points: true
+  expected_initial_status: red
+  production_code_modified: false
+  approved_plan_review:
+    path: plan/model-execution-minimal-consumption-boundary/model-execution-minimal-consumption-boundary.plan-review.json
+    verdict: approved
+    blocking_issues: 0
+    passed: true
+  human_check:
+    path: plan/model-execution-minimal-consumption-boundary/model-execution-minimal-consumption-boundary.human-check.json
+    decision: approved
+    cleared_for: implement-plan
+    recorded_plan_blob: fee45f2e115e053f556445b4a04f17f37989ca4a
+    actual_plan_blob: fee45f2e115e053f556445b4a04f17f37989ca4a
+    binding_matches: true
+    passed: true
+  baseline_guard:
+    package_initializer_absent: true
+    execution_source_absent: true
+    read_only_diff_empty: true
+    release_only_diff_empty: true
+    deleted_paths: []
+    passed: true
+  source_governance:
+    static_imports_only: true
+    dynamic_module_loading_matches: []
+    dynamic_module_loading_scan_exit_code: 1
+    pure_unit_collaborators: typed_fakes
+    passed: true
+  focused_pytest:
+    command: uv run pytest --no-cov tests/model_runtime/model_execution -v
+    exit_code: 2
+    expected_nonzero: true
+    collected_tests_before_import_failure: 0
+    collection_errors: 2
+    primary_failure: "ModuleNotFoundError: No module named 'async_model_gateway.model_runtime.model_execution'"
+    failure_matches_missing_approved_boundary: true
+    passed: true
+  dedicated_pyright:
+    command: uv run pyright --project plan/model-execution-minimal-consumption-boundary/pyrightconfig.json tests/typecheck/model_execution_minimal_consumption.py
+    exit_code: 1
+    expected_nonzero: true
+    analyzed_fixture: tests/typecheck/model_execution_minimal_consumption.py
+    analyzed_fixture_confirmed: true
+    zero_source_false_green: false
+    errors: 6
+    warnings: 0
+    primary_diagnostic: reportMissingImports
+    primary_failure: async_model_gateway.model_runtime.model_execution could not be resolved
+    failure_matches_missing_approved_boundary: true
+    passed: true
+  authored_test_quality:
+    command: uv run ruff check tests/model_runtime/model_execution tests/typecheck/model_execution_minimal_consumption.py
+    exit_code: 0
+    passed: true
+actual_commands:
+  - command: uv run pytest --no-cov tests/model_runtime/model_execution -v
+    exit_code: 2
+    semantic_result: expected RED; both static-import test modules fail collection because ModelExecution package is absent
+  - command: uv run pyright --project plan/model-execution-minimal-consumption-boundary/pyrightconfig.json tests/typecheck/model_execution_minimal_consumption.py
+    exit_code: 1
+    semantic_result: expected RED; fixture is explicitly analyzed and reports the missing ModelExecution import
+  - command: uv run ruff check tests/model_runtime/model_execution tests/typecheck/model_execution_minimal_consumption.py
+    exit_code: 0
+    semantic_result: authored test and fixture files pass Ruff
+issues: []
+next_step: Dispatch an independent Implementer to add only the two approved production files, then rerun focused pytest and dedicated Pyright for GREEN evidence.
