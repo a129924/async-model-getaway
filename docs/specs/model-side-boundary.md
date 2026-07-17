@@ -70,7 +70,7 @@ gateway / registry 不做語意等價判斷；只要 `model-payload` material �
 local model availability、cache/reuse、上下載、close/unload 或其他 lifecycle policy
 已完成。它以 `LoadedRuntimeModel` 作 abstract consumption contract；provider runtime
 不穿透 public boundary，僅由 runtime-model module 的 private local implementation
-保存，並保留 non-public internal handoff 給 future `ModelExecution`。
+保存，並以 non-public internal handoff 交給最小 `ModelExecution` boundary。
 
 它不負責：
 
@@ -154,6 +154,12 @@ remote 目前只有單一實際需求，不需要先做更細 provider 分類。
 它與 `ModelPool` / `ModelGateway` 並列，是 sibling boundary，不是 provider
 boundary 的 child concern。
 
+目前 repo 已在 `async_model_gateway.model_runtime.model_execution` package root
+公開 generic `ModelExecution`。constructor 只接收 injected typed async callable；
+`execute(...)` 從 `LoadedRuntimeModel` 的 non-public handoff 取得 provider runtime，
+再 direct-await 單次 invocation。runtime、invocation 與 result 不經轉換，一般例外與
+cancellation 原樣傳播。
+
 它負責：
 
 - 消費統一的 `runtime-model` surface
@@ -168,6 +174,9 @@ boundary 的 child concern。
 - `payload-hash` authority 或 registry freshness authority
 - response cache identity authority
 - 把 `features` 升格成 provider-specific execution contract
+- 建立 provider framework 或執行 loader I/O
+- orchestrator wiring 或 remote execution wiring
+- cache/reuse、close/unload、timeout、retry 或 task lifecycle
 
 ## `runtime-model`
 
@@ -178,9 +187,9 @@ unified consumption surface。
 
 目前 `async_model_gateway.model_runtime.runtime_model` 已公開 abstract nominal
 `LoadedRuntimeModel`。它唯一的 public semantic 是 readonly `loader_family`；
-`_provider_runtime()` 是非 public 的 model-side internal handoff，供 future
-`ModelExecution` topic 消費。private `_LocalLoadedRuntimeModel` 與 factory 不會從
+`_provider_runtime()` 是非 public 的 model-side internal handoff，只由目前的最小
+`ModelExecution` boundary 消費。private `_LocalLoadedRuntimeModel` 與 factory 不會從
 package root export，因此 provider-specific object 不會成為 package consumer contract。
-這不建立 execution API、provider framework、artifact I/O 或 lifecycle policy。
+這不建立 provider framework、artifact I/O、remote execution wiring 或 lifecycle policy。
 
 對外能力邊界在目前階段採統一入口；能力差異先收斂在 `features`，不先拆成多方法名公開 surface。

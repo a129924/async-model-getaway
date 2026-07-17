@@ -1,0 +1,19 @@
+{
+  "topic": "model-execution-minimal-consumption-boundary",
+  "gate": "release-human-check",
+  "approved_by": "human",
+  "human_approval": "Human explicitly approved merge commit 0b7e9be59871d033bb9ec115549eb76e0ff5dd9a for the bounded v0.6.0 release, authorized this release-human-check with cleared_for release, and lifted the release-phase restriction on dev operations.",
+  "decision": "approved",
+  "status": "cleared",
+  "cleared_for": "release",
+  "cleared": true,
+  "version": "0.6.0",
+  "tag": "v0.6.0",
+  "merged_implementation_commit": "0b7e9be59871d033bb9ec115549eb76e0ff5dd9a",
+  "merged_pull_request": 17,
+  "approved_plan_revision": "git-blob:fee45f2e115e053f556445b4a04f17f37989ca4a",
+  "approved_plan_review": "plan/model-execution-minimal-consumption-boundary/model-execution-minimal-consumption-boundary.plan-review.json",
+  "approved_plan_review_revision": "git-blob:3c3c059ed814c1750917a7be825f537b82cb5a27",
+  "approved_plan_review_verdict": "approved",
+  "recorded_on": "2026-07-17"
+}

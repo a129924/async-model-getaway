@@ -56,9 +56,9 @@ shared read contract：`model_runtime` 是 umbrella root，而
 9. Return the response
 
 這裡描述的是高層概念 flow。除了最小 `ModelRegistry` boundary、`model-payload`
-hashing core，以及最小 keyed `response_cache` boundary 已落地外，其餘
-orchestration、operational cache 與 runtime acquisition flow 仍未在
-repository 中落地。
+hashing core、最小 keyed `response_cache` boundary，以及狹義的
+`ModelExecution` invocation seam 已落地外，其餘 orchestration 與完整 runtime
+acquisition/execution flow 仍未在 repository 中落地。
 
 ## Responsibility Boundaries
 
@@ -103,10 +103,16 @@ repo 已落地其中最小的 local acquisition slice：
 `match/case` 分支選擇對應 private handler；closed enum 的不可達 fallback 使用
 `assert_never(...)`。`async_model_gateway.model_runtime.runtime_model` 已提供 abstract
 `LoadedRuntimeModel` consumption contract；它只公開 readonly `loader_family`，並以
-non-public `_provider_runtime()` 保留給 future `ModelExecution` 的 internal handoff。
+non-public `_provider_runtime()` 交給 `ModelExecution` 作 internal handoff。
 provider runtime 只存在於同一 module 的 private local implementation，`ModelPool`
 與 private loader 均以此 contract 作 return type。這個 slice 不讀取 artifact，亦不
-實作 execution、provider framework、cache、close/unload 或其他 lifecycle policy。
+實作 provider framework、cache、close/unload 或其他 lifecycle policy。
+
+repo 目前也已在 `async_model_gateway.model_runtime.model_execution` 落地最小
+generic `ModelExecution` boundary。它只接受 injected typed async callable，從
+`LoadedRuntimeModel` 取得 provider runtime 後 direct-await 單次 invocation；一般
+例外與 cancellation 原樣傳播。它不建立 provider framework，不負責 loader I/O、
+orchestrator 或 remote execution wiring，也不管理 lifecycle、timeout 或 retry。
 
 ## Shared Vocabulary
 
@@ -128,8 +134,8 @@ provider runtime 只存在於同一 module 的 private local implementation，`M
 
 這些詞彙大多仍維持在概念層，還不對應到完整的 Python API schema；目前已落地的
 狹義實作，限於最小 `ModelRegistry` boundary、`model-payload` 的 canonical hashing
-core、最小 `ModelPool` local acquisition slice，以及 abstract `LoadedRuntimeModel`
-consumption contract。
+core、最小 `ModelPool` local acquisition slice、abstract `LoadedRuntimeModel`
+consumption contract，以及最小 `ModelExecution` typed async invocation seam。
 
 ## Initialization 階段的 Out Of Scope
 
@@ -142,7 +148,7 @@ initialization 階段不包含：
 - framework integration
 - artifact I/O、provider framework 與完整 model pool lifecycle
 - response cache implementation
-- execution runtime behavior
+- provider-specific execution runtime behavior 與完整 execution flow
 - infrastructure selection
 
 ## 文件定位

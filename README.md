@@ -23,7 +23,7 @@
 - packaged application scaffold
 - 最小 CLI entrypoint
 
-目前 package version baseline 為 `0.5.0`。repo 目前已落地最小
+目前 package version baseline 為 `0.6.0`。repo 目前已落地最小
 `ModelRegistry` boundary，並補齊最小 operational `ResponseCache`
 boundary：`async_model_gateway.response_cache` 公開
 `ResponseCache`、`ResponseCacheEntry`、`ResponseCacheKey` 與
@@ -43,9 +43,13 @@ family。repo 也已在
 `async_model_gateway.model_runtime.runtime_model` 落地 abstract
 `LoadedRuntimeModel` consumption contract：其唯一 public semantic 是
 `loader_family`；provider runtime 只由私有 local implementation 保存，並透過
-non-public internal handoff 留給 future `ModelExecution` topic。`ModelPool.acquire(...)`
-與 private loader 的 return type 已收窄為這個 contract。這不代表 artifact I/O、
-execution、provider framework 或 lifecycle behavior 已完成。
+non-public internal handoff 交給最小 `ModelExecution` boundary。`ModelPool.acquire(...)`
+與 private loader 的 return type 已收窄為這個 contract。repo 現在也已在
+`async_model_gateway.model_runtime.model_execution` 公開 generic `ModelExecution`：
+它以 injected typed async callable 消費 provider runtime 與 invocation，並 direct-await
+單次呼叫；一般例外與 cancellation 會原樣傳播。這不代表 artifact I/O、真實 provider
+invocation、provider framework、完整 orchestration、remote execution、lifecycle、
+timeout 或 retry 已完成。
 root package 目前只公開 `__version__` 與 `main`；`ModelRegistry` 由
 `async_model_gateway.model_registry` 提供，
 `async_model_gateway.model_registry.stores` 提供 submodule public 的
@@ -67,10 +71,11 @@ flow 或 broader cache architecture 已完成。
 - local / remote model source
 
 這些詞彙大多數仍屬設計層級，用來做規劃與對齊；目前只有最小
-model-registry boundary 與最小 operational response-cache boundary 已以狹義
-public surface 落地。除此之外，較寬的 `features` semantics、response cache
-architecture、`orchestrator` 與 `runtime-model` flow 仍不是已完成的 Python type
-或 runtime feature。
+model-registry boundary、最小 operational response-cache boundary，以及狹義的
+model-artifact、local acquisition、runtime-model consumption 與 `ModelExecution`
+boundary 已落地。除此之外，較寬的 `features` semantics、response cache
+architecture、`orchestrator` 與完整 `runtime-model` flow 仍不是已完成的 Python
+type 或 runtime feature。
 
 目前已落地的最小 model-registry boundary 包含：
 
@@ -105,7 +110,17 @@ architecture、`orchestrator` 與 `runtime-model` flow 仍不是已完成的 Pyt
 其中 `ModelArtifact` 只負責 shared read contract。最小 `ModelPool` 只提供
 async local acquisition；其私有 `LocalModelLoader` 消費這個 contract 並作 explicit
 family dispatch，並以 `LoadedRuntimeModel` 作 typed return boundary。artifact I/O、
-execution、provider framework 與完整 lifecycle 仍 deferred。
+provider framework 與完整 lifecycle 仍 deferred。
+
+目前已落地的最小 model-execution boundary 包含：
+
+- `async_model_gateway.model_runtime.model_execution.ModelExecution`
+- injected typed async callable seam
+- 單次 invocation 的 direct-await
+- 一般例外與 cancellation 原樣傳播
+
+它只擁有最小 invocation semantics；真實 provider invocation、loader I/O、完整
+orchestration、remote execution、lifecycle、timeout 與 retry 仍 deferred。
 
 在目前階段，`model_source_kind` 只鎖 `local | remote`，而 capability 差異先收斂在 `features`，不先拆成多方法名公開介面。
 
