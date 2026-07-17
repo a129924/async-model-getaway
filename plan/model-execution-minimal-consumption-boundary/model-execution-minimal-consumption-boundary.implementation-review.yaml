@@ -1,0 +1,174 @@
+review: model-execution-minimal-consumption-boundary-implementation
+review_status: COMPLETE
+verdict: approved
+reviewed_on: "2026-07-17"
+review_scope: implement-plan
+blocking_issues: []
+
+preconditions:
+  plan_review:
+    path: plan/model-execution-minimal-consumption-boundary/model-execution-minimal-consumption-boundary.plan-review.json
+    verdict: approved
+    blocking_issues: 0
+    passed: true
+  human_check:
+    path: plan/model-execution-minimal-consumption-boundary/model-execution-minimal-consumption-boundary.human-check.json
+    decision: approved
+    cleared_for: implement-plan
+    recorded_plan_blob: fee45f2e115e053f556445b4a04f17f37989ca4a
+    actual_plan_blob: fee45f2e115e053f556445b4a04f17f37989ca4a
+    binding_matches: true
+    passed: true
+  step_gate:
+    implementation_steps_total: 10
+    implementation_steps_done: 10
+    pending_steps: []
+    passed: true
+
+traceability_matrix:
+  - step: "1. Tester建立 tests/model_runtime/model_execution/test_model_execution.py。"
+    status: done
+    evidence: tests/model_runtime/model_execution/test_model_execution.py:75
+  - step: "2. Tester建立 tests/model_runtime/model_execution/test_model_execution_package_surface.py。"
+    status: done
+    evidence: tests/model_runtime/model_execution/test_model_execution_package_surface.py:21
+  - step: "3. Tester建立 tests/typecheck/model_execution_minimal_consumption.py。"
+    status: done
+    evidence: tests/typecheck/model_execution_minimal_consumption.py:37
+  - step: "4. Tester建立 topic-local pyrightconfig.json。"
+    status: done
+    evidence: plan/model-execution-minimal-consumption-boundary/pyrightconfig.json:1
+  - step: "5. Tester在production implementation不存在時取得fresh RED並記錄fixture analysis、requirement mapping與baseline guard。"
+    status: done
+    evidence: plan/model-execution-minimal-consumption-boundary/model-execution-minimal-consumption-boundary.red-tests.yaml:91
+  - step: "6. Implementer建立execution.py，定義三個locked TypeVars、typed constructor與exact two-line execute flow。"
+    status: done
+    evidence: src/async_model_gateway/model_runtime/model_execution/execution.py:10
+  - step: "7. Implementer執行strict Pyright，且private-use suppression只存在於唯一consumer line。"
+    status: done
+    evidence: src/async_model_gateway/model_runtime/model_execution/execution.py:31
+  - step: "8. Implementer建立package initializer，只re-export ModelExecution。"
+    status: done
+    evidence: src/async_model_gateway/model_runtime/model_execution/__init__.py:3
+  - step: "9. Implementer執行全部pre-merge validation，focused pytest與dedicated Pyright由RED轉GREEN且fixture被分析。"
+    status: done
+    evidence: "review validation: focused pytest 8 passed; dedicated Pyright 0 errors"
+  - step: "10. Implementer確認Written、ReadOnly、release-only與Deleted契約，並只更新implementation progress。"
+    status: done
+    evidence: "review path scan: unexpected paths 0; ReadOnly diffs 0; release-only diffs 0; deleted paths 0"
+
+scope_creep_check:
+  - non_goal: "不實作provider、adapter、loader I/O、remote execution或orchestration。"
+    violated: no
+    evidence: src/async_model_gateway/model_runtime/model_execution/execution.py:5
+  - non_goal: "不修改LoadedRuntimeModel、ModelPool、artifact contracts或umbrella/root。"
+    violated: no
+    evidence: "ReadOnly diff empty; umbrella/root re-export test passed"
+  - non_goal: "不加入cache、timeout、retry、task或resource ownership。"
+    violated: no
+    evidence: tests/model_runtime/model_execution/test_model_execution_package_surface.py:83
+  - non_goal: "Implement-plan不修改docs、version或lock。"
+    violated: no
+    evidence: "release-only diff empty"
+  - non_goal: "不建立GitHub Release、不發布PyPI/TestPyPI、不對其他registry作claim。"
+    violated: no
+    evidence: "current implement-plan changed-path set contains no release or publication artifact"
+
+contract_check:
+  - item: "Public import path is async_model_gateway.model_runtime.model_execution.ModelExecution。"
+    status: matches
+    detail: "Package initializer re-exports ModelExecution and __all__ contains only ModelExecution."
+  - item: "ModelExecution has invariant RuntimeT, InvocationT and ResultT generic parameters。"
+    status: matches
+    detail: "Three locked TypeVars are declared and runtime signature test passes."
+  - item: "Constructor accepts keyword-only invoke: Callable[[RuntimeT, InvocationT], Awaitable[ResultT]]。"
+    status: matches
+    detail: "Constructor signature and stored invoker match exactly; no additional parameters."
+  - item: "execute(self, model: LoadedRuntimeModel[RuntimeT], invocation: InvocationT) -> ResultT is async。"
+    status: matches
+    detail: "Signature matches and body is the locked two-line private handoff plus direct await."
+  - item: "Result, ordinary exception and CancelledError propagate unchanged。"
+    status: matches
+    detail: "No exception handling exists; identity, sentinel exception and cancellation tests pass."
+  - item: "Umbrella/root exports and ModelPool.acquire contract remain unchanged。"
+    status: matches
+    detail: "No ReadOnly diff; package-root tests and strict pool-erasure fixture pass."
+  - item: "Version changes occur only in the post-merge release phase。"
+    status: matches
+    detail: "Runtime version, packaging metadata and lockfile have no implement-plan diff."
+
+test_plan_check:
+  - case_type: "happy path: runtime, invocation and result identity; invoker awaited exactly once"
+    status: present
+    location: tests/model_runtime/model_execution/test_model_execution.py:75
+  - case_type: "invalid input: invoker rejection propagates the same ordinary exception"
+    status: present
+    location: tests/model_runtime/model_execution/test_model_execution.py:93
+  - case_type: "edge case: CancelledError propagates unchanged"
+    status: present
+    location: tests/model_runtime/model_execution/test_model_execution.py:106
+  - case_type: "regression: package surface, unique production consumer and dependency isolation"
+    status: present
+    location: tests/model_runtime/model_execution/test_model_execution_package_surface.py:21
+  - case_type: "backward compatibility: pool acquisition remains LoadedRuntimeModel[object] and roots do not re-export"
+    status: present
+    location: tests/typecheck/model_execution_minimal_consumption.py:50
+  - case_type: "static typing: concrete runtime, invocation and result precision is preserved"
+    status: present
+    location: tests/typecheck/model_execution_minimal_consumption.py:37
+
+phase_deferred_test_plan_check:
+  - case_type: "release topology: M/R/E/V, permanent R tag, single-path E/V and reviewer blob transport"
+    phase: post-merge-release
+    status: deferred
+    rationale: "The approved plan and RED evidence explicitly defer AC-10 through AC-18 beyond implement-plan."
+  - case_type: "publication exclusions: GitHub Release, PyPI and TestPyPI 404 plus automation scan"
+    phase: post-merge-release
+    status: deferred
+    rationale: "Negative publication checks run only after Human merge and release-human-check."
+  - case_type: "needs-rework release verdict is transported to V without released state"
+    phase: post-merge-release
+    status: deferred
+    rationale: "This is a release-gate scenario and is not executable during pre-merge implementation review."
+
+path_contract_check:
+  feature_branch: feat/andrew/model-execution-boundary
+  written_paths_match_current_phase: true
+  unexpected_paths: []
+  read_only_diff_paths: []
+  release_only_diff_paths: []
+  deleted_paths: []
+  root_dev_clean: true
+  passed: true
+
+validation_evidence:
+  - command: uv run pytest --no-cov tests/model_runtime/model_execution -v
+    exit_code: 0
+    result: "8 passed"
+  - command: uv run pyright --project plan/model-execution-minimal-consumption-boundary/pyrightconfig.json tests/typecheck/model_execution_minimal_consumption.py
+    exit_code: 0
+    result: "0 errors, 0 warnings, 0 informations; explicit fixture argument analyzed"
+  - command: uv run pytest -v
+    exit_code: 0
+    result: "175 passed"
+  - command: uv run ruff check src tests plan/model-execution-minimal-consumption-boundary
+    exit_code: 0
+    result: "All checks passed"
+  - command: uv run pyright
+    exit_code: 0
+    result: "0 errors, 0 warnings, 0 informations"
+  - command: uv lock --check
+    exit_code: 0
+    result: "lockfile is current"
+  - command: git diff --check
+    exit_code: 0
+    result: "clean"
+  - command: "dynamic module loading governance scan"
+    exit_code: 1
+    result: "expected no-match; static imports only"
+  - command: "production private handoff consumer scan"
+    exit_code: 0
+    result: "exactly one consumer at execution.py:31"
+  - command: "feature and root worktree status checks"
+    exit_code: 0
+    result: "feature changes are confined to declared pre-merge Written paths; dev is clean"
