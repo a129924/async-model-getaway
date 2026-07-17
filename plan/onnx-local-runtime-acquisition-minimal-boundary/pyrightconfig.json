@@ -1,0 +1,6 @@
+{
+  "include": ["../../tests/typecheck/onnx_local_runtime_acquisition.py"],
+  "extraPaths": ["../../src"],
+  "pythonVersion": "3.10",
+  "typeCheckingMode": "strict"
+}

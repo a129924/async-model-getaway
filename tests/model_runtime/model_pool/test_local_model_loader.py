@@ -136,7 +136,10 @@ async def test_local_model_loader_uses_family_not_artifact_path_appearance(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("loader_family", list(LoaderFamily))
+@pytest.mark.parametrize(
+    "loader_family",
+    [LoaderFamily.PICKLE, LoaderFamily.TORCH],
+)
 async def test_local_model_loader_default_handlers_fail_closed_without_loading(
     loader_family: LoaderFamily,
 ) -> None:

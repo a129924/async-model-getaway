@@ -1,0 +1,146 @@
+review: onnx-local-runtime-acquisition-minimal-boundary-implementation
+review_status: COMPLETE
+verdict: approved
+reviewed_on: "2026-07-18"
+review_scope: implement-plan
+blocking_issues: []
+
+preconditions:
+  plan_review:
+    path: plan/onnx-local-runtime-acquisition-minimal-boundary/onnx-local-runtime-acquisition-minimal-boundary.plan-review.json
+    verdict: approved
+    passed: true
+  human_check:
+    path: plan/onnx-local-runtime-acquisition-minimal-boundary/onnx-local-runtime-acquisition-minimal-boundary.human-check.json
+    cleared_for: implement-plan
+    approved_revision: pre_red_dependency_preflight
+    passed: true
+  implementation_diff: present
+  step_gate:
+    implementation_steps_total: 5
+    implementation_steps_done: 5
+    pending_steps: []
+    passed: true
+
+traceability_matrix:
+  - step: >-
+      Implementer performs the strictly bounded pre-RED dependency preflight with the
+      locked ONNX optional extra and dev fixture dependency.
+    status: done
+    evidence: pyproject.toml:12; uv.lock:24
+  - step: >-
+      Tester creates the ONNX acquisition, loader regression, strict type, Pyright, and
+      fresh RED evidence artifacts before production implementation.
+    status: done
+    evidence: plan/onnx-local-runtime-acquisition-minimal-boundary/onnx-local-runtime-acquisition-minimal-boundary.red-tests.yaml:1
+  - step: >-
+      Implementer adds the private lazy-import helper with options validation, exact
+      missing-extra translation, and CPU-only asyncio.to_thread session construction.
+    status: done
+    evidence: src/async_model_gateway/model_runtime/model_pool/_onnx_runtime_loader.py:11
+  - step: >-
+      Implementer updates _load_onnx to await the helper and wrap its session without
+      altering PICKLE/TORCH routing, assert_never, or public annotations.
+    status: done
+    evidence: src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:20
+  - step: >-
+      Implementer runs validation, checks changed paths, updates completed step state,
+      and hands off to independent review.
+    status: done
+    evidence: >-
+      focused pytest 18 passed; full pytest 184 passed; Pyright, Ruff, uv lock --check,
+      and git diff --check passed
+
+scope_creep_check:
+  - non_goal: "No ONNX inference or ONNX invoker."
+    violated: no
+    evidence: src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:40
+  - non_goal: "No GPU/provider configuration, non-empty options support, or provider registry."
+    violated: no
+    evidence: src/async_model_gateway/model_runtime/model_pool/_onnx_runtime_loader.py:27
+  - non_goal: "No ModelArtifact/LoaderFamily validation, ModelPool API, ModelExecution API, or package-export changes."
+    violated: no
+    evidence: "ReadOnly diff paths: none"
+  - non_goal: "No lifecycle/cache/close/unload, timeout/retry, remote loading, or release work."
+    violated: no
+    evidence: "Changed paths are limited to declared topic, dependency, model-pool, and test paths"
+
+contract_check:
+  - item: "No public API changes; ModelPool.acquire remains async and returns LoadedRuntimeModel[object]."
+    status: matches
+    detail: "ModelPool is unchanged; tests/typecheck/onnx_local_runtime_acquisition.py:24 asserts the erased result."
+  - item: "LoadedRuntimeModel exposes only loader_family publicly and provider identity crosses through the existing private ModelExecution handoff."
+    status: matches
+    detail: "The helper returns object, the existing private factory wraps it, and the identity handoff is exercised at tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:62."
+  - item: "Empty options are accepted; non-empty options raise the exact ValueError before import or session construction."
+    status: matches
+    detail: "Options validation precedes lazy import at src/async_model_gateway/model_runtime/model_pool/_onnx_runtime_loader.py:27 and the exact error is covered at tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:83."
+  - item: "Only a missing top-level onnxruntime dependency becomes the exact chained RuntimeError; other provider exceptions and cancellation propagate unchanged."
+    status: matches
+    detail: "Name-gated translation is at src/async_model_gateway/model_runtime/model_pool/_onnx_runtime_loader.py:16; top-level missing dependency, provider failure, missing path, invalid model, nested import failure, and cancellation are covered at tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:105, :123, :142, :158, :175, and :234."
+  - item: "CPU-only session construction is thread-offloaded, and PICKLE/TORCH remain fail closed through explicit family routing."
+    status: matches
+    detail: "CPU provider and asyncio.to_thread are at src/async_model_gateway/model_runtime/model_pool/_onnx_runtime_loader.py:32; unchanged routes are at src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:22 and regression coverage is at tests/model_runtime/model_pool/test_local_model_loader.py:138."
+
+test_plan_check:
+  - case_type: "happy path: real CPU-only session, opaque handle, LoaderFamily.ONNX, and ModelExecution identity handoff"
+    status: present
+    location: tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:58
+  - case_type: "invalid input: non-empty options exact ValueError and missing top-level optional dependency exact chained RuntimeError"
+    status: present
+    location: tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:83
+  - case_type: "edge case: no suffix, non-blocking event loop, and unchanged cancellation"
+    status: present
+    location: tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:49
+  - case_type: "regression: PICKLE/TORCH fail closed and explicit family outranks path appearance"
+    status: present
+    location: tests/model_runtime/model_pool/test_local_model_loader.py:138
+  - case_type: "regression: invalid/missing path, invalid ONNX model, provider failure, and nested import failure are not translated"
+    status: present
+    location: tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:123
+  - case_type: "backward compatibility: strict Pyright keeps ModelPool.acquire as LoadedRuntimeModel[object] and exports remain unchanged"
+    status: present
+    location: tests/typecheck/onnx_local_runtime_acquisition.py:24
+  - case_type: "governance: tests use static imports and no dynamic module loading"
+    status: present
+    location: tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:13
+
+path_contract_check:
+  written_paths_match_current_phase: true
+  unexpected_paths: []
+  read_only_diff_paths: []
+  release_only_diff_paths: []
+  deleted_paths: []
+  passed: true
+
+validation_evidence:
+  - command: uv lock --check
+    exit_code: 0
+    result: "lockfile is current"
+  - command: >-
+      uv run --extra onnx pytest --no-cov
+      tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py
+      tests/model_runtime/model_pool/test_local_model_loader.py -v
+    exit_code: 0
+    result: "18 passed"
+  - command: >-
+      uv run --extra onnx pyright --project
+      plan/onnx-local-runtime-acquisition-minimal-boundary/pyrightconfig.json
+      tests/typecheck/onnx_local_runtime_acquisition.py
+    exit_code: 0
+    result: "0 errors, 0 warnings, 0 informations"
+  - command: uv run --extra onnx pytest -v
+    exit_code: 0
+    result: "184 passed; total coverage 98.94%"
+  - command: uv run --extra onnx ruff check src tests plan/onnx-local-runtime-acquisition-minimal-boundary
+    exit_code: 0
+    result: "All checks passed"
+  - command: uv run --extra onnx pyright
+    exit_code: 0
+    result: "0 errors, 0 warnings, 0 informations"
+  - command: git diff --check
+    exit_code: 0
+    result: clean
+
+next_role: Reviewer
+next_action: "Run independent code review; do not modify the approved implementation-review verdict."

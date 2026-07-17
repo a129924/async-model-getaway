@@ -112,8 +112,14 @@ Routing notes:
 
 - `approved` 需要 declared plan-review artifact 的 `approved` verdict 與 Human
   寫入的 `human-check`；聊天同意、green tests 或 reviewer silence 都不是 gate。
-- Python RED test authoring 是 `implement-plan` 的第一個強制 subphase。未先完成
-  RED evidence 前不得改 production code、dependency 或 lockfile。
+- `implement-plan` 唯一允許在 RED 前進行的工作，是 Implementer 對
+  `pyproject.toml` 與 `uv.lock` 的 strictly bounded dependency preflight；它只能
+  寫入已鎖定的 ONNX extra/dev dependency，且不得改 source、tests、public contract
+  或任何行為。其後 Tester 的 fresh RED test/evidence 是強制 subphase，必須在任何
+  ONNX loader implementation 前完成。
+- 此 contract-order 修訂使現有 plan-review 與 human-check 失效；必須重新取得
+  Plan-Reviewer verdict 與 Human 的 renewed `human-check`，才可進入 dependency
+  preflight。
 - scope、artifact path、public contract、dependency policy、CPU-only policy 或 release
   intent 漂移必須回到 `spec-and-plan-finalization`。
 
@@ -176,15 +182,16 @@ Artifact path notes:
 
 ## Implementation Steps
 
-1. Tester 在 `tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py`、
+1. Implementer 先執行 strictly bounded dependency preflight，只更新
+   `pyproject.toml` 與 `uv.lock`：發布用 `[project.optional-dependencies].onnx`
+   固定 `onnxruntime>=1.22.0,<1.22.1`，dev group 固定
+   `onnx>=1.16.2,<1.17`；不得改 source、tests、public contract、版本或 release
+   metadata。
+2. Tester 在 `tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py`、
    `tests/model_runtime/model_pool/test_local_model_loader.py`、
    `tests/typecheck/onnx_local_runtime_acquisition.py` 與 topic-local
-   `pyrightconfig.json` 建立 fresh RED coverage，並在 production/dependency edits 前
-   記錄 `onnx-local-runtime-acquisition-minimal-boundary.red-tests.yaml`。
-2. Implementer 更新 `pyproject.toml` 與 `uv.lock`：發布用
-   `[project.optional-dependencies].onnx` 固定
-   `onnxruntime>=1.22.0,<1.22.1`，dev group 固定
-   `onnx>=1.16.2,<1.17`；不更新 package version 或任何 release file。
+   `pyrightconfig.json` 建立並執行 fresh RED coverage，並在任何 ONNX loader
+   implementation 前記錄 `onnx-local-runtime-acquisition-minimal-boundary.red-tests.yaml`。
 3. Implementer 新增
    `src/async_model_gateway/model_runtime/model_pool/_onnx_runtime_loader.py`，實作
    private lazy import、exact options/error policy，以及 CPU-only
@@ -369,12 +376,15 @@ Candidate files to inspect:
 
 ### Implementation Steps
 
-1. Tester creates `test_onnx_local_runtime_acquisition.py` with a temporary ONNX model
-   built by static `onnx` imports, updates `test_local_model_loader.py` so only
-   PICKLE/TORCH default handlers remain fail-closed, adds the static type fixture and
-   `pyrightconfig.json`, then records fresh RED evidence before production edits.
-2. Implementer updates `pyproject.toml` and `uv.lock` with the locked `onnx` optional
-   extra and dev `onnx` fixture dependency; no version/release metadata changes.
+1. Implementer performs the strictly bounded pre-RED dependency preflight by updating
+   only `pyproject.toml` and `uv.lock` with the locked ONNX optional extra and dev
+   fixture dependency; it makes no source, test, public-contract, version, or release
+   change.
+2. Tester creates and runs `test_onnx_local_runtime_acquisition.py` with a temporary
+   ONNX model built by static `onnx` imports, updates `test_local_model_loader.py` so
+   only PICKLE/TORCH default handlers remain fail-closed, adds the static type fixture
+   and `pyrightconfig.json`, then records fresh RED evidence before any ONNX loader
+   implementation.
 3. Implementer adds `_onnx_runtime_loader.py` with private lazy import, pre-load empty
    options validation, exact missing-extra translation, and CPU-only
    `asyncio.to_thread(...)` session creation.

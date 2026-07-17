@@ -6,6 +6,12 @@ from typing_extensions import assert_never
 
 from async_model_gateway.model_runtime.model_artifact import LoaderFamily, ModelArtifact
 from async_model_gateway.model_runtime.runtime_model import LoadedRuntimeModel
+# The runtime-erasure factory is intentionally private to the runtime-model boundary.
+from async_model_gateway.model_runtime.runtime_model.loaded_runtime_model import (
+    _create_loaded_runtime_model,  # pyright: ignore[reportPrivateUsage]
+)
+
+from ._onnx_runtime_loader import load_onnx_runtime
 
 
 class LocalModelLoader:
@@ -31,6 +37,10 @@ class LocalModelLoader:
         """Fail closed until torch artifact I/O is implemented in a later topic."""
         raise NotImplementedError
 
-    async def _load_onnx(self, _artifact: ModelArtifact) -> LoadedRuntimeModel[object]:
-        """Fail closed until ONNX artifact I/O is implemented in a later topic."""
-        raise NotImplementedError
+    async def _load_onnx(self, artifact: ModelArtifact) -> LoadedRuntimeModel[object]:
+        """Acquire an ONNX runtime session through the private provider helper."""
+        session = await load_onnx_runtime(artifact)
+        return _create_loaded_runtime_model(
+            loader_family=LoaderFamily.ONNX,
+            provider_model=session,
+        )
