@@ -1,0 +1,77 @@
+review: model-execution-minimal-consumption-boundary-release
+review_status: COMPLETE
+verdict: approved
+revision: v0.6.0-release
+chain:
+  M:
+    expected_role: merged-implementation
+    actual_commit: 0b7e9be59871d033bb9ec115549eb76e0ff5dd9a
+  R:
+    expected_parent: 0b7e9be59871d033bb9ec115549eb76e0ff5dd9a
+    expected_only_paths:
+      - plan/model-execution-minimal-consumption-boundary/model-execution-minimal-consumption-boundary.release-human-check.json
+      - README.md
+      - docs/architecture.md
+      - docs/specs/model-side-boundary.md
+      - docs/specs/core-abstractions-boundary.md
+      - src/async_model_gateway/__version__.py
+      - pyproject.toml
+      - uv.lock
+    actual_commit: ba4be0ef55bd3b09adf79255ab9bbc87e2004a37
+    actual_parent: 0b7e9be59871d033bb9ec115549eb76e0ff5dd9a
+    actual_paths_match: true
+  E:
+    expected_parent: ba4be0ef55bd3b09adf79255ab9bbc87e2004a37
+    expected_only_paths:
+      - plan/model-execution-minimal-consumption-boundary/model-execution-minimal-consumption-boundary.release.yaml
+    actual_commit: 9fbf76870597ffc7765d48548c66bdced5e3d9ac
+    actual_parent: ba4be0ef55bd3b09adf79255ab9bbc87e2004a37
+    actual_paths_match: true
+  V:
+    expected_parent: 9fbf76870597ffc7765d48548c66bdced5e3d9ac
+    expected_only_paths:
+      - plan/model-execution-minimal-consumption-boundary/model-execution-minimal-consumption-boundary.release-review.yaml
+    actual_commit_semantics: SELF
+    actual_ref_after_transport: origin/dev
+    transport_verification_required: true
+reviewer:
+  reviewed_release_evidence_blob_oid: b3cc01a13b678ab113b4b308670f819e292e2b00
+  authored_release_review_blob_oid_delivery: out-of-band
+  authored_release_review_blob_oid_algorithm: git-hash-object
+  transport_must_preserve_exact_blob: true
+origin_dev:
+  at_review: 9fbf76870597ffc7765d48548c66bdced5e3d9ac
+  expected_after_transport: SELF
+  actual_at_review_matches_E: true
+tag:
+  name: v0.6.0
+  expected_kind: lightweight
+  expected_target: ba4be0ef55bd3b09adf79255ab9bbc87e2004a37
+  actual_kind: lightweight
+  actual_local_target: ba4be0ef55bd3b09adf79255ab9bbc87e2004a37
+  actual_remote_target: ba4be0ef55bd3b09adf79255ab9bbc87e2004a37
+  targets_match_R: true
+docs_version_checks:
+  docs_scope_matches: true
+  deferred_boundaries_preserved: true
+  runtime_version: "0.6.0"
+  pyproject_version: "0.6.0"
+  lockfile_version: "0.6.0"
+  versions_match: true
+publication_negative_checks:
+  github_release_v0_6_0:
+    expected_http_status: 404
+    actual_http_status: "404"
+    passed: true
+  pypi_0_6_0:
+    expected_http_status: 404
+    actual_http_status: "404"
+    passed: true
+  testpypi_0_6_0:
+    expected_http_status: 404
+    actual_http_status: "404"
+    passed: true
+  publication_automation:
+    disallowed_matches_found: []
+    passed: true
+blocking_issues: []
