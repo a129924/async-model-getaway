@@ -1,0 +1,137 @@
+topic: model-execution-minimal-consumption-boundary
+revision: v0.6.0-release
+recorded_at_utc: "2026-07-17T08:37:35Z"
+release_summary: >-
+  Release the minimal ModelExecution owner with its typed async callable seam,
+  single direct-await invocation, and unchanged exception and cancellation
+  propagation. Provider frameworks, loader I/O, orchestrator and remote execution
+  wiring, lifecycle ownership, timeout, and retry remain deferred.
+
+chain:
+  M:
+    role: merged-implementation
+    actual_commit: 0b7e9be59871d033bb9ec115549eb76e0ff5dd9a
+  R:
+    role: release-docs-and-version
+    actual_commit: ba4be0ef55bd3b09adf79255ab9bbc87e2004a37
+    expected_parent: 0b7e9be59871d033bb9ec115549eb76e0ff5dd9a
+    actual_parent: 0b7e9be59871d033bb9ec115549eb76e0ff5dd9a
+    expected_subject: "chore(release): cut v0.6.0"
+    actual_subject: "chore(release): cut v0.6.0"
+    expected_only_paths:
+      - README.md
+      - docs/architecture.md
+      - docs/specs/core-abstractions-boundary.md
+      - docs/specs/model-side-boundary.md
+      - plan/model-execution-minimal-consumption-boundary/model-execution-minimal-consumption-boundary.release-human-check.json
+      - pyproject.toml
+      - src/async_model_gateway/__version__.py
+      - uv.lock
+    actual_paths_match: true
+  E:
+    role: release-evidence
+    commit_semantics: SELF
+    actual_commit_recording: deferred-to-release-review
+    expected_parent: ba4be0ef55bd3b09adf79255ab9bbc87e2004a37
+    expected_subject: "chore(release): record v0.6.0 evidence"
+    expected_only_paths:
+      - plan/model-execution-minimal-consumption-boundary/model-execution-minimal-consumption-boundary.release.yaml
+
+tag:
+  name: v0.6.0
+  kind: lightweight
+  object_type: commit
+  local_target: ba4be0ef55bd3b09adf79255ab9bbc87e2004a37
+  remote_direct_target: ba4be0ef55bd3b09adf79255ab9bbc87e2004a37
+  remote_peeled_ref_present: false
+  targets_match_R: true
+
+remote_verification:
+  command: "git ls-remote --heads origin refs/heads/dev"
+  observed_dev_target_at_evidence_collection: ba4be0ef55bd3b09adf79255ab9bbc87e2004a37
+  observed_dev_matches_R: true
+  expected_dev_target_after_E_push: SELF
+
+docs_version_checks:
+  docs_scope_matches: true
+  deferred_boundaries_preserved: true
+  checked_docs:
+    - README.md
+    - docs/architecture.md
+    - docs/specs/model-side-boundary.md
+    - docs/specs/core-abstractions-boundary.md
+  runtime_version: "0.6.0"
+  pyproject_version: "0.6.0"
+  lockfile_version: "0.6.0"
+  versions_match: true
+
+validation:
+  focused_pytest:
+    command: "uv run pytest --no-cov tests/model_runtime/model_execution -v"
+    exit_code: 0
+    result: "8 passed"
+  topic_pyright:
+    command: "uv run pyright --project plan/model-execution-minimal-consumption-boundary/pyrightconfig.json tests/typecheck/model_execution_minimal_consumption.py"
+    exit_code: 0
+    result: "0 errors, 0 warnings, 0 informations"
+  full_pytest:
+    command: "uv run pytest -v"
+    exit_code: 0
+    result: "175 passed; coverage 98.71%"
+  ruff:
+    command: "uv run ruff check src tests plan/model-execution-minimal-consumption-boundary"
+    exit_code: 0
+    result: passed
+  strict_pyright:
+    command: "uv run pyright"
+    exit_code: 0
+    result: "0 errors, 0 warnings, 0 informations"
+  lock_check:
+    command: "uv lock --check"
+    exit_code: 0
+    result: "resolved 40 packages"
+  diff_check:
+    command: "git diff --check"
+    exit_code: 0
+    result: passed
+
+publication_negative_checks:
+  claim_scope:
+    github_repository: a129924/async-model-getaway
+    github_release_tag: v0.6.0
+    python_distribution: async-model-gateway
+    python_version: "0.6.0"
+    registries_checked:
+      - PyPI
+      - TestPyPI
+    other_registries_checked: false
+  github_release_v0_6_0:
+    command: "gh api -i repos/a129924/async-model-getaway/releases/tags/v0.6.0"
+    expected_http_status: 404
+    actual_http_status: 404
+    exit_code: 1
+    passed: true
+  pypi_0_6_0:
+    command: "curl --silent --show-error --output /dev/null --write-out '%{http_code}\\n' https://pypi.org/pypi/async-model-gateway/0.6.0/json"
+    expected_http_status: 404
+    actual_http_status: 404
+    exit_code: 0
+    passed: true
+  testpypi_0_6_0:
+    command: "curl --silent --show-error --output /dev/null --write-out '%{http_code}\\n' https://test.pypi.org/pypi/async-model-gateway/0.6.0/json"
+    expected_http_status: 404
+    actual_http_status: 404
+    exit_code: 0
+    passed: true
+  publication_automation:
+    command: "rg -n '(pypi|testpypi|twine|uv publish|hatch publish|poetry publish|gh release|softprops/action-gh-release|pypa/gh-action-pypi-publish)' .github/workflows/ci.yml pyproject.toml"
+    expected_exit_code_for_no_match: 1
+    actual_exit_code: 1
+    disallowed_matches_found: []
+    passed: true
+
+outcome:
+  github_release_created: false
+  pypi_package_published: false
+  testpypi_package_published: false
+  tag_retargeted_by_evidence: false
