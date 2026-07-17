@@ -82,8 +82,8 @@ def test_model_execution_is_the_only_production_private_handoff_consumer() -> No
 
 def test_model_execution_source_has_no_dispatch_io_or_lifecycle_dependencies() -> None:
     syntax_tree = ast.parse(inspect.getsource(execution_module))
-    imported_modules = {
-        alias.name
+    imported_module_roots = {
+        alias.name.partition(".")[0]
         for node in ast.walk(syntax_tree)
         if isinstance(node, ast.Import)
         for alias in node.names
@@ -91,13 +91,18 @@ def test_model_execution_source_has_no_dispatch_io_or_lifecycle_dependencies() -
     imported_from_modules = {
         node.module for node in ast.walk(syntax_tree) if isinstance(node, ast.ImportFrom)
     }
+    imported_module_roots.update(
+        module_name.partition(".")[0]
+        for module_name in imported_from_modules
+        if module_name is not None
+    )
     called_attributes = {
         node.func.attr
         for node in ast.walk(syntax_tree)
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
     }
 
-    assert not imported_modules.intersection({"asyncio", "aiofiles", "pathlib"})
+    assert not imported_module_roots.intersection({"asyncio", "aiofiles", "pathlib"})
     assert not any(
         module_name and ("model_artifact" in module_name or "model_pool" in module_name)
         for module_name in imported_from_modules
