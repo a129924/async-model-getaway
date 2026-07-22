@@ -6,6 +6,9 @@ import async_model_gateway as root_module
 import async_model_gateway.model_runtime as model_runtime_root_module
 import async_model_gateway.model_runtime.runtime_model as runtime_model_module
 from async_model_gateway.model_runtime.runtime_model import LoadedRuntimeModel
+from async_model_gateway.model_runtime.runtime_model import (
+    loaded_runtime_model as loaded_runtime_model_module,
+)
 
 
 def test_runtime_model_package_exports_only_loaded_runtime_model() -> None:
@@ -14,6 +17,8 @@ def test_runtime_model_package_exports_only_loaded_runtime_model() -> None:
     assert runtime_model_module.LoadedRuntimeModel is LoadedRuntimeModel
     assert not hasattr(runtime_model_module, "_create_loaded_runtime_model")
     assert not hasattr(runtime_model_module, "_LocalLoadedRuntimeModel")
+    assert not hasattr(loaded_runtime_model_module, "_create_loaded_runtime_model")
+    assert not hasattr(loaded_runtime_model_module, "_LocalLoadedRuntimeModel")
     assert not hasattr(runtime_model_module, "RuntimeT")
     assert not hasattr(runtime_model_module, "provider_model")
 

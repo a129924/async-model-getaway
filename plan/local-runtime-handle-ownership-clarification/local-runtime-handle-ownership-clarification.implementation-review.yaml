@@ -1,0 +1,96 @@
+topic: local-runtime-handle-ownership-clarification
+phase: implementation-review
+review_status: COMPLETE
+verdict: approved
+
+traceability_matrix:
+  - step: "1. Tester creates test-local handles, ownership coverage, strict fixtures, topic Pyright config, and fresh RED evidence."
+    status: done
+    evidence: "tests/model_runtime/runtime_model/test_loaded_runtime_model.py:15; tests/model_runtime/model_pool/test_local_model_loader.py:15; tests/model_runtime/model_execution/test_model_execution_package_surface.py:58; tests/typecheck/runtime_model_generic_erasure.py:18; plan/local-runtime-handle-ownership-clarification/pyrightconfig.json:1; plan/local-runtime-handle-ownership-clarification/local-runtime-handle-ownership-clarification.red-tests.yaml:1"
+  - step: "2. Remove the concrete local class and factory from the runtime-model contract module while retaining the abstract generic handoff."
+    status: done
+    evidence: "src/async_model_gateway/model_runtime/runtime_model/loaded_runtime_model.py:12"
+  - step: "3. Add loader-local concrete construction and direct ONNX instantiation without changing routing or ONNX/PICKLE/TORCH behavior."
+    status: done
+    evidence: "src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:13; src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:41; src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:61"
+  - step: "4. Document opaque acquisition, loader-local construction, and ModelExecution invocation ownership without executable-adapter claims."
+    status: done
+    evidence: "docs/specs/model-side-boundary.md:69; docs/specs/model-side-boundary.md:109; docs/specs/model-side-boundary.md:191"
+  - step: "5. Run declared validation, limit changes to declared paths, and record actual step state."
+    status: done
+    evidence: "plan/local-runtime-handle-ownership-clarification/local-runtime-handle-ownership-clarification.step.md:18; git diff --name-only 31a3d1d -- src docs tests plan; focused pytest 45 passed; full pytest 185 passed; strict and global Pyright 0 errors; Ruff passed; git diff --check passed"
+  - step: "Python 1. Replace factory-dependent runtime-model tests and generic-erasure fixture with test-local concrete handles."
+    status: done
+    evidence: "tests/model_runtime/runtime_model/test_loaded_runtime_model.py:15; tests/model_runtime/runtime_model/test_runtime_model_package_surface.py:14; tests/typecheck/runtime_model_generic_erasure.py:18"
+  - step: "Python 2. Replace model-pool/test fixture factory use and add production-tree call-expression governance."
+    status: done
+    evidence: "tests/model_runtime/model_pool/test_local_model_loader.py:15; tests/model_runtime/model_pool/test_model_pool.py:16; tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:58; tests/model_runtime/model_execution/test_model_execution_package_surface.py:58; tests/typecheck/model_execution_minimal_consumption.py:27"
+  - step: "Python 3. Add topic Pyright config and fresh RED evidence before production or documentation changes."
+    status: done
+    evidence: "plan/local-runtime-handle-ownership-clarification/pyrightconfig.json:1; plan/local-runtime-handle-ownership-clarification/local-runtime-handle-ownership-clarification.red-tests.yaml:45"
+  - step: "Python 4. Retain only the covariant abstract LoadedRuntimeModel contract in its module."
+    status: done
+    evidence: "src/async_model_gateway/model_runtime/runtime_model/loaded_runtime_model.py:12"
+  - step: "Python 5. Define the erased local handle in LocalModelLoader and directly instantiate it after the unchanged helper await."
+    status: done
+    evidence: "src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:13; src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:61"
+  - step: "Python 6. Update the model-side specification and validate before independent review."
+    status: done
+    evidence: "docs/specs/model-side-boundary.md:69; docs/specs/model-side-boundary.md:191; full pytest 185 passed; Ruff passed; global Pyright 0 errors"
+
+scope_creep_check:
+  - non_goal: "No executable RuntimeModel redesign, execute API, request/result models, ONNX invoker, adapter/strategy, tensor schema, batching, or preprocessing."
+    violated: no
+    evidence: "clean; changed production surface is limited to private handle ownership in src/async_model_gateway/model_runtime/runtime_model/loaded_runtime_model.py:15 and src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:13"
+  - non_goal: "No ModelExecution API or invocation-semantics change, and no public provider-runtime escape hatch."
+    violated: no
+    evidence: "src/async_model_gateway/model_runtime/model_execution/execution.py is unchanged; its sole call remains at src/async_model_gateway/model_runtime/model_execution/execution.py:31"
+  - non_goal: "No ONNX helper, dependency, ModelArtifact, LoaderFamily, ModelPool API, package export, PICKLE/TORCH, lifecycle, remote, or orchestrator change."
+    violated: no
+    evidence: "clean; diff against 31a3d1d contains no ReadOnly source path and focused regression coverage passes"
+  - non_goal: "No README, architecture document, version, release, commit, push, or PR action."
+    violated: no
+    evidence: "clean; only docs/specs/model-side-boundary.md is changed, and git status has no commit/push/PR artifact"
+
+contract_check:
+  - item: "LoadedRuntimeModel remains public, abstract, covariant, generic, opaque, with readonly loader_family and private _provider_runtime() handoff."
+    status: matches
+    detail: "src/async_model_gateway/model_runtime/runtime_model/loaded_runtime_model.py:12-26 preserves the contract; tests/model_runtime/runtime_model/test_loaded_runtime_model.py:97 verifies covariance and :108 verifies the handoff signature."
+  - item: "ModelPool.acquire remains LoadedRuntimeModel[object]."
+    status: matches
+    detail: "ReadOnly src/async_model_gateway/model_runtime/model_pool/pool.py:30 remains unchanged; focused package-surface coverage passed."
+  - item: "ModelExecution public API and injected direct-await invocation semantics remain unchanged and it is the sole production handoff consumer."
+    status: matches
+    detail: "ReadOnly src/async_model_gateway/model_runtime/model_execution/execution.py:18-32 is unchanged; AST governance test at tests/model_runtime/model_execution/test_model_execution_package_surface.py:76 passes."
+  - item: "Runtime-model package export remains only LoadedRuntimeModel."
+    status: matches
+    detail: "src/async_model_gateway/model_runtime/runtime_model/__init__.py:3-5 is unchanged; tests/model_runtime/runtime_model/test_runtime_model_package_surface.py:14 passes."
+
+test_plan_check:
+  - case_type: "Happy path: ONNX acquisition yields opaque ONNX-family handle and provider identity reaches injected ModelExecution invoker."
+    status: present
+    location: "tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:58"
+  - case_type: "Invalid input: abstract handle remains uninstantiable and factory is absent."
+    status: present
+    location: "tests/model_runtime/runtime_model/test_loaded_runtime_model.py:37; tests/model_runtime/runtime_model/test_loaded_runtime_model.py:87"
+  - case_type: "Edge case: production-tree AST checks call expressions and finds only ModelExecution."
+    status: present
+    location: "tests/model_runtime/model_execution/test_model_execution_package_surface.py:58"
+  - case_type: "Regression: explicit routing, assert_never, and PICKLE/TORCH fail-closed behavior remain."
+    status: present
+    location: "tests/model_runtime/model_pool/test_local_model_loader.py:70; tests/model_runtime/model_pool/test_local_model_loader.py:157; tests/model_runtime/model_pool/test_local_model_loader.py:165"
+  - case_type: "Backward compatibility: package export, generic erasure, ModelPool acquisition, and ModelExecution typing remain."
+    status: present
+    location: "tests/model_runtime/runtime_model/test_runtime_model_package_surface.py:14; tests/typecheck/runtime_model_generic_erasure.py:44; tests/typecheck/model_execution_minimal_consumption.py:51"
+
+validation:
+  focused_pytest: "passed: 45 tests"
+  strict_topic_pyright: "passed: 0 errors, 0 warnings, 0 informations"
+  full_pytest: "passed: 185 tests"
+  ruff: "passed"
+  global_pyright: "passed: 0 errors, 0 warnings, 0 informations"
+  diff_check: "passed"
+
+scope_drift: false
+contract_drift: false
+blocking_issues: []

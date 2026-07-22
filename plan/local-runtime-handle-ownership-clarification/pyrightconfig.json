@@ -1,0 +1,9 @@
+{
+  "include": [
+    "../../tests/typecheck/runtime_model_generic_erasure.py",
+    "../../tests/typecheck/model_execution_minimal_consumption.py"
+  ],
+  "extraPaths": ["../../src"],
+  "pythonVersion": "3.10",
+  "typeCheckingMode": "strict"
+}

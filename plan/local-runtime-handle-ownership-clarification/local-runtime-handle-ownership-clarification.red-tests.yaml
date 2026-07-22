@@ -1,0 +1,130 @@
+topic: local-runtime-handle-ownership-clarification
+phase: tdd-test-authoring
+status: COMPLETE
+verdict: red-tests-ready
+authored_on: "2026-07-21"
+d1_verdict:
+  verdict: non-trivial
+  reason: >-
+    The topic moves private construction ownership across production modules while
+    preserving a public generic opaque-handle contract, strict type fixtures, static
+    source-governance assertions, and existing ONNX-to-ModelExecution integration.
+behavior_contract:
+  source: plan/local-runtime-handle-ownership-clarification/local-runtime-handle-ownership-clarification.spec.md
+  active_acceptance_criteria:
+    - AC-1
+    - AC-2
+    - AC-3
+    - AC-4
+    - AC-5
+    - AC-6
+    - AC-7
+test_mapping:
+  - requirement_id: AC-1
+    test_case_name: test_runtime_model_contract_module_defines_no_concrete_local_handle_or_factory
+    coverage_category: error_exception
+  - requirement_id: AC-1
+    test_case_name: test_loaded_runtime_model_private_handoff_has_the_locked_generic_signature
+    coverage_category: boundary_edge
+  - requirement_id: AC-2
+    test_case_name: test_local_model_loader_owns_concrete_handle_construction_without_runtime_factory
+    coverage_category: state_side_effects
+  - requirement_id: AC-3
+    test_case_name: test_local_model_loader_owns_concrete_handle_construction_without_runtime_factory
+    coverage_category: boundary_edge
+  - requirement_id: AC-4
+    test_case_name: test_model_execution_is_the_only_production_private_handoff_consumer
+    coverage_category: integration_points
+  - requirement_id: AC-5
+    test_case_name: check_test_local_handle_precision_and_covariance
+    coverage_category: static_typing
+  - requirement_id: AC-5
+    test_case_name: check_execution_preserves_all_concrete_types
+    coverage_category: static_typing
+  - requirement_id: AC-6
+    test_case_name: test_acquire_returns_a_cpu_only_onnx_session_through_the_opaque_handle
+    coverage_category: happy_path
+  - requirement_id: AC-7
+    test_case_name: test_local_model_loader_default_handlers_fail_closed_without_loading
+    coverage_category: regression
+  - requirement_id: AC-7
+    test_case_name: test_runtime_model_package_exports_only_loaded_runtime_model
+    coverage_category: public_contract
+validation_checks:
+  d1_decision: passed
+  behavior_contract_source: plan/local-runtime-handle-ownership-clarification/local-runtime-handle-ownership-clarification.spec.md
+  requirements_mapped: true
+  public_contract_coverage: true
+  test_categories_present:
+    happy_path: true
+    error_exception: true
+    boundary_edge: true
+    state_side_effects: true
+    integration_points: true
+  expected_initial_status: red
+  production_code_modified: false
+  approved_plan_review:
+    path: plan/local-runtime-handle-ownership-clarification/local-runtime-handle-ownership-clarification.plan-review.json
+    verdict: approved
+    passed: true
+  human_check:
+    path: plan/local-runtime-handle-ownership-clarification/local-runtime-handle-ownership-clarification.human-check.json
+    cleared_for: implement-plan
+    passed: true
+  production_baseline_guard:
+    command: git diff --name-only 31a3d1d -- src docs
+    result: no output
+    passed: true
+  source_governance:
+    static_imports_only: true
+    dynamic_module_loading_matches: []
+    production_provider_handoff_scan: AST call-expression scan under src/async_model_gateway
+    passed: true
+  focused_pytest:
+    command: >-
+      uv run --extra onnx pytest --no-cov tests/model_runtime/runtime_model
+      tests/model_runtime/model_pool tests/model_runtime/model_execution -v --tb=short
+    exit_code: 1
+    expected_nonzero: true
+    result: 3 failed, 42 passed in 2.71s
+    failing_tests:
+      - test_runtime_model_contract_module_defines_no_concrete_local_handle_or_factory
+      - test_runtime_model_package_exports_only_loaded_runtime_model
+      - test_local_model_loader_owns_concrete_handle_construction_without_runtime_factory
+    primary_failure: >-
+      The runtime-model module still defines the private factory/local class and the
+      local loader still imports and calls that factory instead of constructing a
+      loader-local opaque handle.
+    failure_matches_unimplemented_approved_boundary: true
+    passed: true
+  dedicated_pyright:
+    command: >-
+      uv run --extra onnx pyright --project
+      plan/local-runtime-handle-ownership-clarification/pyrightconfig.json
+      tests/typecheck/runtime_model_generic_erasure.py
+      tests/typecheck/model_execution_minimal_consumption.py
+    exit_code: 0
+    expected_initial_status: pass_existing_contract
+    result: 0 errors, 0 warnings, 0 informations
+    passed: true
+  authored_test_quality:
+    command: >-
+      uv run --extra onnx ruff check tests/model_runtime/runtime_model/test_loaded_runtime_model.py
+      tests/model_runtime/runtime_model/test_runtime_model_package_surface.py
+      tests/model_runtime/model_pool/test_local_model_loader.py
+      tests/model_runtime/model_pool/test_model_pool.py
+      tests/model_runtime/model_execution/test_model_execution_package_surface.py
+      tests/typecheck/runtime_model_generic_erasure.py
+      tests/typecheck/model_execution_minimal_consumption.py
+      plan/local-runtime-handle-ownership-clarification
+    exit_code: 0
+    passed: true
+  diff_check:
+    command: git diff --check
+    exit_code: 0
+    passed: true
+issues: []
+next_step: >-
+  Dispatch an independent Implementer to move only private concrete handle construction
+  into LocalModelLoader, remove the runtime-model factory/local class, and update the
+  declared model-side documentation before GREEN validation.

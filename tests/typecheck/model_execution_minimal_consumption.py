@@ -8,9 +8,6 @@ from async_model_gateway.model_runtime.model_artifact import LoaderFamily, Model
 from async_model_gateway.model_runtime.model_execution import ModelExecution
 from async_model_gateway.model_runtime.model_pool import ModelPool
 from async_model_gateway.model_runtime.runtime_model import LoadedRuntimeModel
-from async_model_gateway.model_runtime.runtime_model.loaded_runtime_model import (
-    _create_loaded_runtime_model,  # pyright: ignore[reportPrivateUsage]
-)
 
 
 class _FakeRuntime:
@@ -25,6 +22,27 @@ class _FakeResult:
     """Represent one concrete result type."""
 
 
+class _TestLoadedRuntimeModel(LoadedRuntimeModel[_FakeRuntime]):
+    """Supply a typed test-local provider handle to ModelExecution."""
+
+    def __init__(self, runtime: _FakeRuntime) -> None:
+        self._runtime = runtime
+
+    @property
+    def loader_family(self) -> LoaderFamily:
+        return LoaderFamily.TORCH
+
+    def _provider_runtime(self) -> _FakeRuntime:
+        return self._runtime
+
+
+def _as_loaded_runtime_model(
+    model: LoadedRuntimeModel[_FakeRuntime],
+) -> LoadedRuntimeModel[_FakeRuntime]:
+    """Preserve the public opaque-handle type for the execution fixture."""
+    return model
+
+
 async def _invoke(
     runtime: _FakeRuntime,
     invocation: _FakeInvocation,
@@ -35,9 +53,8 @@ async def _invoke(
 
 
 async def check_execution_preserves_all_concrete_types() -> None:
-    model = _create_loaded_runtime_model(  # pyright: ignore[reportPrivateUsage]
-        loader_family=LoaderFamily.TORCH,
-        provider_model=_FakeRuntime(),
+    model: LoadedRuntimeModel[_FakeRuntime] = _as_loaded_runtime_model(
+        _TestLoadedRuntimeModel(_FakeRuntime())
     )
     execution = ModelExecution[_FakeRuntime, _FakeInvocation, _FakeResult](invoke=_invoke)
 

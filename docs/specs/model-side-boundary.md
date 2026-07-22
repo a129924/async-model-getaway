@@ -68,9 +68,10 @@ gateway / registry 不做語意等價判斷；只要 `model-payload` material �
 
 這個實作 slice 只負責將有效 `ModelArtifact` 交給 retained private loader；它不宣稱
 local model availability、cache/reuse、上下載、close/unload 或其他 lifecycle policy
-已完成。它以 `LoadedRuntimeModel` 作 abstract consumption contract；provider runtime
-不穿透 public boundary，僅由 runtime-model module 的 private local implementation
-保存，並以 non-public internal handoff 交給最小 `ModelExecution` boundary。
+已完成。它以 `LoadedRuntimeModel` 作 abstract opaque acquisition-handle contract；provider
+runtime 不穿透 public boundary。private `LocalModelLoader` 在 acquisition 完成後建立
+loader-local private handle，保存 local provider runtime 與 explicit `LoaderFamily`
+provenance，並以 non-public internal handoff 交給最小 `ModelExecution` boundary。
 
 它不負責：
 
@@ -158,7 +159,8 @@ boundary 的 child concern。
 公開 generic `ModelExecution`。constructor 只接收 injected typed async callable；
 `execute(...)` 從 `LoadedRuntimeModel` 的 non-public handoff 取得 provider runtime，
 再 direct-await 單次 invocation。runtime、invocation 與 result 不經轉換，一般例外與
-cancellation 原樣傳播。
+cancellation 原樣傳播。它是唯一的 production handoff consumer，且不依
+`loader_family` 做 provider-specific `match/case` dispatch。
 
 它負責：
 
@@ -188,8 +190,11 @@ unified consumption surface。
 目前 `async_model_gateway.model_runtime.runtime_model` 已公開 abstract nominal
 `LoadedRuntimeModel`。它唯一的 public semantic 是 readonly `loader_family`；
 `_provider_runtime()` 是非 public 的 model-side internal handoff，只由目前的最小
-`ModelExecution` boundary 消費。private `_LocalLoadedRuntimeModel` 與 factory 不會從
-package root export，因此 provider-specific object 不會成為 package consumer contract。
-這不建立 provider framework、artifact I/O、remote execution wiring 或 lifecycle policy。
+`ModelExecution` boundary 消費。concrete `_LocalLoadedRuntimeModel` 的 construction
+ownership 位於 private `LocalModelLoader`，而非 public runtime-model contract module；
+它不從 package root export，因此 provider-specific object 不會成為 package consumer
+contract；application / orchestrator 不可把它當成 provider session getter。這不建立
+executable runtime model、provider adapter、ONNX invoker、除 ONNX session acquisition
+外的 artifact I/O、remote execution wiring 或 lifecycle policy。
 
 對外能力邊界在目前階段採統一入口；能力差異先收斂在 `features`，不先拆成多方法名公開 surface。
