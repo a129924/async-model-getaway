@@ -104,8 +104,14 @@ repo 已落地其中最小的 local acquisition slice：
 `assert_never(...)`。`async_model_gateway.model_runtime.runtime_model` 已提供 abstract
 `LoadedRuntimeModel` consumption contract；它只公開 readonly `loader_family`，並以
 non-public `_provider_runtime()` 交給 `ModelExecution` 作 internal handoff。
-provider runtime 只存在於同一 module 的 private local implementation，`ModelPool`
-與 private loader 均以此 contract 作 return type。這個 slice 不讀取 artifact，亦不
+concrete local handle 位於 private loader module，`ModelPool` 與 private loader 均以
+此 contract 作 return type。ONNX route 會在 `LocalModelLoader.load(...)` 的 acquisition
+時 lazy 建立 CPU-only provider session，而不是 application startup 時預先建立；該
+session 不穿透 public boundary。已落地的 local flow 是：
+
+`ModelArtifact → LocalModelLoader → provider session → LoadedRuntimeModel → ModelExecution → result`。
+
+這個 slice 的實作僅限 ONNX session acquisition；PICKLE 與 TORCH 仍 fail closed。它不
 實作 provider framework、cache、close/unload 或其他 lifecycle policy。
 
 repo 目前也已在 `async_model_gateway.model_runtime.model_execution` 落地最小
@@ -113,6 +119,8 @@ generic `ModelExecution` boundary。它只接受 injected typed async callable�
 `LoadedRuntimeModel` 取得 provider runtime 後 direct-await 單次 invocation；一般
 例外與 cancellation 原樣傳播。它不建立 provider framework，不負責 loader I/O、
 orchestrator 或 remote execution wiring，也不管理 lifecycle、timeout 或 retry。
+`_provider_runtime()` 是此 execution boundary 的 internal handoff，而非 consumer
+escape hatch；`ModelExecution` 也不依 `loader_family` 做 provider-specific dispatch。
 
 ## Shared Vocabulary
 
@@ -146,7 +154,7 @@ initialization 階段不包含：
 - provider-specific contracts
 - adapter schemas
 - framework integration
-- artifact I/O、provider framework 與完整 model pool lifecycle
+- 除 ONNX session acquisition 外的 artifact I/O、provider framework 與完整 model pool lifecycle
 - response cache implementation
 - provider-specific execution runtime behavior 與完整 execution flow
 - infrastructure selection

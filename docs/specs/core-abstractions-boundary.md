@@ -42,10 +42,10 @@
 1. `canonical input boundary` 定義 `model_name`、`model_source_kind`、`model-payload`、`features`
 2. `ModelRegistry` 擁有 `payload-hash`、identity context 與 freshness authority
 3. `ModelPool` 是 local `runtime-model` 的最小 public acquisition boundary；其 async `acquire(...)` 回傳 `LoadedRuntimeModel`
-4. private `LocalModelLoader` 作為 `ModelPool` 內部的 local acquisition sub-boundary，只消費 `model_artifact` 並依 explicit `LoaderFamily` dispatch
+4. private `LocalModelLoader` 作為 `ModelPool` 內部的 local acquisition sub-boundary，只消費 `model_artifact` 並依 explicit `LoaderFamily` dispatch；ONNX route 在此 lazy 建立 provider session 並建立 loader-local private handle
 5. `ModelGateway` 擁有 remote `runtime-model` provider / access boundary
-6. `runtime-model` 是 provider boundary 交付給 `ModelExecution` 的 unified consumption surface；目前以 abstract `LoadedRuntimeModel` 表達最小 typed contract
-7. `ModelExecution` 擁有 `runtime-model` invocation semantics；目前以 injected typed async callable seam direct-await 單次 invocation
+6. `runtime-model` 是 provider boundary 交付給 `ModelExecution` 的 unified consumption surface；目前以 abstract opaque `LoadedRuntimeModel` 表達最小 typed contract
+7. `ModelExecution` 擁有 `runtime-model` invocation semantics；它透過 internal handoff 將 provider runtime 交給 injected typed async callable，direct-await 單次 invocation 並回傳 result
 8. `ResponseCache` 依賴 `payload-hash + features`
 9. `orchestrator` 協調 registry、provider、execution 與 cache boundary，但不直接 execute model
 
@@ -59,9 +59,10 @@
 - `ModelArtifact` 只承載 `loader_family`、`artifact_path`、`loader_options`
 - `LoaderFamily` starter vocabulary 只允許 `pickle`、`torch`、`onnx`
 - `LocalModelLoader` 對這三個 family 使用 explicit `match/case`；closed enum 的不可達 fallback 使用 `assert_never(...)`
-- `LoadedRuntimeModel` 只公開 `loader_family`；provider runtime 留在 private local implementation，並僅以 non-public handoff 交給最小 `ModelExecution`
-- `async_model_gateway.model_runtime.model_execution` 只公開 generic `ModelExecution`，以 injected typed async callable direct-await 單次 invocation，並原樣傳播一般例外與 cancellation
-- artifact I/O、真實 provider invocation、provider framework、完整 orchestration/remote execution、lifecycle、timeout 與 retry 仍 deferred
+- 已落地的 local flow 是 `ModelArtifact → LocalModelLoader → provider session → LoadedRuntimeModel → ModelExecution → result`；`ModelPool.acquire(...)` 是保有 private loader 的 public local entrypoint
+- `LoadedRuntimeModel` 只公開 `loader_family`，不提供 public `execute(...)` 或 provider getter；provider runtime 留在 loader-local private implementation，並僅以 non-public internal handoff 交給最小 `ModelExecution`
+- `async_model_gateway.model_runtime.model_execution` 只公開 generic `ModelExecution`，以 injected typed async callable direct-await 單次 invocation、回傳 result，並原樣傳播一般例外與 cancellation；它不依 `loader_family` 做 provider dispatch
+- 除 ONNX session acquisition 外的 artifact I/O、真實 provider invocation、provider framework、完整 orchestration/remote execution、lifecycle、timeout 與 retry 仍 deferred
 - `async_model_gateway.model_registry.stores.InMemoryRegistryStore` 已作為
   process-local concrete store 提供，但不改變 `model_registry` root package
   的 re-export boundary
@@ -73,10 +74,10 @@
 
 這一組文件明確不處理：
 
-- provider-specific runtime implementation、invocation 與 framework
+- provider-specific runtime implementation、invocation 與 framework（ONNX session acquisition 除外）
 - `src` module layout
 - `pydantic`
 - `sqlalchemy`
 - cache key algorithm 細節
 - provider adapter contract
-- runtime flow implementation
+- 完整 runtime flow implementation

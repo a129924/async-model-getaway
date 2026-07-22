@@ -106,16 +106,23 @@ root，而 `model_artifact` package root 只公開 `ModelArtifact` 與
 - `LoaderFamily.ONNX` 直接 await private `_load_onnx(...)`
 - closed enum 的不可達 fallback 使用 `assert_never(...)`
 
-三個目前 handler 都是 no-I/O placeholder，維持 `NotImplementedError`。它們不讀取
-local artifact、不根據 `artifact_path`、副檔名或內容推導 family，也不包裝成 concrete
-loaded runtime handle。
+目前 `PICKLE` 與 `TORCH` handler 都是 no-I/O placeholder，維持
+`NotImplementedError`。`ONNX` handler 則透過 private helper 建立 CPU-only
+`onnxruntime.InferenceSession`，再直接建構 loader-local private opaque handle；它只做
+acquisition，不執行 inference。session 只在 `LocalModelLoader.load(...)` 選定 ONNX
+route 時 lazy 建立，而非 application startup 預先建立。已落地的 local flow 是：
+
+`ModelArtifact → LocalModelLoader → provider session → LoadedRuntimeModel → ModelExecution → result`。
+
+其中 result 僅指 injected typed invoker 的回傳值，不建立 ONNX result schema 或 adapter。
+所有 route 都不根據 `artifact_path`、副檔名或內容推導 family。
 
 它不負責：
 
 - 依賴 `model-payload` 猜 loader
 - 擁有 identity authority
 - 對外暴露 top-level business owner 身分
-- 實作 artifact I/O、provider framework 或 lifecycle policy
+- 除 ONNX session acquisition 外的 artifact I/O、provider framework 或 lifecycle policy
 
 ## Fail-Closed 原則
 

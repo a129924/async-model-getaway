@@ -1,0 +1,65 @@
+topic: local-runtime-acquisition-documentation-consistency
+phase: implementation-review
+review_status: COMPLETE
+verdict: approved
+
+traceability_matrix:
+  - step: "1. Update only the local runtime/runtime-model wording in README.md."
+    status: done
+    evidence: "README.md:37-57; README.md:115-119; README.md:143-154"
+  - step: "2. Update docs/architecture.md with the fixed local acquisition-to-result flow and corrected loader-local opaque-handle ownership."
+    status: done
+    evidence: "docs/architecture.md:99-123; docs/architecture.md:150-160"
+  - step: "3. Update docs/specs/model-side-boundary.md with routing, ONNX acquisition, opaque handle, and ModelExecution handoff wording."
+    status: done
+    evidence: "docs/specs/model-side-boundary.md:62-125; docs/specs/model-side-boundary.md:158-205"
+  - step: "4. Update docs/specs/core-abstractions-boundary.md with the matching concise dependency-direction summary."
+    status: done
+    evidence: "docs/specs/core-abstractions-boundary.md:42-65; docs/specs/core-abstractions-boundary.md:73-82"
+  - step: "5. Run fresh validation and confirm declared documentation-only scope."
+    status: done
+    evidence: "focused pytest 111 passed; full pytest 185 passed; Pyright 0 errors; Ruff passed; git diff --check passed"
+
+scope_creep_check:
+  - non_goal: "No public API, execute API, provider getter, runtime factory, invoker, adapter, provider dispatch, or ONNX inference."
+    violated: no
+    evidence: "Four reviewed documents describe these only as deferred; source contract remains at src/async_model_gateway/model_runtime/runtime_model/loaded_runtime_model.py:15-27 and src/async_model_gateway/model_runtime/model_execution/execution.py:15-32."
+  - non_goal: "No source, test, dependency, version, release, package-export, or existing-topic artifact changes for this docs-only topic."
+    violated: no
+    evidence: "This topic's implementation diff is limited to README.md, docs/architecture.md, docs/specs/model-side-boundary.md, and docs/specs/core-abstractions-boundary.md. Pre-existing source/test changes belong to the separately approved local-runtime-handle-ownership-clarification topic."
+
+contract_check:
+  - item: "LoadedRuntimeModel stays opaque with only public readonly loader_family and no public execute or provider getter."
+    status: matches
+    detail: "README.md:43-55; docs/architecture.md:104-123; docs/specs/model-side-boundary.md:197-205; docs/specs/core-abstractions-boundary.md:62-64 agree with src/async_model_gateway/model_runtime/runtime_model/loaded_runtime_model.py:15-27."
+  - item: "LocalModelLoader owns acquisition and concrete private handle construction; ONNX session creation is lazy on the ONNX route."
+    status: matches
+    detail: "docs/architecture.md:99-115 and docs/specs/model-side-boundary.md:102-125 agree with src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:13-67."
+  - item: "ModelExecution is the sole production internal-handoff consumer, direct-awaits its injected invoker, returns its result, and does not dispatch on loader_family."
+    status: matches
+    detail: "docs/architecture.md:117-123; docs/specs/model-side-boundary.md:165-188; docs/specs/core-abstractions-boundary.md:62-65 agree with src/async_model_gateway/model_runtime/model_execution/execution.py:15-32 and tests/model_runtime/model_execution/test_model_execution_package_surface.py:58-79."
+
+test_plan_check:
+  - case_type: "opaque loaded handle and no public execute/provider getter"
+    status: present
+    location: "tests/model_runtime/runtime_model/test_loaded_runtime_model.py:49-94"
+  - case_type: "loader-local construction and typed ModelPool acquisition"
+    status: present
+    location: "tests/model_runtime/model_pool/test_local_model_loader.py:178-185; tests/model_runtime/model_pool/test_model_pool.py:1-86"
+  - case_type: "only ModelExecution calls the internal provider handoff"
+    status: present
+    location: "tests/model_runtime/model_execution/test_model_execution_package_surface.py:58-79"
+  - case_type: "invocation, exception, and cancellation propagation"
+    status: present
+    location: "tests/model_runtime/model_execution/test_model_execution.py:66-102"
+
+validation:
+  focused_pytest: "passed: 111 tests"
+  full_pytest: "passed: 185 tests"
+  pyright: "passed: 0 errors, 0 warnings, 0 informations"
+  ruff: "passed"
+  diff_check: "passed"
+
+scope_drift: false
+contract_drift: false
+blocking_issues: []
