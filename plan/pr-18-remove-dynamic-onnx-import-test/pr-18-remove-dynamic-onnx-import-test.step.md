@@ -1,6 +1,8 @@
 ---
 topic: pr-18-remove-dynamic-onnx-import-test
 phase: pr-comment
+state: awaiting-human-merge-gate
+next_state: merged
 created: 2026-07-23
 ---
 
@@ -20,6 +22,8 @@ created: 2026-07-23
 - [X] implementation
 - [X] implementation-review
 - [X] code-review
+- [X] pr-comment-review-and-pr-comment-fix
+- [ ] human-merge-gate (Human)
 
 ## Completed Evidence
 
@@ -48,21 +52,23 @@ created: 2026-07-23
 - Independent code review approved
   `pr-18-remove-dynamic-onnx-import-test.code-review.yaml`; it found no Python
   quality, typing, lint, error-handling, anti-pattern, or test-quality finding.
+- The bounded PR comment fix was committed and pushed as `354f466`
+  (`fix(model-runtime): remove dynamic ONNX import tests`), updating PR #18.
+- PR #18 thread `PRRT_kwDOS7D3Es6TIo9V` was replied to and resolved after the
+  approved implementation was published.
+- PR #18 CI completed successfully after the update.
 
-## PR Comment / Human Handoff
+## Human Merge Gate
 
-- This topic is now at `pr-comment`. PR #18 thread
-  `PRRT_kwDOS7D3Es6TIo9V` remains unreplied and unresolved.
-- No actor may commit, push, update PR #18, reply to that thread, resolve that
-  thread, or merge the PR without separate explicit Human permission for the
-  respective action.
-- Next Human boundary: decide whether to authorize the bounded publish and PR
-  comment actions after reviewing the approved implementation and code-review
-  evidence. A separate explicit Human merge gate remains required after PR
-  review is complete.
+- `pr-comment-review-and-pr-comment-fix` is complete: the named actionable
+  thread is replied to and resolved, and the published PR update has green CI.
+- The next state is the explicit Human `human-merge-gate`. No actor may merge
+  PR #18, alter the PR state, or start a release without separate Human merge
+  authorization.
+- This topic has no release workflow. Only after a Human merge decision may its
+  state become `merged`; it then stops.
 
-下一步：等待 Human 明確決定 publish 與 PR #18 comment actions；不得自動 commit、push、
-更新 PR、reply、resolve 或 merge。
+下一步：等待 Human 明確決定是否 merge PR #18；不得自動 merge 或進行 release。
 
 ## Implementation Steps
 
