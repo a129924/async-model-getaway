@@ -31,6 +31,7 @@ dev = [
     "tach",
     "pre-commit",
     "onnx>=1.16.2,<1.17",
+    "onnxruntime>=1.22.0,<1.22.1",
 ]
 
 [tool.ruff]

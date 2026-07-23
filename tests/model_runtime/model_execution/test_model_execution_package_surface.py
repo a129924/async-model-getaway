@@ -70,7 +70,7 @@ def _provider_runtime_call_paths() -> list[Path]:
         ):
             call_paths.append(source_path.relative_to(package_root))
 
-    return call_paths
+    return sorted(call_paths)
 
 
 def test_model_execution_is_the_only_production_private_handoff_consumer() -> None:

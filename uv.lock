@@ -28,6 +28,7 @@ onnx = [
 [package.dev-dependencies]
 dev = [
     { name = "onnx" },
+    { name = "onnxruntime" },
     { name = "pre-commit" },
     { name = "pyright" },
     { name = "pytest" },
@@ -48,6 +49,7 @@ provides-extras = ["onnx"]
 [package.metadata.requires-dev]
 dev = [
     { name = "onnx", specifier = ">=1.16.2,<1.17" },
+    { name = "onnxruntime", specifier = ">=1.22.0,<1.22.1" },
     { name = "pre-commit" },
     { name = "pyright" },
     { name = "pytest", specifier = ">=8.0" },
