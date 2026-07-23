@@ -1,0 +1,80 @@
+topic: pr-18-remove-dynamic-onnx-import-test
+phase: implementation-review
+review_status: COMPLETE
+verdict: approved
+review_scope: >-
+  Plan-conformance review of the private ONNX importer seam and focused
+  acquisition-test remediation for PR #18 thread PRRT_kwDOS7D3Es6TIo9V.
+
+traceability_matrix:
+  - step: "Tester adds fresh static-import RED coverage and records the evidence."
+    status: done
+    evidence: "The RED evidence records the pre-seam 6-failure result; tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:20-37 now imports the private helper statically and supplies typed callable doubles."
+  - step: "Implementer adds a private typed real-import/callable-injection seam while retaining acquisition semantics."
+    status: done
+    evidence: "src/async_model_gateway/model_runtime/model_pool/_onnx_runtime_loader.py:11-45 defines private callable aliases and default real lazy importer, preserves empty-options validation, name-exact ModuleNotFoundError translation, asyncio.to_thread, and CPUExecutionProvider construction."
+  - step: "Implementer removes dynamic module-table setup and preserves focused behavioral coverage."
+    status: done
+    evidence: "tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:5-37 contains only static imports and callable helpers; :98-278 covers options, top-level and nested missing imports, provider failure, thread offload, and cancellation. The declared governance rg scan returned no matches."
+  - step: "Implementer runs declared validation and hands off to independent review."
+    status: done
+    evidence: "Independent rerun passed: focused ONNX pytest (10), focused model-pool/model-execution pytest (35), full pytest (185), Pyright, Ruff, all-files pre-commit, governance scan, and git diff --check."
+
+scope_creep_check:
+  - non_goal: "No LocalModelLoader, ModelPool, LoadedRuntimeModel, ModelExecution, provider routing, opaque-handle ownership, or public typed-boundary change."
+    violated: no
+    evidence: "The implementation diff names only the private ONNX helper and its focused test; read-only loader, pool, runtime-model, and execution files are unchanged."
+  - non_goal: "No dependency, lockfile, CI, docs, version, release, commit, push, PR-state, or other PR-thread change."
+    violated: no
+    evidence: "The implementation diff names no dependency, workflow, documentation, metadata, or PR path; untracked files are only this topic's declared artifacts."
+  - non_goal: "No dynamic module loading, ModuleType, sys.modules, importlib, or module-table mutation in tests."
+    violated: no
+    evidence: "Declared source-governance scan returned no matches in the focused ONNX acquisition test."
+  - non_goal: "No provider behavior, options policy, error message, thread-offload, cancellation, timeout, retry, or lifecycle-policy redesign."
+    violated: no
+    evidence: "The helper retains the existing validation, exact guidance string, CPU provider list, single asyncio.to_thread construction, and propagation paths."
+
+contract_check:
+  - item: "Production default performs a real lazy ONNX Runtime import without an external injection API."
+    status: matches
+    detail: "The default keyword-only private-helper argument is _import_inference_session_constructor; LocalModelLoader continues to call load_onnx_runtime(artifact) without an override."
+  - item: "Only ModuleNotFoundError name onnxruntime is translated; nested onnxruntime.capi propagates by identity."
+    status: matches
+    detail: "Helper lines 33-39 check error.name exactly; focused tests lines 121-142 and 197-216 assert the required cause and same nested exception object."
+  - item: "Public acquisition, opaque-handle, and ModelExecution contracts remain unchanged."
+    status: matches
+    detail: "ModelPool.acquire and ModelExecution source are unchanged; the focused model-pool/model-execution suite passed 35 tests and Pyright reported 0 errors."
+  - item: "Existing async behavior remains unchanged."
+    status: matches
+    detail: "Helper retains asyncio.to_thread with the existing CPU-only constructor call; thread-offload and cancellation tests pass."
+
+test_plan_check:
+  - case_type: "Happy path: default real CPU-only session, opaque handle, and ModelExecution handoff; injected constructor identity."
+    status: present
+    location: "tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:74-95, 220-246"
+  - case_type: "Invalid input: non-empty loader_options fails before importer execution."
+    status: present
+    location: "tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:98-117"
+  - case_type: "Edge case: top-level missing dependency is translated and nested missing import propagates by identity."
+    status: present
+    location: "tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:121-142, 197-216"
+  - case_type: "Regression: provider failure, invalid artifacts, explicit routing, thread offload, and cancellation are preserved."
+    status: present
+    location: "tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:145-293"
+  - case_type: "Backward compatibility: public acquisition annotation, package exports, opaque handle, and ModelExecution behavior remain unchanged."
+    status: present
+    location: "Focused model-pool/model-execution pytest: 35 passed; full pytest: 185 passed; Pyright: 0 errors."
+
+validation:
+  focused_onnx_pytest: "passed: 10 tests"
+  focused_model_pool_model_execution_pytest: "passed: 35 tests"
+  full_pytest: "passed: 185 tests"
+  pyright: "passed: 0 errors, 0 warnings, 0 informations"
+  ruff: "passed"
+  pre_commit_all_files: "passed"
+  governance_source_scan: "passed: expected no-match exit"
+  diff_check: "passed"
+
+scope_drift: false
+contract_drift: false
+blocking_issues: []

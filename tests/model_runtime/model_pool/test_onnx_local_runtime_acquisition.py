@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import asyncio
-import sys
 import threading
 import time
-from pathlib import Path
+from collections.abc import Callable
 from contextlib import suppress
-from types import ModuleType
+from pathlib import Path
 
 import onnx
 import onnxruntime
@@ -18,7 +17,24 @@ from onnx import TensorProto, helper
 from async_model_gateway.model_runtime.model_artifact import LoaderFamily, ModelArtifact
 from async_model_gateway.model_runtime.model_execution import ModelExecution
 from async_model_gateway.model_runtime.model_pool import ModelPool
+from async_model_gateway.model_runtime.model_pool._onnx_runtime_loader import (
+    load_onnx_runtime,
+)
 from async_model_gateway.model_runtime.runtime_model import LoadedRuntimeModel
+
+InferenceSessionConstructor = Callable[..., object]
+InferenceSessionImporter = Callable[[], InferenceSessionConstructor]
+
+
+def _return_constructor(
+    constructor: InferenceSessionConstructor,
+) -> InferenceSessionImporter:
+    """Return a fully typed private-importer test double."""
+
+    def importer() -> InferenceSessionConstructor:
+        return constructor
+
+    return importer
 
 
 def _write_identity_model(path: Path) -> None:
@@ -82,47 +98,53 @@ async def test_acquire_returns_a_cpu_only_onnx_session_through_the_opaque_handle
 @pytest.mark.asyncio
 async def test_acquire_rejects_non_empty_options_before_constructing_a_session(
     onnx_model_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """First-version ONNX loading must fail closed on all loader options."""
-    construction_called = False
+    importer_called = False
 
-    def unexpected_construction(*_args: object, **_kwargs: object) -> object:
-        nonlocal construction_called
-        construction_called = True
+    def unexpected_importer() -> InferenceSessionConstructor:
+        nonlocal importer_called
+        importer_called = True
         raise AssertionError("session construction must not run")
 
-    monkeypatch.setattr(onnxruntime, "InferenceSession", unexpected_construction)
-
     with pytest.raises(ValueError) as raised:
-        await ModelPool().acquire(_artifact(onnx_model_path, loader_options={"providers": []}))
+        await load_onnx_runtime(
+            _artifact(onnx_model_path, loader_options={"providers": []}),
+            inference_session_importer=unexpected_importer,
+        )
 
     assert str(raised.value) == "ONNX loader_options are not supported"
-    assert construction_called is False
+    assert importer_called is False
 
 
 @pytest.mark.asyncio
 async def test_acquire_translates_only_a_missing_top_level_onnxruntime_dependency(
     onnx_model_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The optional-extra guidance must preserve the missing import as its cause."""
-    monkeypatch.setitem(sys.modules, "onnxruntime", None)
+    missing_dependency = ModuleNotFoundError(
+        "No module named 'onnxruntime'",
+        name="onnxruntime",
+    )
+
+    def raise_missing_dependency() -> InferenceSessionConstructor:
+        raise missing_dependency
 
     with pytest.raises(RuntimeError) as raised:
-        await ModelPool().acquire(_artifact(onnx_model_path))
+        await load_onnx_runtime(
+            _artifact(onnx_model_path),
+            inference_session_importer=raise_missing_dependency,
+        )
 
     assert str(raised.value) == (
         "ONNX runtime support requires installing async-model-gateway[onnx]"
     )
-    assert isinstance(raised.value.__cause__, ModuleNotFoundError)
-    assert raised.value.__cause__.name == "onnxruntime"
+    assert raised.value.__cause__ is missing_dependency
 
 
 @pytest.mark.asyncio
 async def test_acquire_preserves_provider_failures_without_install_guidance(
     onnx_model_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Provider construction errors must remain provider-owned failures."""
     provider_failure = RuntimeError("provider initialization failed")
@@ -130,10 +152,11 @@ async def test_acquire_preserves_provider_failures_without_install_guidance(
     def fail_construction(*_args: object, **_kwargs: object) -> object:
         raise provider_failure
 
-    monkeypatch.setattr(onnxruntime, "InferenceSession", fail_construction)
-
     with pytest.raises(RuntimeError) as raised:
-        await ModelPool().acquire(_artifact(onnx_model_path))
+        await load_onnx_runtime(
+            _artifact(onnx_model_path),
+            inference_session_importer=_return_constructor(fail_construction),
+        )
 
     assert raised.value is provider_failure
 
@@ -174,23 +197,21 @@ async def test_acquire_preserves_invalid_onnx_model_failure_without_translation(
 @pytest.mark.asyncio
 async def test_acquire_preserves_nested_optional_import_failure_unchanged(
     onnx_model_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A nested optional-runtime import failure must not become install guidance."""
     nested_failure = ModuleNotFoundError(
         "No module named 'onnxruntime.capi'",
         name="onnxruntime.capi",
     )
-    fake_onnxruntime = ModuleType("onnxruntime")
 
-    def fail_transitive_import(_name: str) -> object:
+    def fail_transitive_import() -> InferenceSessionConstructor:
         raise nested_failure
 
-    fake_onnxruntime.__getattr__ = fail_transitive_import  # type: ignore[attr-defined]
-    monkeypatch.setitem(sys.modules, "onnxruntime", fake_onnxruntime)
-
     with pytest.raises(ModuleNotFoundError) as raised:
-        await ModelPool().acquire(_artifact(onnx_model_path))
+        await load_onnx_runtime(
+            _artifact(onnx_model_path),
+            inference_session_importer=fail_transitive_import,
+        )
 
     assert raised.value is nested_failure
 
@@ -198,12 +219,11 @@ async def test_acquire_preserves_nested_optional_import_failure_unchanged(
 @pytest.mark.asyncio
 async def test_acquire_moves_session_construction_off_the_event_loop_thread(
     onnx_model_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A ready coroutine must advance while the synchronous factory is running."""
     progress = asyncio.Event()
     progress_seen_by_factory: list[bool] = []
-    session = object()
+    expected_session = object()
 
     async def advance_event_loop() -> None:
         await asyncio.sleep(0)
@@ -212,28 +232,23 @@ async def test_acquire_moves_session_construction_off_the_event_loop_thread(
     def blocking_factory(*_args: object, **_kwargs: object) -> object:
         time.sleep(0.1)
         progress_seen_by_factory.append(progress.is_set())
-        return session
+        return expected_session
 
-    monkeypatch.setattr(onnxruntime, "InferenceSession", blocking_factory)
     progress_task = asyncio.create_task(advance_event_loop())
 
-    loaded = await ModelPool().acquire(_artifact(onnx_model_path))
+    session = await load_onnx_runtime(
+        _artifact(onnx_model_path),
+        inference_session_importer=_return_constructor(blocking_factory),
+    )
     await progress_task
 
     assert progress_seen_by_factory == [True]
-    seen_runtimes: list[object] = []
-
-    async def record_runtime(runtime: object, _invocation: object) -> None:
-        seen_runtimes.append(runtime)
-
-    await ModelExecution[object, object, None](invoke=record_runtime).execute(loaded, object())
-    assert seen_runtimes == [session]
+    assert session is expected_session
 
 
 @pytest.mark.asyncio
 async def test_acquire_propagates_cancellation_and_releases_the_worker_fixture(
     onnx_model_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Cancelling the caller must not be translated into a loader-specific failure."""
     factory_started = threading.Event()
@@ -244,8 +259,12 @@ async def test_acquire_propagates_cancellation_and_releases_the_worker_fixture(
         release_factory.wait(timeout=2)
         return object()
 
-    monkeypatch.setattr(onnxruntime, "InferenceSession", blocking_factory)
-    acquisition = asyncio.create_task(ModelPool().acquire(_artifact(onnx_model_path)))
+    acquisition = asyncio.create_task(
+        load_onnx_runtime(
+            _artifact(onnx_model_path),
+            inference_session_importer=_return_constructor(blocking_factory),
+        )
+    )
 
     try:
         assert await asyncio.to_thread(factory_started.wait, 1)

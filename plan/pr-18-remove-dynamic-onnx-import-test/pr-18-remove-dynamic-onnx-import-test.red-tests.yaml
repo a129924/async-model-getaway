@@ -1,0 +1,63 @@
+verdict: red-tests-ready
+d1_verdict:
+  verdict: non-trivial
+  reason: >-
+    The topic changes the private importer seam and its async acquisition tests while
+    preserving exact optional-dependency, provider-error, thread-offload, and
+    cancellation semantics.
+test_mapping:
+  - requirement_id: AC-1
+    test_case_name: test_acquire_returns_a_cpu_only_onnx_session_through_the_opaque_handle
+    coverage_category: happy_path
+  - requirement_id: AC-2
+    test_case_name: test_acquire_moves_session_construction_off_the_event_loop_thread
+    coverage_category: integration_point
+  - requirement_id: AC-3
+    test_case_name: test_acquire_rejects_non_empty_options_before_constructing_a_session
+    coverage_category: state_side_effect
+  - requirement_id: AC-4
+    test_case_name: test_acquire_translates_only_a_missing_top_level_onnxruntime_dependency
+    coverage_category: error_exception
+  - requirement_id: AC-4
+    test_case_name: test_acquire_preserves_nested_optional_import_failure_unchanged
+    coverage_category: error_exception
+  - requirement_id: AC-5
+    test_case_name: test_acquire_translates_only_a_missing_top_level_onnxruntime_dependency
+    coverage_category: boundary_edge
+  - requirement_id: AC-6
+    test_case_name: test_acquire_propagates_cancellation_and_releases_the_worker_fixture
+    coverage_category: integration_point
+  - requirement_id: AC-7
+    test_case_name: test_acquire_returns_a_cpu_only_onnx_session_through_the_opaque_handle
+    coverage_category: public_contract
+validation_checks:
+  d1_decision: passed
+  behavior_contract_source: plan/pr-18-remove-dynamic-onnx-import-test/pr-18-remove-dynamic-onnx-import-test.spec.md
+  requirements_mapped: true
+  public_contract_coverage: true
+  test_categories_present:
+    - happy_path
+    - error_exception
+    - boundary_edge
+    - state_side_effect
+    - integration_point
+  expected_initial_status:
+    command: uv run pytest --no-cov tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py -v
+    status: red
+    result: 6 failed, 4 passed
+    red_failures:
+      - test_acquire_rejects_non_empty_options_before_constructing_a_session
+      - test_acquire_translates_only_a_missing_top_level_onnxruntime_dependency
+      - test_acquire_preserves_provider_failures_without_install_guidance
+      - test_acquire_preserves_nested_optional_import_failure_unchanged
+      - test_acquire_moves_session_construction_off_the_event_loop_thread
+      - test_acquire_propagates_cancellation_and_releases_the_worker_fixture
+    failure_reason: >-
+      load_onnx_runtime() does not yet accept the required private
+      inference_session_importer callable override.
+  production_code_modified: false
+issues: []
+next_step: >-
+  Independent Implementer should add the approved private typed importer seam only in
+  src/async_model_gateway/model_runtime/model_pool/_onnx_runtime_loader.py, then update
+  the focused test only as needed to complete the approved coverage.
