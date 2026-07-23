@@ -12,9 +12,23 @@ from async_model_gateway.model_runtime.model_pool import ModelPool
 from async_model_gateway.model_runtime.model_pool import pool as pool_module
 from async_model_gateway.model_runtime.model_pool._local_model_loader import LocalModelLoader
 from async_model_gateway.model_runtime.runtime_model import LoadedRuntimeModel
-from async_model_gateway.model_runtime.runtime_model.loaded_runtime_model import (
-    _create_loaded_runtime_model,
-)
+
+
+class _TestLoadedRuntimeModel(LoadedRuntimeModel[object]):
+    """Supply opaque test sentinels without a production construction factory."""
+
+    __slots__ = ("_loader_family", "_provider_model")
+
+    def __init__(self, *, loader_family: LoaderFamily, provider_model: object) -> None:
+        self._loader_family = loader_family
+        self._provider_model = provider_model
+
+    @property
+    def loader_family(self) -> LoaderFamily:
+        return self._loader_family
+
+    def _provider_runtime(self) -> object:
+        return self._provider_model
 
 
 def _artifact(loader_family: LoaderFamily) -> ModelArtifact:
@@ -27,13 +41,13 @@ def _artifact(loader_family: LoaderFamily) -> ModelArtifact:
 
 
 @pytest.mark.asyncio
-async def test_model_pool_acquire_retains_factory_loader_and_returns_typed_handle(
+async def test_model_pool_acquire_retains_loader_and_returns_typed_handle(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """One pool construction must retain one factory-created loader for all acquires."""
+    """One pool construction must retain one loader for all opaque acquires."""
     factory_calls: list[None] = []
     loader_calls: list[ModelArtifact] = []
-    sentinel = _create_loaded_runtime_model(
+    sentinel = _TestLoadedRuntimeModel(
         loader_family=LoaderFamily.PICKLE,
         provider_model=object(),
     )
@@ -72,7 +86,7 @@ async def test_model_pool_acquire_rejects_non_artifact_before_loader_call(
 
     async def load(artifact: ModelArtifact) -> LoadedRuntimeModel[object]:
         loader_calls.append(artifact)
-        return _create_loaded_runtime_model(
+        return _TestLoadedRuntimeModel(
             loader_family=artifact.loader_family,
             provider_model=object(),
         )

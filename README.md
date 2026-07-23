@@ -42,13 +42,18 @@ loader family vocabulary。repo 也已落地最小 local acquisition boundary：
 family。repo 也已在
 `async_model_gateway.model_runtime.runtime_model` 落地 abstract
 `LoadedRuntimeModel` consumption contract：其唯一 public semantic 是
-`loader_family`；provider runtime 只由私有 local implementation 保存，並透過
-non-public internal handoff 交給最小 `ModelExecution` boundary。`ModelPool.acquire(...)`
-與 private loader 的 return type 已收窄為這個 contract。repo 現在也已在
+`loader_family`；ONNX route 會在這條 acquisition path lazy 建立 CPU-only provider
+session，並由 loader-local private opaque handle 保存。provider runtime 只透過
+non-public internal handoff 交給最小 `ModelExecution` boundary，並非 application /
+orchestrator 可取得的 session 或 `LoadedRuntimeModel.execute(...)` API。
+`ModelPool.acquire(...)` 與 private loader 的 return type 已收窄為這個 contract。
+repo 現在也已在
 `async_model_gateway.model_runtime.model_execution` 公開 generic `ModelExecution`：
-它以 injected typed async callable 消費 provider runtime 與 invocation，並 direct-await
-單次呼叫；一般例外與 cancellation 會原樣傳播。這不代表 artifact I/O、真實 provider
-invocation、provider framework、完整 orchestration、remote execution、lifecycle、
+它以 injected typed async callable 在內部消費 provider runtime 與 invocation，並
+direct-await 單次呼叫後回傳 result；一般例外與 cancellation 會原樣傳播。因此已落地的
+local path 為 `ModelArtifact → LocalModelLoader → provider session →
+LoadedRuntimeModel → ModelExecution → result`。這不代表真實 provider invocation /
+ONNX invoker、provider framework、完整 orchestration、remote execution、lifecycle、
 timeout 或 retry 已完成。
 root package 目前只公開 `__version__` 與 `main`；`ModelRegistry` 由
 `async_model_gateway.model_registry` 提供，
@@ -109,8 +114,9 @@ type 或 runtime feature。
 
 其中 `ModelArtifact` 只負責 shared read contract。最小 `ModelPool` 只提供
 async local acquisition；其私有 `LocalModelLoader` 消費這個 contract 並作 explicit
-family dispatch，並以 `LoadedRuntimeModel` 作 typed return boundary。artifact I/O、
-provider framework 與完整 lifecycle 仍 deferred。
+family dispatch。現階段只有 ONNX route 會 lazy 建立 provider session，再以
+`LoadedRuntimeModel` 作 opaque typed return boundary；PICKLE 與 TORCH 仍 fail closed。
+未來的 provider invocation/framework 與完整 lifecycle 仍 deferred。
 
 目前已落地的最小 model-execution boundary 包含：
 
@@ -140,11 +146,10 @@ core abstractions 的 boundary spec 入口整理在 [docs/specs/core-abstraction
 
 - 更寬的 model-side architecture 與任何超出最小 boundary 的 registry behavior
 - gateway execution flow
-- artifact I/O
 - cache、reuse、close/unload 與其他 `ModelPool` lifecycle behavior
 - broader response cache runtime logic
-- 真實 local `runtime-model` acquisition
-- provider adapters
+- 除 ONNX session acquisition 外的 provider artifact I/O 與 provider framework
+- provider adapters、ONNX invoker 與真實 provider invocation
 - infrastructure components
 - framework-specific service surface
 

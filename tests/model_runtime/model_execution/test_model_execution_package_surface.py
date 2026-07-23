@@ -4,17 +4,13 @@ from __future__ import annotations
 
 import ast
 import inspect
-from types import ModuleType
+from pathlib import Path
 
+import async_model_gateway
 import async_model_gateway as root_module
 import async_model_gateway.model_runtime as model_runtime_root_module
-import async_model_gateway.model_runtime.model_artifact.artifact as artifact_module
-import async_model_gateway.model_runtime.model_artifact.loader_family as loader_family_module
 import async_model_gateway.model_runtime.model_execution as model_execution_module
 import async_model_gateway.model_runtime.model_execution.execution as execution_module
-import async_model_gateway.model_runtime.model_pool._local_model_loader as local_loader_module
-import async_model_gateway.model_runtime.model_pool.pool as pool_module
-import async_model_gateway.model_runtime.runtime_model.loaded_runtime_model as loaded_model_module
 from async_model_gateway.model_runtime.model_execution import ModelExecution
 
 
@@ -59,25 +55,28 @@ def test_model_execution_has_the_locked_generic_async_signatures() -> None:
     assert execute_signature.return_annotation == "ResultT"
 
 
-def _module_sources(*modules: ModuleType) -> tuple[str, ...]:
-    return tuple(inspect.getsource(module) for module in modules)
+def _provider_runtime_call_paths() -> list[Path]:
+    """Return every production call expression, excluding method declarations."""
+    package_root = Path(async_model_gateway.__file__).parent
+    call_paths: list[Path] = []
+
+    for source_path in package_root.rglob("*.py"):
+        syntax_tree = ast.parse(source_path.read_text(encoding="utf-8"))
+        if any(
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "_provider_runtime"
+            for node in ast.walk(syntax_tree)
+        ):
+            call_paths.append(source_path.relative_to(package_root))
+
+    return sorted(call_paths)
 
 
 def test_model_execution_is_the_only_production_private_handoff_consumer() -> None:
-    execution_source = inspect.getsource(execution_module)
-    production_sources = _module_sources(
-        execution_module,
-        loaded_model_module,
-        pool_module,
-        local_loader_module,
-        artifact_module,
-        loader_family_module,
-        model_runtime_root_module,
-        root_module,
-    )
-
-    assert execution_source.count("._provider_runtime()") == 1
-    assert sum(source.count("._provider_runtime()") for source in production_sources) == 1
+    assert _provider_runtime_call_paths() == [
+        Path("model_runtime/model_execution/execution.py"),
+    ]
 
 
 def test_model_execution_source_has_no_dispatch_io_or_lifecycle_dependencies() -> None:

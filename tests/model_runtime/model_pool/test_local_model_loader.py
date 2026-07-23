@@ -11,9 +11,23 @@ from async_model_gateway.model_runtime.model_artifact import LoaderFamily, Model
 import async_model_gateway.model_runtime.model_pool._local_model_loader as local_model_loader_module
 from async_model_gateway.model_runtime.model_pool._local_model_loader import LocalModelLoader
 from async_model_gateway.model_runtime.runtime_model import LoadedRuntimeModel
-from async_model_gateway.model_runtime.runtime_model.loaded_runtime_model import (
-    _create_loaded_runtime_model,
-)
+
+
+class _TestLoadedRuntimeModel(LoadedRuntimeModel[object]):
+    """Use a test-local concrete handle without a production factory."""
+
+    __slots__ = ("_loader_family", "_provider_model")
+
+    def __init__(self, *, loader_family: LoaderFamily, provider_model: object) -> None:
+        self._loader_family = loader_family
+        self._provider_model = provider_model
+
+    @property
+    def loader_family(self) -> LoaderFamily:
+        return self._loader_family
+
+    def _provider_runtime(self) -> object:
+        return self._provider_model
 
 
 def _artifact(
@@ -57,7 +71,7 @@ async def test_local_model_loader_routes_each_family_to_its_matching_private_han
     """Every family must await only the private handler named for that family."""
     calls = {family: [] for family in LoaderFamily}
     results = {
-        family: _create_loaded_runtime_model(
+        family: _TestLoadedRuntimeModel(
             loader_family=family,
             provider_model=object(),
         )
@@ -103,7 +117,7 @@ async def test_local_model_loader_uses_family_not_artifact_path_appearance(
 ) -> None:
     """An explicit family must win when the path suggests another format."""
     calls = {family: [] for family in LoaderFamily}
-    pickle_result = _create_loaded_runtime_model(
+    pickle_result = _TestLoadedRuntimeModel(
         loader_family=LoaderFamily.PICKLE,
         provider_model=object(),
     )
@@ -136,7 +150,10 @@ async def test_local_model_loader_uses_family_not_artifact_path_appearance(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("loader_family", list(LoaderFamily))
+@pytest.mark.parametrize(
+    "loader_family",
+    [LoaderFamily.PICKLE, LoaderFamily.TORCH],
+)
 async def test_local_model_loader_default_handlers_fail_closed_without_loading(
     loader_family: LoaderFamily,
 ) -> None:
@@ -155,3 +172,14 @@ def test_local_model_loader_uses_typing_extensions_assert_never_for_the_unreacha
     assert (
         "            case _:\n                assert_never(artifact.loader_family)"
     ) in load_source
+
+
+def test_local_model_loader_owns_concrete_handle_construction_without_runtime_factory() -> None:
+    """ONNX acquisition must directly construct the loader-local opaque handle."""
+    module_source = inspect.getsource(local_model_loader_module)
+    onnx_source = inspect.getsource(LocalModelLoader._load_onnx)
+
+    assert "class _LocalLoadedRuntimeModel(LoadedRuntimeModel[object])" in module_source
+    assert "_create_loaded_runtime_model" not in module_source
+    assert "reportPrivateUsage" not in module_source
+    assert "return _LocalLoadedRuntimeModel(" in onnx_source

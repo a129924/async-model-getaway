@@ -1,0 +1,48 @@
+verdict: approved
+review_status: COMPLETE
+topic: pr-18-review-feedback-dependency-and-ast-order
+review_scope: >-
+  Independent Python code-quality review of the PR #18 dependency-placement,
+  CI sync, and deterministic AST-helper ordering repair after approved
+  implementation review.
+tooling_detected:
+  - pyproject.toml: pyright strict for src
+  - pyproject.toml: ruff
+  - pyproject.toml: pytest with strict asyncio mode
+  - .github/workflows/ci.yml: frozen uv dev sync, pyright, pytest, pre-commit
+findings:
+  typing: []
+  lint: []
+  readability: []
+  error_handling: []
+  anti_patterns: []
+  test_quality: []
+  observability: []
+security_and_workflow_checks:
+  secrets_or_sensitive_values: none found
+  workflow_permissions_or_token_changes: none found
+  action_or_trigger_changes: none found
+runtime_api_and_boundary_check:
+  status: no drift
+  evidence: >-
+    The diff changes no src path or public export. ModelExecution, loader-family
+    routing, provider handoff, and runtime behavior remain untouched.
+dependency_and_lock_check:
+  status: approved
+  evidence: >-
+    The published onnx extra retains onnxruntime>=1.22.0,<1.22.1; the dev group
+    and direct dev lock metadata add the identical existing constraint without
+    resolved package-version changes.
+ci_check:
+  status: approved
+  evidence: >-
+    Only Sync dependencies changes, restoring uv sync --frozen --group dev;
+    action pins, triggers, Python version, validation commands, and permissions
+    are unchanged.
+test_check:
+  status: approved
+  evidence: >-
+    _provider_runtime_call_paths() retains its existing AST predicate and returns
+    sorted relative Path values, making its list assertion deterministic without
+    dynamic module loading or assertion-semantic changes.
+validation_execution: not run by this reviewer; implementation-review records passed results

@@ -10,13 +10,31 @@ from async_model_gateway.model_runtime.model_pool._local_model_loader import (  
     LocalModelLoader,
 )
 from async_model_gateway.model_runtime.runtime_model import LoadedRuntimeModel
-from async_model_gateway.model_runtime.runtime_model.loaded_runtime_model import (
-    _create_loaded_runtime_model,  # pyright: ignore[reportPrivateUsage]
-)
 
 
 class _ProviderRuntime:
     """Represent one private provider runtime type for static assertions."""
+
+
+class _TestLoadedRuntimeModel(LoadedRuntimeModel[_ProviderRuntime]):
+    """Provide test-local typed construction without a production factory."""
+
+    def __init__(self, runtime: _ProviderRuntime) -> None:
+        self._runtime = runtime
+
+    @property
+    def loader_family(self) -> LoaderFamily:
+        return LoaderFamily.TORCH
+
+    def _provider_runtime(self) -> _ProviderRuntime:
+        return self._runtime
+
+
+def _as_loaded_runtime_model(
+    model: LoadedRuntimeModel[_ProviderRuntime],
+) -> LoadedRuntimeModel[_ProviderRuntime]:
+    """Preserve the public opaque-handle type for the generic fixture."""
+    return model
 
 
 def _artifact() -> ModelArtifact:
@@ -28,12 +46,11 @@ def _artifact() -> ModelArtifact:
     )
 
 
-def check_private_factory_precision_and_covariance() -> None:
-    """Private construction retains the concrete provider type before public erasure."""
+def check_test_local_handle_precision_and_covariance() -> None:
+    """Test-local construction retains a concrete provider type before public erasure."""
     provider = _ProviderRuntime()
-    handle = _create_loaded_runtime_model(  # pyright: ignore[reportPrivateUsage]
-        loader_family=LoaderFamily.TORCH,
-        provider_model=provider,
+    handle: LoadedRuntimeModel[_ProviderRuntime] = _as_loaded_runtime_model(
+        _TestLoadedRuntimeModel(provider)
     )
 
     assert_type(handle, LoadedRuntimeModel[_ProviderRuntime])

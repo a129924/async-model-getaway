@@ -1,0 +1,144 @@
+topic: onnx-local-runtime-acquisition-minimal-boundary
+phase: tdd-test-authoring
+status: COMPLETE
+verdict: red-tests-ready
+authored_on: "2026-07-18"
+d1_verdict:
+  verdict: non-trivial
+  reason: >-
+    The topic adds provider acquisition across an async boundary, optional dependency
+    behavior, native session construction, cancellation semantics, and strict public
+    type-erasure coverage without changing the public API.
+behavior_contract:
+  source: plan/onnx-local-runtime-acquisition-minimal-boundary/onnx-local-runtime-acquisition-minimal-boundary.spec.md
+  active_acceptance_criteria:
+    - AC-1
+    - AC-2
+    - AC-3
+    - AC-4
+    - AC-5
+    - AC-6
+    - AC-7
+    - AC-8
+test_mapping:
+  - requirement_id: AC-1
+    test_case_name: test_acquire_returns_a_cpu_only_onnx_session_through_the_opaque_handle
+    coverage_category: happy_path
+  - requirement_id: AC-1
+    test_case_name: test_acquire_returns_a_cpu_only_onnx_session_through_the_opaque_handle
+    coverage_category: state_side_effects
+  - requirement_id: AC-2
+    test_case_name: test_acquire_moves_session_construction_off_the_event_loop_thread
+    coverage_category: boundary_edge
+  - requirement_id: AC-3
+    test_case_name: test_acquire_returns_a_cpu_only_onnx_session_through_the_opaque_handle
+    coverage_category: integration_points
+  - requirement_id: AC-4
+    test_case_name: test_acquire_rejects_non_empty_options_before_constructing_a_session
+    coverage_category: error_exception
+  - requirement_id: AC-5
+    test_case_name: test_acquire_translates_only_a_missing_top_level_onnxruntime_dependency
+    coverage_category: error_exception
+  - requirement_id: AC-5
+    test_case_name: test_acquire_preserves_provider_failures_without_install_guidance
+    coverage_category: error_exception
+  - requirement_id: AC-5
+    test_case_name: test_acquire_preserves_missing_artifact_path_failure_without_translation
+    coverage_category: error_exception
+  - requirement_id: AC-5
+    test_case_name: test_acquire_preserves_invalid_onnx_model_failure_without_translation
+    coverage_category: error_exception
+  - requirement_id: AC-5
+    test_case_name: test_acquire_preserves_nested_optional_import_failure_unchanged
+    coverage_category: error_exception
+  - requirement_id: AC-5
+    test_case_name: test_acquire_propagates_cancellation_and_releases_the_worker_fixture
+    coverage_category: boundary_edge
+  - requirement_id: AC-6
+    test_case_name: test_acquire_returns_a_cpu_only_onnx_session_through_the_opaque_handle
+    coverage_category: integration_points
+  - requirement_id: AC-7
+    test_case_name: test_pickle_path_appearance_does_not_route_into_onnx_acquisition
+    coverage_category: regression
+  - requirement_id: AC-7
+    test_case_name: test_local_model_loader_default_handlers_fail_closed_without_loading
+    coverage_category: regression
+  - requirement_id: AC-8
+    test_case_name: check_onnx_acquisition_remains_publicly_erased
+    coverage_category: static_typing
+validation_checks:
+  d1_decision: passed
+  behavior_contract_source: plan/onnx-local-runtime-acquisition-minimal-boundary/onnx-local-runtime-acquisition-minimal-boundary.spec.md
+  requirements_mapped: true
+  public_contract_coverage: true
+  test_categories_present:
+    happy_path: true
+    error_exception: true
+    boundary_edge: true
+    state_side_effects: true
+    integration_points: true
+  expected_initial_status: red
+  production_code_modified: false
+  approved_plan_review:
+    path: plan/onnx-local-runtime-acquisition-minimal-boundary/onnx-local-runtime-acquisition-minimal-boundary.plan-review.json
+    verdict: approved
+    passed: true
+  human_check:
+    path: plan/onnx-local-runtime-acquisition-minimal-boundary/onnx-local-runtime-acquisition-minimal-boundary.human-check.json
+    cleared_for: implement-plan
+    passed: true
+  production_baseline_guard:
+    command: git diff --name-only b9b8a97 -- src
+    result: no output
+    passed: true
+  source_governance:
+    static_imports_only: true
+    dynamic_module_loading_matches: []
+    simulated_missing_extra: temporary sys.modules entry only; no test-time dynamic import
+    passed: true
+  focused_pytest:
+    command: >-
+      uv run --extra onnx pytest --no-cov
+      tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py
+      tests/model_runtime/model_pool/test_local_model_loader.py -q --tb=short
+    exit_code: 1
+    expected_nonzero: true
+    result: 6 failed, 9 passed in 1.18s
+    failing_tests:
+      - test_acquire_returns_a_cpu_only_onnx_session_through_the_opaque_handle
+      - test_acquire_rejects_non_empty_options_before_constructing_a_session
+      - test_acquire_translates_only_a_missing_top_level_onnxruntime_dependency
+      - test_acquire_preserves_provider_failures_without_install_guidance
+      - test_acquire_moves_session_construction_off_the_event_loop_thread
+      - test_acquire_propagates_cancellation_and_releases_the_worker_fixture
+    primary_failure: LocalModelLoader._load_onnx raises NotImplementedError
+    failure_matches_unimplemented_approved_boundary: true
+    missing_dependency_collection_error: false
+    passed: true
+  dedicated_pyright:
+    command: >-
+      uv run --extra onnx pyright --project
+      plan/onnx-local-runtime-acquisition-minimal-boundary/pyrightconfig.json
+      tests/typecheck/onnx_local_runtime_acquisition.py
+    exit_code: 0
+    expected_initial_status: pass_existing_contract
+    result: 0 errors, 0 warnings, 0 informations
+    passed: true
+  authored_test_quality:
+    command: >-
+      uv run --extra onnx ruff check
+      tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py
+      tests/model_runtime/model_pool/test_local_model_loader.py
+      tests/typecheck/onnx_local_runtime_acquisition.py
+      plan/onnx-local-runtime-acquisition-minimal-boundary
+    exit_code: 0
+    passed: true
+  diff_check:
+    command: git diff --check
+    exit_code: 0
+    passed: true
+issues: []
+next_step: >-
+  Dispatch an independent Implementer to add only the approved private ONNX helper and
+  LocalModelLoader handoff, then rerun the focused pytest and dedicated Pyright commands
+  for GREEN evidence.
