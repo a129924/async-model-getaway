@@ -1,124 +1,63 @@
-verdict: approved
-review_status: COMPLETE
 topic: pr-18-review-feedback-dependency-and-ast-order
+phase: implementation-review
+review_status: COMPLETE
+verdict: approved
 review_scope: >-
-  PR #18 feedback repair for development dependency placement, plain frozen CI sync,
-  and deterministic AST-helper ordering.
-pr_thread_mapping:
-  - thread: discussion_r3629182514
-    status: addressed
-    evidence:
-      - pyproject.toml:14
-      - pyproject.toml:34
-      - uv.lock:25
-      - uv.lock:31
-      - uv.lock:44
-      - uv.lock:52
-      - .github/workflows/ci.yml:28
-  - thread: discussion_r3629184495
-    status: addressed
-    evidence:
-      - tests/model_runtime/model_execution/test_model_execution_package_surface.py:73
+  Validation-only review of the Human-owned terminal-LF retrofit for the topic
+  human-check gate. Original dependency, lock, CI, and AST-order repair paths are
+  Historical ReadOnly context.
+
 traceability_matrix:
-  - step: >-
-      Return the collected relative Path values from _provider_runtime_call_paths() in
-      deterministic sorted order while retaining traversal, predicate, type annotation,
-      and expected sole execution-path assertion.
+  - step: "Preserve the prior dependency, lock, CI, and AST-helper repair without writes."
     status: done
-    evidence: tests/model_runtime/model_execution/test_model_execution_package_surface.py:58-79
-  - step: >-
-      Retain the published onnx optional-extra constraint, add the identical constraint
-      to dev, and update uv.lock without unrelated resolution drift.
+    evidence: "Current implementation diff contains no source, dependency, lock, workflow, test, docs, or PR-state path."
+  - step: "Human adds only one terminal LF to the declared gate while preserving its JSON semantics."
     status: done
-    evidence: pyproject.toml:12-15; pyproject.toml:24-35; uv.lock:23-25; uv.lock:28-35; uv.lock:41-55
-  - step: >-
-      Restore only the Sync dependencies command to uv sync --frozen --group dev and
-      preserve all other workflow lines.
+    evidence: "The raw diff only removes the missing-final-newline marker; parsed JSON is exactly {cleared_for: implement-plan}; terminal bytes are 7d 0a."
+  - step: "Validation-only Reviewer runs all-files pre-commit, diff, raw-diff, and JSON terminal-LF guards."
     status: done
-    evidence: .github/workflows/ci.yml:25-37
-  - step: >-
-      Run normal-dev validation, inspect only the four declared implementation diffs,
-      and hand off without PR thread actions.
-    status: done
-    evidence: >-
-      git diff --name-only reports only .github/workflows/ci.yml, pyproject.toml,
-      uv.lock, and tests/model_runtime/model_execution/test_model_execution_package_surface.py;
-      independent validation passed on 2026-07-23.
+    evidence: "All declared commands passed without modifying implementation or PR paths."
+
 scope_creep_check:
-  - non_goal: No production Python source or public API modification.
+  - non_goal: "No source, dependency, lock, workflow, test, docs, or PR-state change for the final-LF retrofit."
     violated: no
-    evidence: git diff --name-only contains no src path.
-  - non_goal: >-
-      No new dependency/version, optional-extra removal, lockfile-wide refresh, or CI
-      policy change.
+    evidence: "Only the Human-owned human-check JSON and Plan-Creator-owned plan/step artifacts are uncommitted before this review evidence."
+  - non_goal: "No public API, runtime behavior, or architecture change."
     violated: no
-    evidence: >-
-      onnxruntime>=1.22.0,<1.22.1 is unchanged in the optional extra and added with
-      the same constraint to dev; uv.lock diff changes only direct dev metadata; CI
-      diff changes only the Sync dependencies command.
-  - non_goal: No new test scenario, dynamic module loading, or assertion semantic change.
-    violated: no
-    evidence: >-
-      tests/model_runtime/model_execution/test_model_execution_package_surface.py:58-79
-      retains the existing AST scan and assertion and only returns sorted(call_paths).
-  - non_goal: No README/docs/architecture/release/PR reply or resolve action.
-    violated: no
-    evidence: git diff --name-only contains no documentation, release, or PR-state path.
+    evidence: "No production source path is changed."
+
 contract_check:
-  - item: No public API changes.
+  - item: "The human gate parses exactly as cleared_for implement-plan."
     status: matches
-    detail: No production source file or public export changed.
-  - item: >-
-      The published onnx optional extra remains available with the exact
-      onnxruntime>=1.22.0,<1.22.1 constraint.
+    detail: "The plan-specified Python JSON guard passed."
+  - item: "The only human-check byte representation change is the final LF."
     status: matches
-    detail: pyproject.toml:12-15 and uv.lock:23-25 retain the unchanged published extra.
-  - item: >-
-      Dev installation metadata gains only the identical existing ONNX Runtime test
-      dependency.
+    detail: "Git raw diff removes only the missing-final-newline marker and tail bytes are 7d 0a."
+  - item: "Original repair paths remain Historical ReadOnly."
     status: matches
-    detail: pyproject.toml:24-35 and uv.lock:28-35,49-55 add only onnxruntime with the locked constraint.
+    detail: "Diff name inspection finds no source, dependency, lock, workflow, test, docs, or PR-state path."
+
 test_plan_check:
-  - case_type: Happy path - normal dev sync imports onnxruntime and focused package-surface test passes.
+  - case_type: "Happy path: full pre-commit passes with the final LF."
     status: present
-    location: >-
-      uv sync --frozen --group dev; uv run --no-sync python -c import onnxruntime;
-      tests/model_runtime/model_execution/test_model_execution_package_surface.py:1-79
-  - case_type: Invalid input - existing AST predicate remains unchanged for non-handoff calls.
+    location: "uv run --no-sync pre-commit run --all-files"
+  - case_type: "Invalid input: parsed JSON differs from the cleared gate."
     status: present
-    location: tests/model_runtime/model_execution/test_model_execution_package_surface.py:58-72
-  - case_type: Edge case - filesystem traversal order cannot alter returned helper order.
+    location: "Plan-specified JSON assertion passed."
+  - case_type: "Edge case: non-final bytes or whitespace differ."
     status: present
-    location: tests/model_runtime/model_execution/test_model_execution_package_surface.py:73
-  - case_type: Regression - full pytest preserves ONNX acquisition and ModelExecution coverage under plain dev sync.
+    location: "Raw Git diff shows only removal of the missing-final-newline marker."
+  - case_type: "Regression: original repair paths change during retrofit."
     status: present
-    location: uv run --no-sync pytest -v (185 passed)
-  - case_type: >-
-      Backward compatibility - published onnx extra and exact constraint remain unchanged,
-      with no public API or runtime-source diff.
-    status: present
-    location: pyproject.toml:12-15; uv.lock:23-25; git diff --name-only
+    location: "git diff --name-only contains no original repair path."
+
 validation:
-  - command: uv lock --check
-    status: passed
-  - command: uv sync --frozen --group dev
-    status: passed
-  - command: uv run --no-sync python -c "import onnxruntime"
-    status: passed
-  - command: uv run --no-sync pyright
-    status: passed
-    detail: 0 errors, 0 warnings, 0 informations
-  - command: >-
-      uv run --no-sync pytest --no-cov
-      tests/model_runtime/model_execution/test_model_execution_package_surface.py -v
-    status: passed
-    detail: 5 passed
-  - command: uv run --no-sync pytest -v
-    status: passed
-    detail: 185 passed
-  - command: uv run --no-sync ruff check src tests
-    status: passed
-  - command: uv run --no-sync pre-commit run --all-files
-    status: passed
-  - command: git diff --check
-    status: passed
+  pre_commit_all_files: "passed"
+  diff_check: "passed"
+  raw_human_check_diff: "passed: only missing-final-newline marker removal"
+  parsed_json_guard: "passed: exact cleared_for implement-plan object"
+  terminal_bytes: "passed: 7d 0a"
+
+scope_drift: false
+contract_drift: false
+blocking_issues: []

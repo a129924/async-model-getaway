@@ -9,7 +9,9 @@
 
 在正常 dev environment 中提供既有 ONNX Runtime test dependency，讓 CI 回復 plain
 frozen dev sync，並使 `_provider_runtime_call_paths()` 的 AST scan 回傳順序可重現，以
-完成 PR #18 的兩個指定 review threads。
+完成 PR #18 的兩個指定 review threads。另以同 topic 的 bounded validation-hygiene
+retrofit 修正此 topic human-check 的 missing terminal LF，讓全量 pre-commit 可通過而不
+改變已核准 gate semantics。
 
 ## Scope
 
@@ -29,6 +31,12 @@ frozen dev sync，並使 `_provider_runtime_call_paths()` 的 AST scan 回傳順
   deterministic sort。
 - 完成此 topic 的 plan/step，並在 implementation 前取得 fresh plan-review 與 Human
   `cleared_for: implement-plan` gate。
+- 處理 CI failure 所揭露的 same-topic validation hygiene：唯一 remediation target 是
+  `plan/pr-18-review-feedback-dependency-and-ast-order/pr-18-review-feedback-dependency-and-ast-order.human-check.json`。
+  Human 只可在其既有 terminal `}` 後補一個 LF；parsed JSON 必須仍精確為
+  `{"cleared_for":"implement-plan"}`。
+- 由 fresh Plan-Reviewer 重新核准 amended plan、Human 寫入 exact final-LF gate，再由
+  validation-only Reviewer 執行 pre-commit all-files 與 diff/JSON semantic guard。
 
 ### Out of scope
 
@@ -41,6 +49,8 @@ frozen dev sync，並使 `_provider_runtime_call_paths()` 的 AST scan 回傳順
 - 新增或重設 test scenario；只修正既有 AST helper 的 deterministic return ordering。
 - 在 PR #18 reply、resolve、re-request review、commit、push、open/update PR；這些動作
   需要 implementation/review gates 完成後的另一個 explicit Human permission。
+- validation-hygiene retrofit 的任何 `pyproject.toml`、`uv.lock`、CI、test、source、docs
+  或 PR-state change；這些 original repair paths 只作 historical ReadOnly evidence。
 
 ## Locked Decisions
 
@@ -59,24 +69,42 @@ frozen dev sync，並使 `_provider_runtime_call_paths()` 的 AST scan 回傳順
 - Fresh Plan-Reviewer `approved` verdict 與 Human `cleared_for: implement-plan` 是
   implementation 前的必要 gates。PR reply/resolve 不是 implementation authorization 的
   一部分，必須另有 explicit Human permission。
+- Validation-hygiene retrofit D1 verdict: `trivial`。舊 plan-review、Human
+  implementation clearance、implementation-review 與 code-review 不涵蓋新增的
+  human-check final-LF path，均不得當作本 retrofit gate；必須 fresh Plan-Reviewer
+  `approved`，再由 Human 重寫 exact gate file 並加入唯一 terminal LF。
+- This retrofit's sole remediation is the human-owned
+  `pr-18-review-feedback-dependency-and-ast-order.human-check.json`. Its only byte
+  change is one terminal LF after the existing `}`; JSON values, key order,
+  whitespace before `}`, and all non-final bytes are immutable. Parsed JSON remains
+  exactly `{"cleared_for":"implement-plan"}`.
+- After Human writes that gate, a validation-only Reviewer runs `pre-commit run
+  --all-files`, `git diff --check`, raw diff inspection, and parsed JSON/terminal-LF
+  guards. No Implementer write is authorized for this retrofit.
 
 ## Boundaries / Exclusions
 
-- Plan-Creator 只建立/更新 plan 與 step；Plan-Reviewer、Human、Implementer、Reviewer
-  分別只更新其 own gate、implementation 或 review artifacts。
-- Implementer writable implementation paths 僅限 `pyproject.toml`、`uv.lock`、
-  `.github/workflows/ci.yml`、
-  `tests/model_runtime/model_execution/test_model_execution_package_surface.py`。
+- Plan-Creator 只建立/更新 plan 與 step；Plan-Reviewer writes fresh plan-review verdict；
+  Human writes the exact final-LF human-check gate；validation-only Reviewer writes its
+  review evidence after checks. No Implementer write is authorized for this retrofit.
+- `pyproject.toml`、`uv.lock`、`.github/workflows/ci.yml`、
+  `tests/model_runtime/model_execution/test_model_execution_package_surface.py` are
+  Historical ReadOnly original-repair evidence; no Implementer writable path exists for
+  this final-LF retrofit.
 - 所有未列 Artifact Path 的 source、test、docs、CI、planning artifact 與 PR state
   都是 ReadOnly；需要額外 path 或 contract change 時回到
   `spec-and-plan-finalization`。
 - 不得以 CI-only extra、lazy-import suppression、test skip 或 order-insensitive assertion
   來迴避兩個 review findings。
+- 不得重用本 amendment 前的 plan-review、Human clearance、implementation-review 或
+  code-review 作為 final-LF path 的 approval，也不得由 Plan-Creator 或 Reviewer 代替
+  Human 寫入 gate file。
 
 ## Status / Allowed Transitions
 
-- **Current**: `review-ready`；plan/step 已建立，等待 fresh independent Plan-Reviewer
-  verdict。
+- **Current**: `review-ready`；CI failure 新增 human-check terminal-LF scope。先前
+  `pr-comment` state 的 plan-review、Human implementation clearance 和後續 review
+  evidence 均不適用；等待 fresh independent Plan-Reviewer verdict。
 - **Execution model**: `spec-and-plan-finalization -> implement-plan -> pr-comment ->
   pr-comment-review-pr-comments-and-fix`；本 topic 在 `merged` 停止，沒有 `release`
   workflow。
@@ -92,10 +120,10 @@ frozen dev sync，並使 `_provider_runtime_call_paths()` 的 AST scan 回傳順
 
 Routing notes:
 
-- Human must record `cleared_for: implement-plan` only after the declared plan-review
-  artifact records `approved`.
-- D1 is trivial: no fresh spec or RED artifact is required. The first implementation
-  step updates the existing test helper before dependency/CI edits.
+- Human must write the exact final-LF `cleared_for: implement-plan` gate only after the
+  declared plan-review artifact records fresh `approved`.
+- D1 is trivial: no fresh spec or RED artifact is required. This retrofit has no
+  Implementer work; Human's byte-only gate write is followed by validation-only review.
 - PR reply/resolve is deferred beyond code review and requires separate Human permission;
   this plan does not infer that authorization from the implementation gates.
 
@@ -105,30 +133,32 @@ Routing notes:
 | --- | --- | --- | --- |
 | Topic plan | `plan/pr-18-review-feedback-dependency-and-ast-order/pr-18-review-feedback-dependency-and-ast-order.plan.md` | Plan-Creator | Repo-visible execution contract |
 | Step tracker | `plan/pr-18-review-feedback-dependency-and-ast-order/pr-18-review-feedback-dependency-and-ast-order.step.md` | Plan-Creator, then phase owner | Workflow and implementation progress |
-| Plan review | `plan/pr-18-review-feedback-dependency-and-ast-order/pr-18-review-feedback-dependency-and-ast-order.plan-review.json` | Plan-Reviewer | Fresh independent planning verdict |
-| Human check | `plan/pr-18-review-feedback-dependency-and-ast-order/pr-18-review-feedback-dependency-and-ast-order.human-check.json` | Human | Explicit `cleared_for: implement-plan` gate |
-| Implementation review | `plan/pr-18-review-feedback-dependency-and-ast-order/pr-18-review-feedback-dependency-and-ast-order.implementation-review.yaml` | Reviewer | Bounded plan-conformance verdict |
-| Code review | `plan/pr-18-review-feedback-dependency-and-ast-order/pr-18-review-feedback-dependency-and-ast-order.code-review.yaml` | Reviewer | Independent quality/boundary verdict |
-| Project dependency declaration | `pyproject.toml` | Implementer | Keep published extra; add same ONNX Runtime constraint to dev group |
-| Resolved dependency metadata | `uv.lock` | Implementer | Lock direct dev-group dependency placement without package-version drift |
-| CI workflow | `.github/workflows/ci.yml` | Implementer | Plain frozen dev sync only |
-| AST ownership test | `tests/model_runtime/model_execution/test_model_execution_package_surface.py` | Implementer | Deterministic sort only in `_provider_runtime_call_paths()` |
+| Plan review | `plan/pr-18-review-feedback-dependency-and-ast-order/pr-18-review-feedback-dependency-and-ast-order.plan-review.json` | Plan-Reviewer | Fresh independent verdict for the final-LF scope |
+| Human check / sole remediation | `plan/pr-18-review-feedback-dependency-and-ast-order/pr-18-review-feedback-dependency-and-ast-order.human-check.json` | Human | Rewrite exact cleared gate with only one terminal LF; no semantic/non-final byte change |
+| Validation-only review | `plan/pr-18-review-feedback-dependency-and-ast-order/pr-18-review-feedback-dependency-and-ast-order.implementation-review.yaml` | Reviewer | Fresh pre-commit and raw-diff/JSON-semantic validation verdict |
+| Code review | `plan/pr-18-review-feedback-dependency-and-ast-order/pr-18-review-feedback-dependency-and-ast-order.code-review.yaml` | Historical ReadOnly | Original PR #18 repair review; not approval for final-LF scope |
+| Project dependency declaration | `pyproject.toml` | Historical ReadOnly | Original PR #18 dependency repair evidence; no retrofit write |
+| Resolved dependency metadata | `uv.lock` | Historical ReadOnly | Original PR #18 lock repair evidence; no retrofit write |
+| CI workflow | `.github/workflows/ci.yml` | Historical ReadOnly | Original PR #18 CI repair evidence; no retrofit write |
+| AST ownership test | `tests/model_runtime/model_execution/test_model_execution_package_surface.py` | Historical ReadOnly | Original PR #18 deterministic-sort evidence; no retrofit write |
 
 ### ReadOnly
 
-- All paths not declared above, including `src/`, README, `docs/`, other tests, other
-  topic artifacts, PR state, and all other CI workflow lines.
+- All paths except the exact Human-owned human-check remediation target, including
+  `src/`, `pyproject.toml`, `uv.lock`, `.github/workflows/ci.yml`, tests, README,
+  `docs/`, other topic artifacts, PR state, and all other CI workflow lines.
 
 ### Written
 
-- This topic's plan and step are created by Plan-Creator. Future plan-review,
-  human-check, implementation-review, and code-review artifacts are written only by
-  their declared owners.
+- Plan-Creator writes revised plan/step; Plan-Reviewer writes fresh plan-review;
+  Human writes the exact final-LF human-check; validation-only Reviewer writes fresh
+  implementation-review evidence. No other retrofit write is permitted.
 
 ### Updated
 
-- Only the four Implementer-owned implementation paths declared above may change after
-  the two implementation gates pass.
+- For this retrofit, only the exact Human-owned human-check path may change after fresh
+  plan review; it receives only the terminal LF. Original four implementation paths are
+  Historical ReadOnly.
 
 ### Deleted
 
@@ -136,46 +166,31 @@ Routing notes:
 
 ## Implementation Steps
 
-1. In `tests/model_runtime/model_execution/test_model_execution_package_surface.py`,
-   update `_provider_runtime_call_paths()` to return the collected relative `Path`
-   values in deterministic sorted order; retain the existing AST traversal, predicate,
-   type annotation, and expected sole execution-path assertion.
-2. In `pyproject.toml`, retain `onnxruntime>=1.22.0,<1.22.1` in the published `onnx`
-   optional extra and add that identical constraint to `[dependency-groups].dev`; update
-   `uv.lock` with the normal uv lock workflow without unrelated resolution drift.
-3. In `.github/workflows/ci.yml`, change only `Sync dependencies` to
-   `uv sync --frozen --group dev`; leave workflow trigger, action pins, Python version,
-   and all existing validation commands byte-for-byte unchanged.
-4. Run the declared normal-dev validation sequence, inspect the four implementation
-   diffs for scope/order/constraint correctness, update actual step evidence, and hand
-   off to independent implementation review. Do not reply to or resolve either PR
-   thread.
+1. Treat the prior dependency, lock, CI, and AST-helper repair as Historical ReadOnly
+   evidence; do not write its four implementation paths for this retrofit.
+2. After fresh Plan-Reviewer `approved`, Human writes
+   `plan/pr-18-review-feedback-dependency-and-ast-order/pr-18-review-feedback-dependency-and-ast-order.human-check.json`
+   with its existing JSON semantics and exactly one terminal LF after `}`.
+3. Validation-only Reviewer runs pre-commit all-files plus raw diff, terminal-LF, and
+   parsed-JSON guards; it records a fresh verdict and does not modify source,
+   dependency, lock, workflow, test, docs, or PR state.
 
 ## Validation / Acceptance Checks
 
-- `pyproject.toml` retains the exact `onnxruntime>=1.22.0,<1.22.1` published optional
-  extra and declares the same exact constraint in dev.
-- `uv.lock` represents that dev-group placement without unrelated package-version or
-  dependency changes.
-- CI `Sync dependencies` is exactly `uv sync --frozen --group dev`; no other workflow
-  line changes.
-- A clean normal dev sync supports `import onnxruntime` without `--extra onnx`.
-- `_provider_runtime_call_paths()` returns deterministically sorted relative `Path`
-  values while preserving the single expected production handoff caller.
-- The only implementation diffs are the four declared paths; no runtime/API/docs/source
-  change and no PR reply/resolve is performed.
+- Prior original repair diffs remain preserved as Historical ReadOnly; the sole new
+  remediation diff is the declared Human-owned human-check path.
+- Its only byte representation change is the missing-final-newline marker removal:
+  exactly one terminal LF is present after `}`, with no other byte change.
+- Parsing that file yields exactly `{"cleared_for":"implement-plan"}`.
+- No source, dependency, lock, workflow, test, docs, PR response, commit, or push is
+  performed for this retrofit.
 - Run:
 
 ```bash
-uv lock --check
-uv sync --frozen --group dev
-uv run --no-sync python -c "import onnxruntime"
-uv run --no-sync pyright
-uv run --no-sync pytest --no-cov tests/model_runtime/model_execution/test_model_execution_package_surface.py -v
-uv run --no-sync pytest -v
-uv run --no-sync ruff check src tests
 uv run --no-sync pre-commit run --all-files
 git diff --check
+git diff -- plan/pr-18-review-feedback-dependency-and-ast-order/pr-18-review-feedback-dependency-and-ast-order.human-check.json
+uv run --no-sync python -c 'import json; from pathlib import Path; path = Path("plan/pr-18-review-feedback-dependency-and-ast-order/pr-18-review-feedback-dependency-and-ast-order.human-check.json"); raw = path.read_bytes(); assert raw.endswith(b"\n"); assert json.loads(raw) == {"cleared_for": "implement-plan"}'
 ```
 
 ## Reviewer Handoff
@@ -206,7 +221,8 @@ None. The two bound threads and all implementation decisions are explicit.
 ### Goal
 
 Resolve the two bounded PR #18 findings without changing Python runtime behavior or any
-public contract.
+public contract, then correct the same-topic human-check terminal-LF hygiene failure
+without changing its cleared gate semantics.
 
 ### Non-goals
 
@@ -215,6 +231,7 @@ public contract.
   change.
 - No new test scenario, dynamic module loading, or assertion semantic change.
 - No README/docs/architecture/release/PR reply or resolve action.
+- No source/dependency/lock/workflow/test modification for the final-LF retrofit.
 
 ### Current Context
 
@@ -224,6 +241,8 @@ public contract.
   sync.
 - `_provider_runtime_call_paths()` appends results from `Path.rglob("*.py")` without
   sorting, so list equality can vary by filesystem traversal order.
+- The original PR #18 repair is complete, but the declared human-check currently ends
+  at `}` without a terminal LF and fails full pre-commit text-file hygiene.
 
 ### Requirements
 
@@ -234,6 +253,8 @@ public contract.
 4. The AST helper order is deterministic and its ownership assertion stays unchanged.
 5. All declared normal-dev, focused, full, static, lint, pre-commit, and diff checks
    pass.
+6. The final-LF retrofit changes only the Human-owned gate file; parsing remains exactly
+   `{"cleared_for":"implement-plan"}`.
 
 ### Decisions
 
@@ -252,6 +273,8 @@ public contract.
   remain command failures and existing test assertions remain unchanged.
 - Typing strategy: retain `list[Path]` and `Path` values; use the standard deterministic
   sort without `Any`, casts, or suppression.
+- Validation-hygiene ownership: Human alone appends the terminal LF after fresh plan
+  approval; validation-only Reviewer confirms raw representation and parsed semantics.
 
 ### Public Contract / API Changes
 
@@ -261,55 +284,52 @@ test-runtime dependency.
 
 ### Affected Files / Modules
 
-Likely affected files:
+Historical ReadOnly original-repair files:
 
 - `pyproject.toml`
 - `uv.lock`
 - `.github/workflows/ci.yml`
 - `tests/model_runtime/model_execution/test_model_execution_package_surface.py`
 
-Candidate files to inspect:
+Current sole remediation target:
+
+- `plan/pr-18-review-feedback-dependency-and-ast-order/pr-18-review-feedback-dependency-and-ast-order.human-check.json`
+
+Planning/review artifacts to inspect:
 
 - `plan/pr-18-review-feedback-dependency-and-ast-order/pr-18-review-feedback-dependency-and-ast-order.plan.md`
 - `plan/pr-18-review-feedback-dependency-and-ast-order/pr-18-review-feedback-dependency-and-ast-order.step.md`
 
 ### Implementation Steps
 
-1. Make the deterministic AST-helper sort in the declared package-surface test.
-2. Add the existing ONNX Runtime constraint to dev, regenerate only required lock
-   metadata, and restore plain frozen dev sync in CI.
-3. Run normal-dev validation and inspect scope before independent review; do not take PR
-   thread actions.
+1. Preserve the completed original-repair files without writing them.
+2. After fresh plan-review, Human adds only the terminal LF to the declared human-check
+   file while preserving parsed `cleared_for: implement-plan` semantics.
+3. Validation-only Reviewer runs pre-commit all-files and raw diff/JSON semantic guards;
+   it records a verdict without PR thread actions.
 
 ### Test Plan
 
-Test file: `tests/model_runtime/model_execution/test_model_execution_package_surface.py`
+Validation target: `plan/pr-18-review-feedback-dependency-and-ast-order/pr-18-review-feedback-dependency-and-ast-order.human-check.json`
 
 Test cases:
 
-- Happy path: normal dev sync imports `onnxruntime` and the focused package-surface test
-  passes.
-- Invalid input: no new input handling is introduced; the existing AST predicate remains
-  unchanged for non-handoff calls.
-- Edge case: filesystem-dependent `rglob` order cannot change the helper's returned
-  list order after sorting.
-- Regression: full pytest preserves ONNX acquisition and `ModelExecution` coverage under
-  plain dev sync.
-- Backward compatibility: the published `onnx` extra and its exact constraint remain
-  unchanged, with no public API or runtime source diff.
+- Happy path: full pre-commit passes after the Human-owned terminal LF is present.
+- Invalid input: parsed JSON must not differ from `{"cleared_for":"implement-plan"}`.
+- Edge case: the only raw diff representation is removal of the missing-final-newline
+  marker; no whitespace before `}` or other byte may change.
+- Regression: original dependency/CI/AST repair paths remain unchanged during this
+  retrofit.
+- Backward compatibility: human gate remains cleared for implementation with identical
+  parsed semantics.
 
 ### Validation Commands
 
 ```bash
-uv lock --check
-uv sync --frozen --group dev
-uv run --no-sync python -c "import onnxruntime"
-uv run --no-sync pyright
-uv run --no-sync pytest --no-cov tests/model_runtime/model_execution/test_model_execution_package_surface.py -v
-uv run --no-sync pytest -v
-uv run --no-sync ruff check src tests
 uv run --no-sync pre-commit run --all-files
 git diff --check
+git diff -- plan/pr-18-review-feedback-dependency-and-ast-order/pr-18-review-feedback-dependency-and-ast-order.human-check.json
+uv run --no-sync python -c 'import json; from pathlib import Path; path = Path("plan/pr-18-review-feedback-dependency-and-ast-order/pr-18-review-feedback-dependency-and-ast-order.human-check.json"); raw = path.read_bytes(); assert raw.endswith(b"\n"); assert json.loads(raw) == {"cleared_for": "implement-plan"}'
 ```
 
 ### Risks
@@ -320,12 +340,14 @@ git diff --check
   dependency placement finding.
 - Sorting a different collection or changing the AST predicate could weaken ownership
   governance rather than only remove filesystem-order nondeterminism.
+- Reformatting the human-check file or changing its gate value would silently alter the
+  Human decision instead of making the bounded terminal-LF repair.
 
 ### Rollback Plan
 
-Revert via git only `pyproject.toml`, `uv.lock`, `.github/workflows/ci.yml`, and
-`tests/model_runtime/model_execution/test_model_execution_package_surface.py`. Do not
-alter PR thread state as part of rollback.
+For the final-LF retrofit, remove only the terminal LF from the declared human-check
+file through its dedicated change. Do not revert or rewrite the historical original
+repair paths or alter PR thread state as part of rollback.
 
 ### Open Questions
 
