@@ -1,5 +1,3 @@
-"""Public consumption contract for acquired runtime models."""
+"""Internal package boundary for loaded runtime resources."""
 
-from .loaded_runtime_model import LoadedRuntimeModel
-
-__all__ = ["LoadedRuntimeModel"]
+__all__: list[str] = []

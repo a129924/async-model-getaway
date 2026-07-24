@@ -1,27 +1,29 @@
-"""Opaque handle returned by runtime-model providers."""
+"""Passive resource state for one loaded provider runtime."""
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+import asyncio
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Generic, TypeVar
 
-from async_model_gateway.model_runtime.model_artifact import LoaderFamily
-
-__all__ = ["LoadedRuntimeModel"]
-
-RuntimeT = TypeVar("RuntimeT", covariant=True)
+RuntimeT = TypeVar("RuntimeT")
 
 
-class LoadedRuntimeModel(ABC, Generic[RuntimeT]):
-    """Define the opaque consumption boundary for an acquired runtime model."""
+def _utc_now() -> datetime:
+    """Return the current aware UTC timestamp."""
+    return datetime.now(timezone.utc)
 
-    __slots__ = ()
 
-    @property
-    @abstractmethod
-    def loader_family(self) -> LoaderFamily:
-        """Return the explicit loader family that produced this runtime model."""
+@dataclass(slots=True)
+class LoadedRuntimeModel(Generic[RuntimeT]):
+    """Store a loaded provider runtime and its execution state."""
 
-    @abstractmethod
-    def _provider_runtime(self) -> RuntimeT:
-        """Return the provider runtime through the model-side internal handoff."""
+    runtime: RuntimeT
+    execution_gate: asyncio.Semaphore
+    loaded_at: datetime = field(default_factory=_utc_now)
+    last_used_at: datetime | None = None
+
+    def mark_used(self) -> None:
+        """Record that execution has begun for this runtime."""
+        self.last_used_at = _utc_now()

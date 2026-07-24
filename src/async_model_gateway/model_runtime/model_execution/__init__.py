@@ -1,5 +1,3 @@
-"""Public surface for the minimal model execution boundary."""
+"""Internal package boundary for model execution."""
 
-from .execution import ModelExecution
-
-__all__ = ["ModelExecution"]
+__all__: list[str] = []

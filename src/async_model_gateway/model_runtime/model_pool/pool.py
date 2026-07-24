@@ -1,36 +1,42 @@
-"""Public ModelPool owner for local runtime-model acquisition."""
+"""Internal uncached acquisition for loaded provider runtimes."""
 
 from __future__ import annotations
 
-from typing import TypeGuard
+import asyncio
+from typing import TypeGuard, TypeVar
 
 from async_model_gateway.model_runtime.model_artifact import ModelArtifact
-from async_model_gateway.model_runtime.runtime_model import LoadedRuntimeModel
+from async_model_gateway.model_runtime.runtime_model.loaded_runtime_model import (
+    LoadedRuntimeModel,
+)
 
-from ._local_model_loader import LocalModelLoader
+from .loaders._model_loader import ModelLoader
 
-
-def _create_local_model_loader() -> LocalModelLoader:
-    """Create the private local loader retained by one ModelPool instance."""
-    return LocalModelLoader()
+RuntimeT = TypeVar("RuntimeT")
 
 
 def _is_model_artifact(value: object) -> TypeGuard[ModelArtifact]:
-    """Return whether a public acquisition input is a model artifact."""
+    """Return whether an acquisition input is a model artifact."""
     return isinstance(value, ModelArtifact)
 
 
 class ModelPool:
-    """Provide the minimal public local runtime-model acquisition boundary."""
+    """Create a fresh loaded resource from an injected loader."""
 
-    def __init__(self) -> None:
-        """Create and retain this pool's private local loader."""
-        self._local_model_loader = _create_local_model_loader()
-
-    async def acquire(self, artifact: ModelArtifact) -> LoadedRuntimeModel[object]:
-        """Acquire a runtime model through the retained private local loader."""
+    async def acquire(
+        self,
+        artifact: ModelArtifact,
+        *,
+        loader: ModelLoader[RuntimeT],
+        max_concurrency: int,
+    ) -> LoadedRuntimeModel[RuntimeT]:
+        """Load a raw runtime and wrap it with a per-acquisition execution gate."""
         if not _is_model_artifact(artifact):
             msg = "artifact must be a ModelArtifact"
             raise TypeError(msg)
 
-        return await self._local_model_loader.load(artifact)
+        runtime: RuntimeT = await loader.load(artifact)
+        return LoadedRuntimeModel(
+            runtime=runtime,
+            execution_gate=asyncio.Semaphore(max_concurrency),
+        )

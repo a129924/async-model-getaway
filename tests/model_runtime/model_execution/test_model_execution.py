@@ -1,115 +1,121 @@
-"""RED coverage for the minimal ModelExecution invocation boundary."""
+"""RED coverage for internal executor lifecycle behavior."""
 
 from __future__ import annotations
 
 import asyncio
+from datetime import timezone
 
 import pytest
 
-from async_model_gateway.model_runtime.model_artifact import LoaderFamily
-from async_model_gateway.model_runtime.model_execution import ModelExecution
-from async_model_gateway.model_runtime.runtime_model import LoadedRuntimeModel
+from async_model_gateway.model_runtime.model_execution.execution import (
+    ModelExecutor,
+    _OnnxModelExecutor,
+)
+from async_model_gateway.model_runtime.runtime_model.loaded_runtime_model import (
+    LoadedRuntimeModel,
+)
 
 
-class _FakeRuntime:
-    """Represent a concrete provider runtime identity."""
+class _Runtime:
+    """Represent one provider-runtime identity."""
 
 
-class _FakeInvocation:
-    """Represent a concrete invocation identity."""
+class _Invocation:
+    """Represent one invocation identity."""
 
 
-class _FakeResult:
-    """Represent a concrete invocation result identity."""
+class _Result:
+    """Represent one result identity."""
 
 
-class _FakeLoadedRuntimeModel(LoadedRuntimeModel[_FakeRuntime]):
-    """Expose one typed provider runtime through the existing private handoff."""
+class _RecordingExecutor(ModelExecutor[_Runtime, _Invocation, _Result]):
+    """Record the concrete invocation supplied by the base lifecycle."""
 
-    def __init__(self, runtime: _FakeRuntime) -> None:
-        self._runtime = runtime
-        self.handoff_count = 0
+    def __init__(self, result: _Result) -> None:
+        self.result = result
+        self.calls: list[tuple[_Runtime, _Invocation]] = []
 
-    @property
-    def loader_family(self) -> LoaderFamily:
-        return LoaderFamily.TORCH
-
-    def _provider_runtime(self) -> _FakeRuntime:
-        self.handoff_count += 1
-        return self._runtime
+    async def _invoke(self, runtime: _Runtime, invocation: _Invocation) -> _Result:
+        self.calls.append((runtime, invocation))
+        return self.result
 
 
-class _RecordingInvoker:
-    """Record only calls whose returned coroutine is actually awaited."""
-
-    def __init__(self, result: _FakeResult) -> None:
-        self._result = result
-        self.awaited_calls: list[tuple[_FakeRuntime, _FakeInvocation]] = []
-
-    async def __call__(
-        self,
-        runtime: _FakeRuntime,
-        invocation: _FakeInvocation,
-    ) -> _FakeResult:
-        self.awaited_calls.append((runtime, invocation))
-        return self._result
-
-
-class _RaisingInvoker:
-    """Raise one caller-owned failure from the awaited invocation."""
+class _FailureExecutor(ModelExecutor[_Runtime, _Invocation, _Result]):
+    """Raise exactly the caller-owned error after gate acquisition."""
 
     def __init__(self, error: BaseException) -> None:
-        self._error = error
-        self.await_count = 0
+        self.error = error
 
-    async def __call__(
-        self,
-        _runtime: _FakeRuntime,
-        _invocation: _FakeInvocation,
-    ) -> _FakeResult:
-        self.await_count += 1
-        raise self._error
+    async def _invoke(self, _runtime: _Runtime, _invocation: _Invocation) -> _Result:
+        raise self.error
 
 
 @pytest.mark.asyncio
-async def test_execute_direct_awaits_once_and_preserves_all_identities() -> None:
-    runtime = _FakeRuntime()
-    invocation = _FakeInvocation()
-    result = _FakeResult()
-    model = _FakeLoadedRuntimeModel(runtime)
-    invoker = _RecordingInvoker(result)
-    execution = ModelExecution[_FakeRuntime, _FakeInvocation, _FakeResult](invoke=invoker)
+async def test_executor_marks_used_after_gate_acquisition_and_preserves_result_identity() -> None:
+    runtime = _Runtime()
+    invocation = _Invocation()
+    result = _Result()
+    model = LoadedRuntimeModel(runtime=runtime, execution_gate=asyncio.Semaphore(1))
+    executor = _RecordingExecutor(result)
+    actual = await executor.execute(model, invocation)
 
-    actual = await execution.execute(model, invocation)
-
-    assert model.handoff_count == 1
-    assert invoker.awaited_calls == [(runtime, invocation)]
-    assert invoker.awaited_calls[0][0] is runtime
-    assert invoker.awaited_calls[0][1] is invocation
     assert actual is result
+    assert executor.calls == [(runtime, invocation)]
+    assert model.last_used_at is not None
+    assert model.last_used_at.tzinfo is timezone.utc
+    assert model.execution_gate.locked() is False
 
 
 @pytest.mark.asyncio
-async def test_execute_propagates_the_same_invoker_exception_once() -> None:
-    error = RuntimeError("sentinel invocation failure")
-    invoker = _RaisingInvoker(error)
-    execution = ModelExecution[_FakeRuntime, _FakeInvocation, _FakeResult](invoke=invoker)
+async def test_executor_does_not_mark_queued_request_before_its_gate_is_acquired() -> None:
+    gate = asyncio.Semaphore(1)
+    await gate.acquire()
+    model = LoadedRuntimeModel(runtime=_Runtime(), execution_gate=gate)
+    executor = _RecordingExecutor(_Result())
+    task = asyncio.create_task(executor.execute(model, _Invocation()))
 
-    with pytest.raises(RuntimeError) as caught:
-        await execution.execute(_FakeLoadedRuntimeModel(_FakeRuntime()), _FakeInvocation())
+    await asyncio.sleep(0)
 
-    assert caught.value is error
-    assert invoker.await_count == 1
+    assert model.last_used_at is None
+    gate.release()
+    await task
 
 
 @pytest.mark.asyncio
-async def test_execute_propagates_the_same_cancelled_error_once() -> None:
+async def test_executor_preserves_failure_and_cancellation_identity_and_releases_gate() -> None:
+    model = LoadedRuntimeModel(runtime=_Runtime(), execution_gate=asyncio.Semaphore(1))
+    failure = RuntimeError("sentinel failure")
+
+    with pytest.raises(RuntimeError) as caught_failure:
+        await _FailureExecutor(failure).execute(model, _Invocation())
+
+    assert caught_failure.value is failure
+    assert model.last_used_at is not None
+    assert model.execution_gate.locked() is False
+
     cancellation = asyncio.CancelledError("sentinel cancellation")
-    invoker = _RaisingInvoker(cancellation)
-    execution = ModelExecution[_FakeRuntime, _FakeInvocation, _FakeResult](invoke=invoker)
+    with pytest.raises(asyncio.CancelledError) as caught_cancellation:
+        await _FailureExecutor(cancellation).execute(model, _Invocation())
 
-    with pytest.raises(asyncio.CancelledError) as caught:
-        await execution.execute(_FakeLoadedRuntimeModel(_FakeRuntime()), _FakeInvocation())
+    assert caught_cancellation.value is cancellation
+    assert model.execution_gate.locked() is False
 
-    assert caught.value is cancellation
-    assert invoker.await_count == 1
+
+@pytest.mark.asyncio
+async def test_onnx_executor_marks_used_then_fails_closed_and_releases_gate() -> None:
+    gate = asyncio.Semaphore(1)
+    await gate.acquire()
+    model = LoadedRuntimeModel(runtime=object(), execution_gate=gate)
+    task = asyncio.create_task(_OnnxModelExecutor().execute(model, object()))
+
+    await asyncio.sleep(0)
+
+    assert model.last_used_at is None
+    gate.release()
+
+    with pytest.raises(NotImplementedError):
+        await task
+
+    assert model.last_used_at is not None
+    assert model.last_used_at.tzinfo is timezone.utc
+    assert model.execution_gate.locked() is False

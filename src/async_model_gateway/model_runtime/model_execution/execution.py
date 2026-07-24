@@ -1,32 +1,48 @@
-"""Minimal typed execution boundary for loaded runtime models."""
+"""Internal execution lifecycle for loaded provider runtimes."""
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
+import asyncio
+from abc import ABC, abstractmethod
 from typing import Generic, TypeVar
 
-from async_model_gateway.model_runtime.runtime_model import LoadedRuntimeModel
+from async_model_gateway.model_runtime.runtime_model.loaded_runtime_model import (
+    LoadedRuntimeModel,
+)
+from async_model_gateway.model_runtime.runtime_model._onnx_runtime import (
+    _OnnxRuntime,  # pyright: ignore[reportPrivateUsage]
+)
 
 RuntimeT = TypeVar("RuntimeT")
 InvocationT = TypeVar("InvocationT")
 ResultT = TypeVar("ResultT")
 
 
-class ModelExecution(Generic[RuntimeT, InvocationT, ResultT]):
-    """Invoke one loaded provider runtime through an injected async callable."""
-
-    def __init__(
-        self,
-        *,
-        invoke: Callable[[RuntimeT, InvocationT], Awaitable[ResultT]],
-    ) -> None:
-        """Store the caller-provided async invoker."""
-        self._invoke = invoke
+class ModelExecutor(ABC, Generic[RuntimeT, InvocationT, ResultT]):
+    """Run one invocation while owning the loaded runtime's execution gate."""
 
     async def execute(
         self,
         model: LoadedRuntimeModel[RuntimeT],
         invocation: InvocationT,
     ) -> ResultT:
-        runtime = model._provider_runtime()  # pyright: ignore[reportPrivateUsage]
-        return await self._invoke(runtime, invocation)
+        """Acquire the execution gate, mark use, and await one invocation."""
+        execution_gate: asyncio.Semaphore = model.execution_gate
+        async with execution_gate:
+            model.mark_used()
+            return await self._invoke(model.runtime, invocation)
+
+    @abstractmethod
+    async def _invoke(self, runtime: RuntimeT, invocation: InvocationT) -> ResultT:
+        """Invoke one concrete provider runtime."""
+
+
+class _OnnxModelExecutor(  # pyright: ignore[reportUnusedClass]
+    ModelExecutor[_OnnxRuntime, object, object]
+):
+    """Fail closed until a real ONNX invocation boundary is implemented."""
+
+    async def _invoke(self, runtime: _OnnxRuntime, invocation: object) -> object:
+        """Reject unsupported ONNX invocation after lifecycle handling."""
+        _ = runtime, invocation
+        raise NotImplementedError

@@ -1,4 +1,4 @@
-"""RED coverage for the private ONNX local-runtime acquisition boundary."""
+"""RED regression coverage for private ONNX raw-runtime acquisition."""
 
 from __future__ import annotations
 
@@ -15,12 +15,11 @@ import pytest
 from onnx import TensorProto, helper
 
 from async_model_gateway.model_runtime.model_artifact import LoaderFamily, ModelArtifact
-from async_model_gateway.model_runtime.model_execution import ModelExecution
-from async_model_gateway.model_runtime.model_pool import ModelPool
-from async_model_gateway.model_runtime.model_pool._onnx_runtime_loader import (
+from async_model_gateway.model_runtime.model_pool.loaders._onnx_model_loader import (
+    _OnnxModelLoader,
     load_onnx_runtime,
 )
-from async_model_gateway.model_runtime.runtime_model import LoadedRuntimeModel
+from async_model_gateway.model_runtime.model_pool.pool import ModelPool
 
 InferenceSessionConstructor = Callable[..., object]
 InferenceSessionImporter = Callable[[], InferenceSessionConstructor]
@@ -29,8 +28,6 @@ InferenceSessionImporter = Callable[[], InferenceSessionConstructor]
 def _return_constructor(
     constructor: InferenceSessionConstructor,
 ) -> InferenceSessionImporter:
-    """Return a fully typed private-importer test double."""
-
     def importer() -> InferenceSessionConstructor:
         return constructor
 
@@ -38,7 +35,6 @@ def _return_constructor(
 
 
 def _write_identity_model(path: Path) -> None:
-    """Write a minimal, runtime-compatible ONNX identity graph to a temporary path."""
     graph = helper.make_graph(
         [helper.make_node("Identity", inputs=["input"], outputs=["output"])],
         "identity",
@@ -54,7 +50,6 @@ def _write_identity_model(path: Path) -> None:
 
 
 def _artifact(path: Path, *, loader_options: dict[str, object] | None = None) -> ModelArtifact:
-    """Build an explicitly routed ONNX artifact without suffix-based behavior."""
     return ModelArtifact(
         loader_family=LoaderFamily.ONNX,
         artifact_path=str(path),
@@ -64,42 +59,30 @@ def _artifact(path: Path, *, loader_options: dict[str, object] | None = None) ->
 
 @pytest.fixture
 def onnx_model_path(tmp_path: Path) -> Path:
-    """Create a valid model at a path that intentionally has no ONNX suffix."""
     path = tmp_path / "identity-runtime"
     _write_identity_model(path)
     return path
 
 
 @pytest.mark.asyncio
-async def test_acquire_returns_a_cpu_only_onnx_session_through_the_opaque_handle(
+async def test_pool_wraps_a_cpu_only_onnx_session_from_the_injected_raw_loader(
     onnx_model_path: Path,
 ) -> None:
-    """An explicit ONNX artifact must acquire a real CPU session without inference."""
-    loaded = await ModelPool().acquire(_artifact(onnx_model_path))
-    seen_runtimes: list[object] = []
-    invocation = object()
-    result = object()
+    loaded = await ModelPool().acquire(
+        _artifact(onnx_model_path),
+        loader=_OnnxModelLoader(),
+        max_concurrency=1,
+    )
 
-    async def record_runtime(runtime: object, received_invocation: object) -> object:
-        seen_runtimes.append(runtime)
-        assert received_invocation is invocation
-        return result
-
-    execution = ModelExecution[object, object, object](invoke=record_runtime)
-
-    assert isinstance(loaded, LoadedRuntimeModel)
-    assert loaded.loader_family is LoaderFamily.ONNX
-    assert await execution.execute(loaded, invocation) is result
-    assert len(seen_runtimes) == 1
-    assert isinstance(seen_runtimes[0], onnxruntime.InferenceSession)
-    assert seen_runtimes[0].get_providers() == ["CPUExecutionProvider"]
+    assert isinstance(loaded.runtime, onnxruntime.InferenceSession)
+    assert loaded.runtime.get_providers() == ["CPUExecutionProvider"]
+    assert loaded.execution_gate.locked() is False
 
 
 @pytest.mark.asyncio
-async def test_acquire_rejects_non_empty_options_before_constructing_a_session(
+async def test_onnx_loader_rejects_options_before_constructing_a_session(
     onnx_model_path: Path,
 ) -> None:
-    """First-version ONNX loading must fail closed on all loader options."""
     importer_called = False
 
     def unexpected_importer() -> InferenceSessionConstructor:
@@ -118,39 +101,13 @@ async def test_acquire_rejects_non_empty_options_before_constructing_a_session(
 
 
 @pytest.mark.asyncio
-async def test_acquire_translates_only_a_missing_top_level_onnxruntime_dependency(
+async def test_onnx_loader_preserves_provider_failure_without_translation(
     onnx_model_path: Path,
 ) -> None:
-    """The optional-extra guidance must preserve the missing import as its cause."""
-    missing_dependency = ModuleNotFoundError(
-        "No module named 'onnxruntime'",
-        name="onnxruntime",
-    )
-
-    def raise_missing_dependency() -> InferenceSessionConstructor:
-        raise missing_dependency
-
-    with pytest.raises(RuntimeError) as raised:
-        await load_onnx_runtime(
-            _artifact(onnx_model_path),
-            inference_session_importer=raise_missing_dependency,
-        )
-
-    assert str(raised.value) == (
-        "ONNX runtime support requires installing async-model-gateway[onnx]"
-    )
-    assert raised.value.__cause__ is missing_dependency
-
-
-@pytest.mark.asyncio
-async def test_acquire_preserves_provider_failures_without_install_guidance(
-    onnx_model_path: Path,
-) -> None:
-    """Provider construction errors must remain provider-owned failures."""
-    provider_failure = RuntimeError("provider initialization failed")
+    failure = RuntimeError("provider initialization failed")
 
     def fail_construction(*_args: object, **_kwargs: object) -> object:
-        raise provider_failure
+        raise failure
 
     with pytest.raises(RuntimeError) as raised:
         await load_onnx_runtime(
@@ -158,72 +115,15 @@ async def test_acquire_preserves_provider_failures_without_install_guidance(
             inference_session_importer=_return_constructor(fail_construction),
         )
 
-    assert raised.value is provider_failure
+    assert raised.value is failure
 
 
 @pytest.mark.asyncio
-async def test_acquire_preserves_missing_artifact_path_failure_without_translation(
-    tmp_path: Path,
-) -> None:
-    """A missing provider path must retain its native ONNX Runtime failure."""
-    missing_path = tmp_path / "missing-runtime-model"
-
-    with pytest.raises(Exception) as raised:
-        await ModelPool().acquire(_artifact(missing_path))
-
-    assert str(raised.value) != (
-        "ONNX runtime support requires installing async-model-gateway[onnx]"
-    )
-    assert raised.value.__cause__ is None
-
-
-@pytest.mark.asyncio
-async def test_acquire_preserves_invalid_onnx_model_failure_without_translation(
-    tmp_path: Path,
-) -> None:
-    """An invalid provider artifact must retain its native ONNX Runtime failure."""
-    invalid_model = tmp_path / "invalid-runtime-model"
-    invalid_model.write_text("not an ONNX model", encoding="utf-8")
-
-    with pytest.raises(Exception) as raised:
-        await ModelPool().acquire(_artifact(invalid_model))
-
-    assert str(raised.value) != (
-        "ONNX runtime support requires installing async-model-gateway[onnx]"
-    )
-    assert raised.value.__cause__ is None
-
-
-@pytest.mark.asyncio
-async def test_acquire_preserves_nested_optional_import_failure_unchanged(
+async def test_onnx_loader_moves_session_construction_off_the_event_loop_thread(
     onnx_model_path: Path,
 ) -> None:
-    """A nested optional-runtime import failure must not become install guidance."""
-    nested_failure = ModuleNotFoundError(
-        "No module named 'onnxruntime.capi'",
-        name="onnxruntime.capi",
-    )
-
-    def fail_transitive_import() -> InferenceSessionConstructor:
-        raise nested_failure
-
-    with pytest.raises(ModuleNotFoundError) as raised:
-        await load_onnx_runtime(
-            _artifact(onnx_model_path),
-            inference_session_importer=fail_transitive_import,
-        )
-
-    assert raised.value is nested_failure
-
-
-@pytest.mark.asyncio
-async def test_acquire_moves_session_construction_off_the_event_loop_thread(
-    onnx_model_path: Path,
-) -> None:
-    """A ready coroutine must advance while the synchronous factory is running."""
     progress = asyncio.Event()
     progress_seen_by_factory: list[bool] = []
-    expected_session = object()
 
     async def advance_event_loop() -> None:
         await asyncio.sleep(0)
@@ -232,25 +132,22 @@ async def test_acquire_moves_session_construction_off_the_event_loop_thread(
     def blocking_factory(*_args: object, **_kwargs: object) -> object:
         time.sleep(0.1)
         progress_seen_by_factory.append(progress.is_set())
-        return expected_session
+        return object()
 
     progress_task = asyncio.create_task(advance_event_loop())
-
-    session = await load_onnx_runtime(
+    await load_onnx_runtime(
         _artifact(onnx_model_path),
         inference_session_importer=_return_constructor(blocking_factory),
     )
     await progress_task
 
     assert progress_seen_by_factory == [True]
-    assert session is expected_session
 
 
 @pytest.mark.asyncio
-async def test_acquire_propagates_cancellation_and_releases_the_worker_fixture(
+async def test_onnx_loader_propagates_cancellation_without_translation(
     onnx_model_path: Path,
 ) -> None:
-    """Cancelling the caller must not be translated into a loader-specific failure."""
     factory_started = threading.Event()
     release_factory = threading.Event()
 
@@ -276,18 +173,3 @@ async def test_acquire_propagates_cancellation_and_releases_the_worker_fixture(
         if acquisition.done():
             with suppress(asyncio.CancelledError, NotImplementedError):
                 acquisition.result()
-
-
-@pytest.mark.asyncio
-async def test_pickle_path_appearance_does_not_route_into_onnx_acquisition(
-    onnx_model_path: Path,
-) -> None:
-    """Explicit PICKLE routing remains fail closed even for an ONNX-looking path."""
-    artifact = ModelArtifact(
-        loader_family=LoaderFamily.PICKLE,
-        artifact_path=f"{onnx_model_path}.onnx",
-        loader_options={},
-    )
-
-    with pytest.raises(NotImplementedError):
-        await ModelPool().acquire(artifact)

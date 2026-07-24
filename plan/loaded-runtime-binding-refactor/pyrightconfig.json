@@ -1,0 +1,6 @@
+{
+  "include": ["../../tests/typecheck/loaded_runtime_binding_refactor.py"],
+  "extraPaths": ["../../src"],
+  "pythonVersion": "3.10",
+  "typeCheckingMode": "strict"
+}
