@@ -28,6 +28,11 @@ created: 2026-07-24
 - [X] 5. Implementer modifies composition/private factory and internal pool acquire; removes pool package export.
 - [X] 6. Implementer deletes all declared obsolete sources/tests/live fixtures, leaves all four historical configs untouched, runs pre-merge validation, checks path contract, updates tracker.
 
+## Post-merge / Release and Cleanup
+
+- [X] 7. Verified PR #19 merge, recorded the required human-merge clearance, updated the declared release paths to 0.7.0, and pushed release commit `41e63b1` with lightweight tag `v0.7.0`.
+- [X] 8. Removed the authorized feature worktree, local feature branch, remote feature branch, and its authorized untracked human-merge artifact after release verification.
+
 ## Next Step
 
-下一步是 topic correction commit，再進入 PR workflow；請明確授權是否要建立第二個 topic commit。
+Topic complete：release 與 authorized cleanup 均已完成；無後續自動動作。
