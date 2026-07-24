@@ -20,6 +20,7 @@ behavior_contract:
     - AC-6
     - AC-7
     - AC-8
+    - AC-9
 test_mapping:
   - requirement_id: AC-1
     test_case_name: test_composition_resolves_once_then_preserves_binding_through_pool_and_executor
@@ -27,33 +28,51 @@ test_mapping:
   - requirement_id: AC-2
     test_case_name: test_composition_resolves_once_then_preserves_binding_through_pool_and_executor
     coverage_category: happy_path
-  - requirement_id: AC-3
-    test_case_name: test_pool_wraps_raw_runtime_from_the_injected_loader_with_requested_gate
-    coverage_category: state_side_effects
-  - requirement_id: AC-3
-    test_case_name: test_pool_is_uncached_and_does_not_retain_the_injected_loader
-    coverage_category: boundary_edge
-  - requirement_id: AC-4
-    test_case_name: test_executor_does_not_mark_queued_request_before_its_gate_is_acquired
-    coverage_category: boundary_edge
-  - requirement_id: AC-5
-    test_case_name: test_executor_preserves_failure_and_cancellation_identity_and_releases_gate
-    coverage_category: error_exception
-  - requirement_id: AC-6
-    test_case_name: test_executor_source_has_no_binding_owner_or_late_dispatch
-    coverage_category: boundary_edge
-  - requirement_id: AC-7
-    test_case_name: test_model_pool_package_reexports_no_implementation_types
-    coverage_category: public_contract
-  - requirement_id: AC-7
-    test_case_name: test_runtime_model_package_reexports_no_implementation_types
-    coverage_category: public_contract
-  - requirement_id: AC-8
+  - requirement_id: AC-2
     test_case_name: check_binding_preserves_loader_executor_runtime_pairing
     coverage_category: static_typing
-  - requirement_id: AC-8
+  - requirement_id: AC-3
+    test_case_name: test_onnx_runtime_protocol_declares_only_get_providers
+    coverage_category: public_contract
+  - requirement_id: AC-3
+    test_case_name: test_onnx_loader_returns_a_runtime_that_satisfies_the_precise_protocol
+    coverage_category: integration_points
+  - requirement_id: AC-3
     test_case_name: test_onnx_loader_rejects_options_before_constructing_a_session
     coverage_category: regression
+  - requirement_id: AC-3
+    test_case_name: test_onnx_loader_casts_only_the_optional_stub_boundary_to_the_runtime_protocol
+    coverage_category: boundary_edge
+  - requirement_id: AC-3
+    test_case_name: test_runtime_binding_erases_the_precise_onnx_pairing_only_at_outer_resolution
+    coverage_category: boundary_edge
+  - requirement_id: AC-3
+    test_case_name: check_production_onnx_pairing_remains_precise_until_resolver_erasure
+    coverage_category: static_typing
+  - requirement_id: AC-4
+    test_case_name: test_pool_wraps_raw_runtime_from_the_injected_loader_with_requested_gate
+    coverage_category: state_side_effects
+  - requirement_id: AC-5
+    test_case_name: test_loaded_runtime_model_is_a_slots_generic_dataclass_with_runtime_state
+    coverage_category: state_side_effects
+  - requirement_id: AC-6
+    test_case_name: test_executor_does_not_mark_queued_request_before_its_gate_is_acquired
+    coverage_category: boundary_edge
+  - requirement_id: AC-6
+    test_case_name: test_executor_preserves_failure_and_cancellation_identity_and_releases_gate
+    coverage_category: error_exception
+  - requirement_id: AC-7
+    test_case_name: test_executor_source_has_no_binding_owner_or_late_dispatch
+    coverage_category: boundary_edge
+  - requirement_id: AC-8
+    test_case_name: test_model_pool_package_reexports_no_implementation_types
+    coverage_category: public_contract
+  - requirement_id: AC-8
+    test_case_name: test_runtime_model_package_reexports_no_implementation_types
+    coverage_category: public_contract
+  - requirement_id: AC-9
+    test_case_name: human_check_json_shape_preflight
+    coverage_category: gate_validation
 validation_checks:
   d1_decision: passed
   behavior_contract_source: plan/loaded-runtime-binding-refactor/loaded-runtime-binding-refactor.spec.md
@@ -93,13 +112,12 @@ validation_checks:
       tests/model_runtime/test_local_runtime_composition.py -q --tb=short
     exit_code: 2
     expected_nonzero: true
-    result: 5 collection errors in 0.22s
+    result: 4 collection errors in 0.25s
     failing_tests:
-      - test_local_model_loader.py: ModelLoader is not implemented
-      - test_model_pool.py: ModelLoader is not implemented
-      - test_onnx_local_runtime_acquisition.py: _OnnxModelLoader is not implemented
-      - test_model_execution.py: ModelExecutor is not implemented
-      - test_local_runtime_composition.py: composition module is not implemented
+      - test_model_pool.py: split loaders package is not implemented
+      - test_onnx_local_runtime_acquisition.py: split ONNX loader is not implemented
+      - test_onnx_model_loader.py: private loaders package and protocol are not implemented
+      - test_local_runtime_composition.py: split generic ModelLoader is not implemented
     failure_matches_unimplemented_approved_boundary: true
     passed: true
   dedicated_pyright:
@@ -107,12 +125,13 @@ validation_checks:
       uv run --extra onnx pyright --project
       plan/loaded-runtime-binding-refactor/pyrightconfig.json
       tests/typecheck/loaded_runtime_binding_refactor.py
-    exit_code: 0
+    exit_code: 1
     expected_initial_status: red
-    result: 0 errors, 0 warnings, 0 informations
-    fixture_override_signature: >-
-      _Loader.load uses the abstract ModelLoader parameter name `artifact`.
-    passed: true
+    result: >-
+      15 errors caused by the absent split loader modules and absent
+      _OnnxRuntime Protocol; no unrelated diagnostic class remains after
+      private-usage suppressions required for the internal fixture.
+    passed: false
   authored_test_quality:
     command: >-
       uv run --extra onnx ruff check declared-test-paths
@@ -125,6 +144,8 @@ validation_checks:
     passed: true
 issues: []
 next_step: >-
-  Dispatch an independent Implementer to implement only the approved internal
-  runtime resource, loader, executor, binding, pool, and composition changes,
-  then rerun the focused pytest and dedicated Pyright commands for GREEN evidence.
+  Dispatch an independent Implementer to create the approved private loaders
+  package and _OnnxRuntime Protocol, move ONNX acquisition unchanged into the
+  split loader, and retain precise ONNX pairing until the resolver's sole
+  outer erasure cast; then rerun the focused pytest and dedicated Pyright
+  commands for GREEN evidence.

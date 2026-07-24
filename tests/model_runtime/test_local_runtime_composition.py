@@ -11,7 +11,7 @@ from async_model_gateway.model_runtime._local_runtime_composition import (
 )
 from async_model_gateway.model_runtime.model_artifact import LoaderFamily, ModelArtifact
 from async_model_gateway.model_runtime.model_execution.execution import ModelExecutor
-from async_model_gateway.model_runtime.model_pool._local_model_loader import ModelLoader
+from async_model_gateway.model_runtime.model_pool.loaders._model_loader import ModelLoader
 from async_model_gateway.model_runtime.model_pool._runtime_binding import (
     RuntimeBinding,
     _RuntimeBindingResolver,

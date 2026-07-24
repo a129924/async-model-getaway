@@ -1,6 +1,7 @@
 verdict: approved
 review_status: COMPLETE
-review_scope: plan-conformance-only
+review_scope: correction-plan-conformance-only
+
 preconditions:
   plan_review: approved
   human_check: cleared_for_implementation
@@ -8,105 +9,99 @@ preconditions:
   implementation_steps: complete
 
 traceability_matrix:
-  - step: "1. Tester writes/revises declared behavior, surface, AST, composition and ONNX regression tests; writes topic Pyright config/type fixture; executes exact topic Pyright against unchanged production and writes RED evidence including actual analyzed fixture path."
+  - step: "1. Tester writes/revises declared behavior, surface, AST, composition, precise ONNX loader and ONNX regression tests; writes topic Pyright config/type fixture; executes exact topic Pyright against unchanged production and writes RED evidence."
     status: done
-    evidence: "Behavior, surface, AST, composition, ONNX regression, strict fixture, and RED evidence exist; direct resolver coverage is at tests/model_runtime/test_local_runtime_composition.py:155-177 and direct ONNX executor lifecycle coverage is at tests/model_runtime/model_execution/test_model_execution.py:106-123."
+    evidence: "tests/model_runtime/model_pool/test_onnx_model_loader.py:41-93; tests/model_runtime/test_local_runtime_composition.py:113-177; tests/typecheck/loaded_runtime_binding_refactor.py:70-108; plan/loaded-runtime-binding-refactor/loaded-runtime-binding-refactor.red-tests.yaml:1-150"
   - step: "2. Implementer modifies concrete runtime model/package export boundary."
     status: done
-    evidence: "src/async_model_gateway/model_runtime/runtime_model/loaded_runtime_model.py:18-29; tests/model_runtime/runtime_model/test_loaded_runtime_model.py:18-74; src/async_model_gateway/model_runtime/runtime_model/__init__.py:1-3"
+    evidence: "src/async_model_gateway/model_runtime/runtime_model/loaded_runtime_model.py:18-29; src/async_model_gateway/model_runtime/runtime_model/__init__.py:1-3; tests/model_runtime/runtime_model/test_loaded_runtime_model.py:18-74"
   - step: "3. Implementer modifies executor/package export boundary with exact gate/timestamp/direct-await lifecycle."
     status: done
-    evidence: "src/async_model_gateway/model_runtime/model_execution/execution.py:18-45; tests/model_runtime/model_execution/test_model_execution.py:50-99; tests/model_runtime/model_execution/test_model_execution_package_surface.py:14-60"
-  - step: "4. Implementer modifies loader and writes binding/resolver."
+    evidence: "src/async_model_gateway/model_runtime/model_execution/execution.py:21-48; src/async_model_gateway/model_runtime/model_execution/__init__.py:1-3; tests/model_runtime/model_execution/test_model_execution.py:53-123"
+  - step: "4. Implementer deletes old loader/helper, writes private model_pool/loaders package and _OnnxRuntime Protocol, then modifies binding/resolver to retain precise ONNX pairing until outer routing erasure."
     status: done
-    evidence: "src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:15-28; src/async_model_gateway/model_runtime/model_pool/_runtime_binding.py:23-50"
-  - step: "5. Implementer writes composition/private factory; modifies internal pool acquire and removes pool package export."
+    evidence: "src/async_model_gateway/model_runtime/model_pool/loaders/_model_loader.py:13-18; src/async_model_gateway/model_runtime/model_pool/loaders/_onnx_model_loader.py:20-60; src/async_model_gateway/model_runtime/runtime_model/_onnx_runtime.py:8-12; src/async_model_gateway/model_runtime/model_pool/_runtime_binding.py:27-55"
+  - step: "5. Implementer modifies composition/private factory and internal pool acquire; removes pool package export."
     status: done
-    evidence: "src/async_model_gateway/model_runtime/_local_runtime_composition.py:12-42; src/async_model_gateway/model_runtime/model_pool/pool.py:23-42; tests/model_runtime/test_local_runtime_composition.py:110-149; src/async_model_gateway/model_runtime/model_pool/__init__.py:1-3"
-  - step: "6. Implementer deletes only three listed live fixtures, leaves all four historical configs untouched, runs pre-merge validation, checks path contract, updates tracker."
+    evidence: "src/async_model_gateway/model_runtime/_local_runtime_composition.py:12-42; src/async_model_gateway/model_runtime/model_pool/pool.py:23-42; src/async_model_gateway/model_runtime/model_pool/__init__.py:1-3; tests/model_runtime/test_local_runtime_composition.py:113-177"
+  - step: "6. Implementer deletes all declared obsolete sources/tests/live fixtures, leaves all four historical configs untouched, runs pre-merge validation, checks path contract, updates tracker."
     status: done
-    evidence: "tests/typecheck/onnx_local_runtime_acquisition.py, tests/typecheck/model_execution_minimal_consumption.py, and tests/typecheck/runtime_model_generic_erasure.py are absent; four historical config paths have no diff; step tracker lines 3-8 are [X]."
+    evidence: "Declared obsolete paths are absent; the four historical Pyright configs have no diff; plan/loaded-runtime-binding-refactor/loaded-runtime-binding-refactor.step.md:13-18; full validation passed."
 
 scope_creep_check:
   - non_goal: "cache/key/pool hit/reuse/dedup/eviction/close/unload"
     violated: no
-    evidence: "clean; src/async_model_gateway/model_runtime/model_pool/pool.py:23-42 creates a new wrapper per acquire and retains no state"
+    evidence: "src/async_model_gateway/model_runtime/model_pool/pool.py:23-42 creates one wrapper per acquire and retains no model state; tests/model_runtime/model_pool/test_model_pool.py:49-63"
   - non_goal: "public composition/pool/loader/executor/loaded-model API or orchestrator wiring"
     violated: no
-    evidence: "clean; package initializers export empty __all__ lists and composition factory remains module-private"
+    evidence: "runtime_model, model_execution, model_pool, and loaders package initializers expose empty __all__; composition factory remains module-private at src/async_model_gateway/model_runtime/_local_runtime_composition.py:36-42"
   - non_goal: "real ONNX inference/result schema, provider adapter, timeout/retry"
     violated: no
-    evidence: "clean; src/async_model_gateway/model_runtime/model_execution/execution.py:42-45 raises NotImplementedError"
+    evidence: "src/async_model_gateway/model_runtime/model_execution/execution.py:45-48 fails closed with NotImplementedError"
   - non_goal: "PICKLE/TORCH loading/execution, remote ModelGateway, response cache"
     violated: no
-    evidence: "clean; src/async_model_gateway/model_runtime/model_pool/_runtime_binding.py:47-50 fail-closes PICKLE/TORCH"
+    evidence: "src/async_model_gateway/model_runtime/model_pool/_runtime_binding.py:52-55 rejects PICKLE/TORCH; no remote or response-cache paths changed"
   - non_goal: "ModelArtifact/LoaderFamily schema or canonical-input/orchestrator documents"
     violated: no
-    evidence: "clean; no diff in model_artifact or declared document paths"
+    evidence: "no diff in model_artifact or documentation paths"
   - non_goal: "historical Pyright config modification/execution, GitHub Release, package publication, or pre-merge release work"
     violated: no
-    evidence: "clean; four historical configs have no diff and release paths have no diff"
+    evidence: "each historical config has no diff; README.md, docs/, pyproject.toml, uv.lock, and __version__.py have no diff"
   - non_goal: "public caller for _create_local_runtime_composition()"
     violated: no
-    evidence: "clean; only definition at src/async_model_gateway/model_runtime/_local_runtime_composition.py:36-42"
+    evidence: "only definition is src/async_model_gateway/model_runtime/_local_runtime_composition.py:36-42"
   - non_goal: "loader/executor registry or runtime/type/metadata late dispatch"
     violated: no
-    evidence: "clean; executor AST coverage at tests/model_runtime/model_execution/test_model_execution_package_surface.py:25-60"
+    evidence: "the sole resolve call is composition.py:27; executor AST test at tests/model_runtime/model_execution/test_model_execution_package_surface.py:25-60 passes"
   - non_goal: "compatibility adapter for removed package exports"
     violated: no
-    evidence: "clean; empty package exports verified by package-surface tests"
+    evidence: "package-surface tests at tests/model_runtime/runtime_model/test_runtime_model_package_surface.py:10-18, tests/model_runtime/model_execution/test_model_execution_package_surface.py:14-22, and tests/model_runtime/model_pool/test_model_pool_package_surface.py:11-31 pass"
 
 contract_check:
-  - item: "No public API is added; ModelPool, LoadedRuntimeModel, and ModelExecution package exports are removed."
+  - item: "_OnnxRuntime has only get_providers() -> list[str]; loader, executor, and production binding use the precise protocol until the resolver's sole outer erasure cast."
     status: matches
-    detail: "All three relevant package initializers expose __all__ = []; package-surface tests pass."
-  - item: "ModelPool.acquire accepts artifact plus keyword-only generic loader and max_concurrency and returns LoadedRuntimeModel[RuntimeT]."
+    detail: "Protocol at runtime_model/_onnx_runtime.py:8-12; precise ModelLoader[_OnnxRuntime], ModelExecutor[_OnnxRuntime, object, object], and RuntimeBinding[_OnnxRuntime, object, object] at loaders/_onnx_model_loader.py:56-60, model_execution/execution.py:40-48, and model_pool/_runtime_binding.py:46-51. The sole runtime cast is loaders/_onnx_model_loader.py:46-53; the sole binding erasure cast is model_pool/_runtime_binding.py:51."
+  - item: "ModelLoader is a private nominal generic ABC in its own loader module and _OnnxModelLoader returns raw _OnnxRuntime."
     status: matches
-    detail: "src/async_model_gateway/model_runtime/model_pool/pool.py:26-42 matches the locked signature; signature test passes."
-  - item: "_LocalRuntimeComposition.execute resolves once, injects that binding's loader/concurrency into acquire, then invokes that binding's executor."
+    detail: "model_pool/loaders/_model_loader.py:13-18 and model_pool/loaders/_onnx_model_loader.py:56-60 match the exact contract."
+  - item: "_LocalRuntimeComposition is the sole production resolver caller and preserves one binding through acquire then execute."
     status: matches
-    detail: "src/async_model_gateway/model_runtime/_local_runtime_composition.py:25-33; continuity test passes."
-  - item: "LoadedRuntimeModel is a concrete generic slots dataclass with runtime, execution_gate, loaded_at, last_used_at, and mark_used only."
+    detail: "model_runtime/_local_runtime_composition.py:25-33 resolves once, injects binding.loader and binding.max_concurrency, then awaits binding.executor.execute; continuity tests pass."
+  - item: "ModelPool.acquire has the internal generic injected-loader signature and no retained resolver/executor/cache/loaded-model state."
     status: matches
-    detail: "src/async_model_gateway/model_runtime/runtime_model/loaded_runtime_model.py:18-29; passive-surface tests pass."
-  - item: "ModelLoader and ModelExecutor are nominal generic boundaries; executor propagates result, ordinary errors, and cancellation without translation."
+    detail: "model_pool/pool.py:23-42 matches the locked keyword-only signature; tests/model_runtime/model_pool/test_model_pool.py:35-86 passes."
+  - item: "LoadedRuntimeModel remains the concrete passive generic resource and ModelExecutor owns gate/timestamp/direct-await lifecycle without error translation."
     status: matches
-    detail: "src/async_model_gateway/model_runtime/model_pool/_local_model_loader.py:15-28 and src/async_model_gateway/model_runtime/model_execution/execution.py:18-45; lifecycle tests pass."
+    detail: "loaded_runtime_model.py:18-29 and execution.py:21-37; lifecycle, failure, and cancellation tests pass."
+  - item: "Old loader/helper/test and the three live legacy fixtures are removed; public package exports remain absent."
+    status: matches
+    detail: "All six declared obsolete paths are absent; package-surface tests pass."
 
 test_plan_check:
   - case_type: "happy path binding continuity and exact resolve-acquire-execute order"
     status: present
-    location: "tests/model_runtime/test_local_runtime_composition.py:110-130"
-  - case_type: "invalid non-artifact input"
+    location: "tests/model_runtime/test_local_runtime_composition.py:113-134"
+  - case_type: "invalid non-artifact input and unsupported family fail-closed before loading"
     status: present
-    location: "tests/model_runtime/model_pool/test_model_pool.py:65-72"
-  - case_type: "unsupported production resolver family fails closed before loading"
+    location: "tests/model_runtime/model_pool/test_model_pool.py:65-86; tests/model_runtime/test_local_runtime_composition.py:155-177"
+  - case_type: "precise ONNX protocol, split loader, sole loader cast, and sole resolver erasure"
     status: present
-    location: "tests/model_runtime/test_local_runtime_composition.py:155-177"
-  - case_type: "ONNX options error remains unchanged"
+    location: "tests/model_runtime/model_pool/test_onnx_model_loader.py:41-93; tests/typecheck/loaded_runtime_binding_refactor.py:83-97"
+  - case_type: "queued gate timestamp, post-gate failure, cancellation release, and ONNX fail-closed lifecycle"
     status: present
-    location: "tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:82-100"
-  - case_type: "queued gate timestamp, post-gate failure, and cancellation release"
+    location: "tests/model_runtime/model_execution/test_model_execution.py:70-123"
+  - case_type: "ONNX CPU-only loading/options/provider-error/cancellation regression and uncached acquire"
     status: present
-    location: "tests/model_runtime/model_execution/test_model_execution.py:67-99"
-  - case_type: "concrete ONNX executor marks used then fails closed"
+    location: "tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:67-176; tests/model_runtime/model_pool/test_model_pool.py:49-63"
+  - case_type: "package-export removal, AST boundary, deleted fixtures, and historical config preservation"
     status: present
-    location: "tests/model_runtime/model_execution/test_model_execution.py:106-123"
-  - case_type: "ONNX CPU-only loading and uncached acquire regression"
-    status: present
-    location: "tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:67-80; tests/model_runtime/model_pool/test_model_pool.py:49-63"
-  - case_type: "package export removal, fixture deletion, and historical-config preservation"
-    status: present
-    location: "tests/model_runtime/model_execution/test_model_execution_package_surface.py:14-22; tests/model_runtime/model_pool/test_model_pool_package_surface.py:11-31; tests/model_runtime/runtime_model/test_runtime_model_package_surface.py:10-18"
-  - case_type: "executor AST boundary and strict generic pairing"
-    status: present
-    location: "tests/model_runtime/model_execution/test_model_execution_package_surface.py:25-60; tests/typecheck/loaded_runtime_binding_refactor.py:30-67"
+    location: "tests/model_runtime/model_execution/test_model_execution_package_surface.py:14-60; tests/model_runtime/model_pool/test_model_pool_package_surface.py:11-31; tests/model_runtime/runtime_model/test_runtime_model_package_surface.py:10-18"
 
 validation_evidence:
-  - "uv run --extra onnx pytest --no-cov tests/model_runtime -v: 95 passed"
-  - "uv run --extra onnx pytest -v: 169 passed"
+  - "uv run --extra onnx pytest --no-cov tests/model_runtime -v: 99 passed"
+  - "uv run pytest -v: 173 passed"
   - "uv run ruff check src tests plan/loaded-runtime-binding-refactor: passed"
   - "uv run pyright: 0 errors, 0 warnings, 0 informations"
   - "uv run pyright --project plan/loaded-runtime-binding-refactor/pyrightconfig.json tests/typecheck/loaded_runtime_binding_refactor.py: 0 errors, 0 warnings, 0 informations"
   - "uv lock --check: passed"
-  - "uv run --extra onnx pytest --no-cov tests/model_runtime/test_local_runtime_composition.py tests/model_runtime/model_execution/test_model_execution.py -v: 8 passed"
+  - "git diff --check: passed"

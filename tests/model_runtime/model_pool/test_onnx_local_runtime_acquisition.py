@@ -15,8 +15,8 @@ import pytest
 from onnx import TensorProto, helper
 
 from async_model_gateway.model_runtime.model_artifact import LoaderFamily, ModelArtifact
-from async_model_gateway.model_runtime.model_pool._local_model_loader import _OnnxModelLoader
-from async_model_gateway.model_runtime.model_pool._onnx_runtime_loader import (
+from async_model_gateway.model_runtime.model_pool.loaders._onnx_model_loader import (
+    _OnnxModelLoader,
     load_onnx_runtime,
 )
 from async_model_gateway.model_runtime.model_pool.pool import ModelPool

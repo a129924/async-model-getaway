@@ -1,6 +1,6 @@
 verdict: approved
 review_status: COMPLETE
-review_scope: python-code-quality-only
+review_scope: correction-python-code-quality-only
 tooling_detected:
   - "pyproject.toml: Ruff (E, W, F, N, D, UP, B, A, C4, ARG, RUF)"
   - "pyproject.toml: Pyright strict"
@@ -8,9 +8,7 @@ tooling_detected:
 precondition:
   python_implementation_review: approved
 diff_scope:
-  - "Internal local runtime composition, binding, loader, pool, executor, and loaded-resource modules"
-  - "Focused runtime, package-surface, ONNX regression, and strict type-fixture tests"
-  - "Removal of three superseded live type fixtures"
+  - "Correction: split private loaders package, precise ONNX runtime protocol, resolver pairing, and affected tests/type fixture"
 findings:
   typing: []
   lint: []
@@ -21,11 +19,12 @@ findings:
   observability: []
 blocking_findings: []
 review_notes:
-  - "All reviewed production callables have explicit annotations compatible with the repository's strict Pyright configuration."
-  - "The optional ONNX import suppression identifies the missing-stubs reason; internal private-usage suppressions are localized to composition wiring."
-  - "Executor and pool allow ordinary errors and cancellation to propagate, and do not contain broad exception handlers or swallowed failures."
-  - "Tests assert returned identity, ordering, failure identity, cancellation release, package surfaces, and typed generic pairing; no test lacks assertions."
-  - "No production logging is required for this passive internal boundary; no print calls or sensitive-data logging were introduced."
+  - "Sequencing gate passed: loaded-runtime-binding-refactor.implementation-review.yaml reports approved."
+  - "Ruff and Pyright strict are detected from pyproject.toml; no lint, typecheck, or test commands were run in this review."
+  - "The loader has exactly one provider-boundary cast to _OnnxRuntime, documented at the optional unstubbed ONNX provider boundary; no other loader cast was added."
+  - "The resolver has exactly one routing-erasure cast after constructing the precise ONNX RuntimeBinding; its comment records that generic erasure occurs only after loader/executor/runtime pairing is established."
+  - "Each reviewed private-usage or unused-class Pyright suppression has an immediately adjacent rationale identifying the closed internal collaborator or composition owner."
+  - "No additional cast, Pyright suppression, or execution-path logic change was found in the reviewed correction surface."
 validation_execution:
   performed: false
-  reason: "Reviewer role is limited to static source/configuration inspection; validation commands were intentionally not run."
+  reason: "Reviewer role is limited to static source/configuration inspection; no lint, typecheck, or test commands were run."

@@ -9,6 +9,9 @@ from typing import Generic, TypeVar
 from async_model_gateway.model_runtime.runtime_model.loaded_runtime_model import (
     LoadedRuntimeModel,
 )
+from async_model_gateway.model_runtime.runtime_model._onnx_runtime import (
+    _OnnxRuntime,  # pyright: ignore[reportPrivateUsage]
+)
 
 RuntimeT = TypeVar("RuntimeT")
 InvocationT = TypeVar("InvocationT")
@@ -35,11 +38,11 @@ class ModelExecutor(ABC, Generic[RuntimeT, InvocationT, ResultT]):
 
 
 class _OnnxModelExecutor(  # pyright: ignore[reportUnusedClass]
-    ModelExecutor[object, object, object]
+    ModelExecutor[_OnnxRuntime, object, object]
 ):
     """Fail closed until a real ONNX invocation boundary is implemented."""
 
-    async def _invoke(self, runtime: object, invocation: object) -> object:
+    async def _invoke(self, runtime: _OnnxRuntime, invocation: object) -> object:
         """Reject unsupported ONNX invocation after lifecycle handling."""
         _ = runtime, invocation
         raise NotImplementedError

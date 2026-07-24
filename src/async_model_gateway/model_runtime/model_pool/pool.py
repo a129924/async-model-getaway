@@ -10,7 +10,7 @@ from async_model_gateway.model_runtime.runtime_model.loaded_runtime_model import
     LoadedRuntimeModel,
 )
 
-from ._local_model_loader import ModelLoader
+from .loaders._model_loader import ModelLoader
 
 RuntimeT = TypeVar("RuntimeT")
 
@@ -35,7 +35,7 @@ class ModelPool:
             msg = "artifact must be a ModelArtifact"
             raise TypeError(msg)
 
-        runtime = await loader.load(artifact)
+        runtime: RuntimeT = await loader.load(artifact)
         return LoadedRuntimeModel(
             runtime=runtime,
             execution_gate=asyncio.Semaphore(max_concurrency),

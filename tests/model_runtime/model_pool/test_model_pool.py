@@ -8,7 +8,7 @@ from typing import cast
 import pytest
 
 from async_model_gateway.model_runtime.model_artifact import LoaderFamily, ModelArtifact
-from async_model_gateway.model_runtime.model_pool._local_model_loader import ModelLoader
+from async_model_gateway.model_runtime.model_pool.loaders._model_loader import ModelLoader
 from async_model_gateway.model_runtime.model_pool.pool import ModelPool
 
 
