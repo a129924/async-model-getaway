@@ -17,6 +17,7 @@
 
 ### Workflow / Planning
 
+- `scope-draft-plan`
 - `plan-creator`
 - `plan-reviewer`
 - `plan-step-tracker`
