@@ -51,8 +51,7 @@ class _FailureExecutor(ModelExecutor[_Runtime, _Invocation, _Result]):
 
 
 @pytest.mark.asyncio
-async def test_executor_marks_used_after_gate_acquisition_and_preserves_result_identity(
-) -> None:
+async def test_executor_marks_used_after_gate_acquisition_and_preserves_result_identity() -> None:
     runtime = _Runtime()
     invocation = _Invocation()
     result = _Result()
@@ -103,8 +102,7 @@ async def test_executor_preserves_failure_and_cancellation_identity_and_releases
 
 
 @pytest.mark.asyncio
-async def test_onnx_executor_marks_used_after_gate_acquisition_then_fails_closed_and_releases_gate(
-) -> None:
+async def test_onnx_executor_marks_used_then_fails_closed_and_releases_gate() -> None:
     gate = asyncio.Semaphore(1)
     await gate.acquire()
     model = LoadedRuntimeModel(runtime=object(), execution_gate=gate)

@@ -51,9 +51,7 @@ def test_loader_package_is_private_and_model_loader_is_split_into_its_own_module
 def test_onnx_runtime_protocol_declares_only_get_providers() -> None:
     providers_signature = inspect.signature(_OnnxRuntime.get_providers)
 
-    assert {name for name in _OnnxRuntime.__dict__ if not name.startswith("_")} == {
-        "get_providers"
-    }
+    assert {name for name in _OnnxRuntime.__dict__ if not name.startswith("_")} == {"get_providers"}
     assert tuple(providers_signature.parameters) == ("self",)
     assert providers_signature.return_annotation == "list[str]"
 
