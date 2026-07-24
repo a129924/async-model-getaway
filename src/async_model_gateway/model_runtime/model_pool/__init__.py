@@ -1,5 +1,3 @@
-"""Public package boundary for local runtime-model acquisition."""
+"""Internal package boundary for local runtime acquisition."""
 
-from .pool import ModelPool
-
-__all__ = ["ModelPool"]
+__all__: list[str] = []

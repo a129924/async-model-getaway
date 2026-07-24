@@ -1,0 +1,130 @@
+topic: loaded-runtime-binding-refactor
+phase: tdd-test-authoring
+status: COMPLETE
+verdict: red-tests-ready
+authored_on: "2026-07-24"
+d1_verdict:
+  verdict: non-trivial
+  reason: >-
+    The topic changes internal async composition, generic runtime ownership,
+    semaphore/timestamp/cancellation behavior, package exports, and static
+    binding-continuity constraints.
+behavior_contract:
+  source: plan/loaded-runtime-binding-refactor/loaded-runtime-binding-refactor.spec.md
+  active_acceptance_criteria:
+    - AC-1
+    - AC-2
+    - AC-3
+    - AC-4
+    - AC-5
+    - AC-6
+    - AC-7
+    - AC-8
+test_mapping:
+  - requirement_id: AC-1
+    test_case_name: test_composition_resolves_once_then_preserves_binding_through_pool_and_executor
+    coverage_category: integration_points
+  - requirement_id: AC-2
+    test_case_name: test_composition_resolves_once_then_preserves_binding_through_pool_and_executor
+    coverage_category: happy_path
+  - requirement_id: AC-3
+    test_case_name: test_pool_wraps_raw_runtime_from_the_injected_loader_with_requested_gate
+    coverage_category: state_side_effects
+  - requirement_id: AC-3
+    test_case_name: test_pool_is_uncached_and_does_not_retain_the_injected_loader
+    coverage_category: boundary_edge
+  - requirement_id: AC-4
+    test_case_name: test_executor_does_not_mark_queued_request_before_its_gate_is_acquired
+    coverage_category: boundary_edge
+  - requirement_id: AC-5
+    test_case_name: test_executor_preserves_failure_and_cancellation_identity_and_releases_gate
+    coverage_category: error_exception
+  - requirement_id: AC-6
+    test_case_name: test_executor_source_has_no_binding_owner_or_late_dispatch
+    coverage_category: boundary_edge
+  - requirement_id: AC-7
+    test_case_name: test_model_pool_package_reexports_no_implementation_types
+    coverage_category: public_contract
+  - requirement_id: AC-7
+    test_case_name: test_runtime_model_package_reexports_no_implementation_types
+    coverage_category: public_contract
+  - requirement_id: AC-8
+    test_case_name: check_binding_preserves_loader_executor_runtime_pairing
+    coverage_category: static_typing
+  - requirement_id: AC-8
+    test_case_name: test_onnx_loader_rejects_options_before_constructing_a_session
+    coverage_category: regression
+validation_checks:
+  d1_decision: passed
+  behavior_contract_source: plan/loaded-runtime-binding-refactor/loaded-runtime-binding-refactor.spec.md
+  requirements_mapped: true
+  public_contract_coverage: true
+  test_categories_present:
+    happy_path: true
+    error_exception: true
+    boundary_edge: true
+    state_side_effects: true
+    integration_points: true
+  expected_initial_status: red
+  production_code_modified: false
+  approved_plan_review:
+    path: plan/loaded-runtime-binding-refactor/loaded-runtime-binding-refactor.plan-review.json
+    verdict: approved
+    passed: true
+  human_check:
+    path: plan/loaded-runtime-binding-refactor/loaded-runtime-binding-refactor.human-check.json
+    exact_content: '{"status":"cleared_for_implementation"}'
+    passed: true
+  production_baseline_guard:
+    command: git diff --name-only -- src
+    result: no output
+    passed: true
+  source_governance:
+    static_imports_only: true
+    dynamic_module_loading_matches: []
+    command: >-
+      rg -n '(importlib|__import__|spec_from_file_location|SourceFileLoader)'
+      declared-test-paths
+    passed: true
+  focused_pytest:
+    command: >-
+      uv run --extra onnx pytest --no-cov tests/model_runtime/runtime_model
+      tests/model_runtime/model_pool tests/model_runtime/model_execution
+      tests/model_runtime/test_local_runtime_composition.py -q --tb=short
+    exit_code: 2
+    expected_nonzero: true
+    result: 5 collection errors in 0.22s
+    failing_tests:
+      - test_local_model_loader.py: ModelLoader is not implemented
+      - test_model_pool.py: ModelLoader is not implemented
+      - test_onnx_local_runtime_acquisition.py: _OnnxModelLoader is not implemented
+      - test_model_execution.py: ModelExecutor is not implemented
+      - test_local_runtime_composition.py: composition module is not implemented
+    failure_matches_unimplemented_approved_boundary: true
+    passed: true
+  dedicated_pyright:
+    command: >-
+      uv run --extra onnx pyright --project
+      plan/loaded-runtime-binding-refactor/pyrightconfig.json
+      tests/typecheck/loaded_runtime_binding_refactor.py
+    exit_code: 0
+    expected_initial_status: red
+    result: 0 errors, 0 warnings, 0 informations
+    fixture_override_signature: >-
+      _Loader.load uses the abstract ModelLoader parameter name `artifact`.
+    passed: true
+  authored_test_quality:
+    command: >-
+      uv run --extra onnx ruff check declared-test-paths
+      plan/loaded-runtime-binding-refactor
+    exit_code: 0
+    passed: true
+  diff_check:
+    command: git diff --check
+    exit_code: 0
+    passed: true
+issues: []
+next_step: >-
+  Dispatch an independent Implementer to implement only the approved internal
+  runtime resource, loader, executor, binding, pool, and composition changes,
+  then rerun the focused pytest and dedicated Pyright commands for GREEN evidence.

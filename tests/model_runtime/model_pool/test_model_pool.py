@@ -1,4 +1,4 @@
-"""RED coverage for ModelPool acquisition and private-loader wiring."""
+"""RED coverage for internal injected-loader pool acquisition."""
 
 from __future__ import annotations
 
@@ -8,134 +8,79 @@ from typing import cast
 import pytest
 
 from async_model_gateway.model_runtime.model_artifact import LoaderFamily, ModelArtifact
-from async_model_gateway.model_runtime.model_pool import ModelPool
-from async_model_gateway.model_runtime.model_pool import pool as pool_module
-from async_model_gateway.model_runtime.model_pool._local_model_loader import LocalModelLoader
-from async_model_gateway.model_runtime.runtime_model import LoadedRuntimeModel
+from async_model_gateway.model_runtime.model_pool._local_model_loader import ModelLoader
+from async_model_gateway.model_runtime.model_pool.pool import ModelPool
 
 
-class _TestLoadedRuntimeModel(LoadedRuntimeModel[object]):
-    """Supply opaque test sentinels without a production construction factory."""
+class _RecordingLoader(ModelLoader[object]):
+    """Return one raw runtime and record every injected pool call."""
 
-    __slots__ = ("_loader_family", "_provider_model")
+    def __init__(self, runtime: object) -> None:
+        self.runtime = runtime
+        self.artifacts: list[ModelArtifact] = []
 
-    def __init__(self, *, loader_family: LoaderFamily, provider_model: object) -> None:
-        self._loader_family = loader_family
-        self._provider_model = provider_model
-
-    @property
-    def loader_family(self) -> LoaderFamily:
-        return self._loader_family
-
-    def _provider_runtime(self) -> object:
-        return self._provider_model
+    async def load(self, artifact: ModelArtifact) -> object:
+        self.artifacts.append(artifact)
+        return self.runtime
 
 
-def _artifact(loader_family: LoaderFamily) -> ModelArtifact:
-    """Build a valid artifact while keeping the route choice explicit."""
+def _artifact() -> ModelArtifact:
     return ModelArtifact(
-        loader_family=loader_family,
-        artifact_path="models/not-inferred.onnx",
-        loader_options={"family": loader_family.value},
+        loader_family=LoaderFamily.ONNX,
+        artifact_path="models/internal-runtime.onnx",
+        loader_options={},
     )
 
 
 @pytest.mark.asyncio
-async def test_model_pool_acquire_retains_loader_and_returns_typed_handle(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """One pool construction must retain one loader for all opaque acquires."""
-    factory_calls: list[None] = []
-    loader_calls: list[ModelArtifact] = []
-    sentinel = _TestLoadedRuntimeModel(
-        loader_family=LoaderFamily.PICKLE,
-        provider_model=object(),
-    )
-    loader = LocalModelLoader()
+async def test_pool_wraps_raw_runtime_from_the_injected_loader_with_requested_gate() -> None:
+    runtime = object()
+    loader = _RecordingLoader(runtime)
+    artifact = _artifact()
 
-    async def load(artifact: ModelArtifact) -> LoadedRuntimeModel[object]:
-        loader_calls.append(artifact)
-        return sentinel
+    loaded = await ModelPool().acquire(artifact, loader=loader, max_concurrency=1)
 
-    def create_loader() -> LocalModelLoader:
-        factory_calls.append(None)
-        return loader
-
-    monkeypatch.setattr(loader, "load", load)
-    monkeypatch.setattr(pool_module, "_create_local_model_loader", create_loader)
-    pool = ModelPool()
-    first_artifact = _artifact(LoaderFamily.PICKLE)
-    second_artifact = _artifact(LoaderFamily.ONNX)
-
-    first_result = await pool.acquire(first_artifact)
-    second_result = await pool.acquire(second_artifact)
-
-    assert first_result is sentinel
-    assert second_result is sentinel
-    assert factory_calls == [None]
-    assert loader_calls == [first_artifact, second_artifact]
+    assert loader.artifacts == [artifact]
+    assert loaded.runtime is runtime
+    assert isinstance(loaded.execution_gate, asyncio.Semaphore)
+    assert loaded.execution_gate.locked() is False
 
 
 @pytest.mark.asyncio
-async def test_model_pool_acquire_rejects_non_artifact_before_loader_call(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Invalid public input must fail before the retained loader receives a call."""
-    loader_calls: list[ModelArtifact] = []
-    loader = LocalModelLoader()
-
-    async def load(artifact: ModelArtifact) -> LoadedRuntimeModel[object]:
-        loader_calls.append(artifact)
-        return _TestLoadedRuntimeModel(
-            loader_family=artifact.loader_family,
-            provider_model=object(),
-        )
-
-    monkeypatch.setattr(loader, "load", load)
-    monkeypatch.setattr(pool_module, "_create_local_model_loader", lambda: loader)
+async def test_pool_is_uncached_and_does_not_retain_the_injected_loader() -> None:
+    loader = _RecordingLoader(object())
     pool = ModelPool()
+
+    first = await pool.acquire(_artifact(), loader=loader, max_concurrency=1)
+    second = await pool.acquire(_artifact(), loader=loader, max_concurrency=1)
+
+    assert first is not second
+    assert loader.artifacts == [_artifact(), _artifact()]
+    assert not hasattr(pool, "_loader")
+    assert not hasattr(pool, "_models")
+    assert not hasattr(pool, "_binding_resolver")
+    assert not hasattr(pool, "_executor")
+
+
+@pytest.mark.asyncio
+async def test_pool_rejects_non_artifact_before_calling_injected_loader() -> None:
+    loader = _RecordingLoader(object())
 
     with pytest.raises(TypeError):
-        await pool.acquire(cast(ModelArtifact, object()))
+        await ModelPool().acquire(cast(ModelArtifact, object()), loader=loader, max_concurrency=1)
 
-    assert loader_calls == []
-
-
-@pytest.mark.asyncio
-async def test_model_pool_acquire_propagates_loader_failure_unchanged(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """A retained loader exception must escape without boundary translation."""
-    failure = RuntimeError("loader failed")
-    loader = LocalModelLoader()
-
-    async def load(_artifact: ModelArtifact) -> LoadedRuntimeModel[object]:
-        raise failure
-
-    monkeypatch.setattr(loader, "load", load)
-    monkeypatch.setattr(pool_module, "_create_local_model_loader", lambda: loader)
-
-    with pytest.raises(RuntimeError) as raised:
-        await ModelPool().acquire(_artifact(LoaderFamily.TORCH))
-
-    assert raised.value is failure
+    assert loader.artifacts == []
 
 
 @pytest.mark.asyncio
-async def test_model_pool_acquire_propagates_cancellation_unchanged(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Cancellation must remain owned by the retained loader awaitable."""
-    cancellation = asyncio.CancelledError()
-    loader = LocalModelLoader()
+async def test_pool_propagates_loader_cancellation_unchanged() -> None:
+    cancellation = asyncio.CancelledError("loader cancellation")
 
-    async def load(_artifact: ModelArtifact) -> LoadedRuntimeModel[object]:
-        raise cancellation
+    class _CancelledLoader(ModelLoader[object]):
+        async def load(self, _artifact: ModelArtifact) -> object:
+            raise cancellation
 
-    monkeypatch.setattr(loader, "load", load)
-    monkeypatch.setattr(pool_module, "_create_local_model_loader", lambda: loader)
+    with pytest.raises(asyncio.CancelledError) as caught:
+        await ModelPool().acquire(_artifact(), loader=_CancelledLoader(), max_concurrency=1)
 
-    with pytest.raises(asyncio.CancelledError) as raised:
-        await ModelPool().acquire(_artifact(LoaderFamily.ONNX))
-
-    assert raised.value is cancellation
+    assert caught.value is cancellation
