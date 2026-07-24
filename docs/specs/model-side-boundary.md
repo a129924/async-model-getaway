@@ -4,14 +4,14 @@
 
 這份文件定義 model side 的正式共享詞彙與責任邊界。
 
-目前 model side 固定由四個業務名詞構成：
+目前 model side 固定由三個業務名詞構成：
 
 - `ModelRegistry`
 - `ModelPool`
 - `ModelGateway`
-- `ModelExecution`
 
-`runtime-model` 則是 provider boundary 與 execution boundary 之間的 unified consumption surface。
+local runtime binding 與 execution 是 internal implementation concern，不是業務層或
+package-consumer 的 surface。
 
 ## `ModelRegistry`
 
@@ -59,19 +59,15 @@ gateway / registry 不做語意等價判斷；只要 `model-payload` material �
 
 ## `ModelPool`
 
-`ModelPool` 是 local 路徑的最小 public acquisition boundary。
+`ModelPool` 是 local 路徑的 internal acquisition resource，不是 public package
+boundary。internal composition 在 pool acquisition 前解析一組 Loader、Executor 與
+concurrency policy；pool 只接收該 Loader，載入 raw provider runtime，並建立 concrete
+generic `LoadedRuntimeModel`。pool 不保有 resolver、executor、cache 或 retained loader
+state，也不選擇 executor。
 
-目前 repo 已在 `async_model_gateway.model_runtime.model_pool` package root
-公開 `ModelPool`，其唯一 public acquisition method 是 async
-`acquire(self, artifact: ModelArtifact) -> LoadedRuntimeModel`。一個 pool instance
-在建立時保有一個 private `LocalModelLoader`，並直接 await 其 typed load 結果。
-
-這個實作 slice 只負責將有效 `ModelArtifact` 交給 retained private loader；它不宣稱
-local model availability、cache/reuse、上下載、close/unload 或其他 lifecycle policy
-已完成。它以 `LoadedRuntimeModel` 作 abstract opaque acquisition-handle contract；provider
-runtime 不穿透 public boundary。private `LocalModelLoader` 在 acquisition 完成後建立
-loader-local private handle，保存 local provider runtime 與 explicit `LoaderFamily`
-provenance，並以 non-public internal handoff 交給最小 `ModelExecution` boundary。
+這個實作 slice 不宣稱 local model availability、cache/reuse、上下載、close/unload 或
+其他 lifecycle policy 已完成。runtime 不穿透 public boundary，且 `ModelPool` 沒有
+package root re-export 或 public caller。
 
 它不負責：
 
@@ -81,12 +77,12 @@ provenance，並以 non-public internal handoff 交給最小 `ModelExecution` bo
 - remote model side boundary
 - 把 local runtime taxonomy 提前暴露成 canonical input 欄位
 
-## `LocalModelLoader`
+## Internal Loader 與 Runtime Binding
 
-`LocalModelLoader` 是 `ModelPool` 內部的 private local acquisition sub-boundary，
-不是 top-level public owner。
-
-它的輸入是 `model_artifact`，而不是 `model-payload`。
+generic `ModelLoader` 與 concrete ONNX Loader 是 internal local acquisition
+sub-boundary，不是 top-level public owner。Loader 的輸入是 `model_artifact`，而不是
+`model-payload`，並直接回傳 provider-native runtime；它不建立 `LoadedRuntimeModel`、
+不管理 execution gate，也不選擇 Executor。
 
 目前 repo 已先落地這個 shared read contract 的最小 public owner：
 `async_model_gateway.model_runtime.model_artifact`。`model_runtime` 是 umbrella
@@ -99,29 +95,22 @@ root，而 `model_artifact` package root 只公開 `ModelArtifact` 與
 - `LoaderFamily` 是 bounded enum，starter vocabulary 只允許 `pickle`、`torch`、`onnx`
 - loader family 必須由 producer 顯式提供，不得由 path、副檔名、artifact content 或 fallback heuristics 推導
 
-目前實作只根據 `artifact.loader_family` 作 explicit dispatch：
+private resolver 只根據 `artifact.loader_family` 作 explicit dispatch，並在 acquisition
+前建立 Loader / Executor pairing：
 
-- `LoaderFamily.PICKLE` 直接 await private `_load_pickle(...)`
-- `LoaderFamily.TORCH` 直接 await private `_load_torch(...)`
-- `LoaderFamily.ONNX` 直接 await private `_load_onnx(...)`
+- `LoaderFamily.ONNX` 配對 ONNX Loader、ONNX Executor 與 `max_concurrency=1`
+- `LoaderFamily.PICKLE` 與 `LoaderFamily.TORCH` 在 loading 前以 `NotImplementedError` fail closed
 - closed enum 的不可達 fallback 使用 `assert_never(...)`
 
-目前 `PICKLE` 與 `TORCH` handler 都是 no-I/O placeholder，維持
-`NotImplementedError`。`ONNX` handler 則透過 private helper 建立 CPU-only
-`onnxruntime.InferenceSession`，再直接建構 loader-local private opaque handle；它只做
-acquisition，不執行 inference。session 只在 `LocalModelLoader.load(...)` 選定 ONNX
-route 時 lazy 建立，而非 application startup 預先建立。已落地的 local flow 是：
-
-`ModelArtifact → LocalModelLoader → provider session → LoadedRuntimeModel → ModelExecution → result`。
-
-其中 result 僅指 injected typed invoker 的回傳值，不建立 ONNX result schema 或 adapter。
-所有 route 都不根據 `artifact_path`、副檔名或內容推導 family。
+ONNX Loader 透過 private helper lazy 建立 CPU-only `onnxruntime.InferenceSession`；它只
+做 acquisition，不執行 inference。session 不在 application startup 建立，也不經由
+public surface 交付。所有 route 都不根據 `artifact_path`、副檔名或內容推導 family。
 
 它不負責：
 
 - 依賴 `model-payload` 猜 loader
 - 擁有 identity authority
-- 對外暴露 top-level business owner 身分
+- 對外暴露 top-level business owner 身分或 public package entrypoint
 - 除 ONNX session acquisition 外的 artifact I/O、provider framework 或 lifecycle policy
 
 ## Fail-Closed 原則
@@ -155,53 +144,20 @@ remote 目前只有單一實際需求，不需要先做更細 provider 分類。
 - local model runtime lifecycle
 - `payload-hash` authority
 
-## `ModelExecution`
+## Internal Executor 與 Loaded Runtime Resource
 
-`ModelExecution` 是 model side 的 invocation semantics owner。
+internal generic Executor 擁有 loaded runtime 的單次 invocation lifecycle。它接收
+同一個 pre-resolved binding 所建立的 `LoadedRuntimeModel`，在成功取得其 Semaphore
+後更新 `last_used_at`，再 direct-await concrete invocation；一般例外與 cancellation
+原樣傳播。Executor 不載入模型、不管理 pool、不長期持有 runtime，也不根據 runtime
+type、metadata 或 loader family 做 late dispatch。
 
-它與 `ModelPool` / `ModelGateway` 並列，是 sibling boundary，不是 provider
-boundary 的 child concern。
-
-目前 repo 已在 `async_model_gateway.model_runtime.model_execution` package root
-公開 generic `ModelExecution`。constructor 只接收 injected typed async callable；
-`execute(...)` 從 `LoadedRuntimeModel` 的 non-public handoff 取得 provider runtime，
-再 direct-await 單次 invocation。runtime、invocation 與 result 不經轉換，一般例外與
-cancellation 原樣傳播。它是唯一的 production handoff consumer，且不依
-`loader_family` 做 provider-specific `match/case` dispatch。
-
-它負責：
-
-- 消費統一的 `runtime-model` surface
-- 擁有 model invocation semantics
-- 作為 `orchestrator` 委派 execution 的正式 boundary
-- 在 execution 階段承接 local / remote provider 之後的統一消費責任
-
-它不負責：
-
-- local `runtime-model` provider / lifecycle
-- remote `runtime-model` provider / access
-- `payload-hash` authority 或 registry freshness authority
-- response cache identity authority
-- 把 `features` 升格成 provider-specific execution contract
-- 建立 provider framework 或執行 loader I/O
-- orchestrator wiring 或 remote execution wiring
-- cache/reuse、close/unload、timeout、retry 或 task lifecycle
-
-## `runtime-model`
-
-`runtime-model` 是 `ModelPool` / `ModelGateway` 與 `ModelExecution` 之間的
-unified consumption surface。
-
-它不是 system-level execution owner。
-
-目前 `async_model_gateway.model_runtime.runtime_model` 已公開 abstract nominal
-`LoadedRuntimeModel`。它唯一的 public semantic 是 readonly `loader_family`；
-`_provider_runtime()` 是非 public 的 model-side internal handoff，只由目前的最小
-`ModelExecution` boundary 消費。concrete `_LocalLoadedRuntimeModel` 的 construction
-ownership 位於 private `LocalModelLoader`，而非 public runtime-model contract module；
-它不從 package root export，因此 provider-specific object 不會成為 package consumer
-contract；application / orchestrator 不可把它當成 provider session getter。這不建立
+`LoadedRuntimeModel` 是 concrete generic internal resource，而不是 abstract opaque
+public contract。它只保存 provider runtime、execution gate、`loaded_at` 與
+`last_used_at`；不提供 `execute`、`invoke`、`load`、provider handoff 或 lifecycle API。
+它由 `ModelPool` 建立，不保存 Loader、Executor、family 或 registry。這不建立 public
 executable runtime model、provider adapter、ONNX invoker、除 ONNX session acquisition
 外的 artifact I/O、remote execution wiring 或 lifecycle policy。
 
-對外能力邊界在目前階段採統一入口；能力差異先收斂在 `features`，不先拆成多方法名公開 surface。
+對外能力邊界在目前階段沒有 local runtime entrypoint；能力差異仍先收斂在 `features`，
+不先拆成多方法名公開 surface。

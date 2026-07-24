@@ -23,7 +23,7 @@
 - packaged application scaffold
 - 最小 CLI entrypoint
 
-目前 package version baseline 為 `0.6.0`。repo 目前已落地最小
+目前 package version baseline 為 `0.7.0`。repo 目前已落地最小
 `ModelRegistry` boundary，並補齊最小 operational `ResponseCache`
 boundary：`async_model_gateway.response_cache` 公開
 `ResponseCache`、`ResponseCacheEntry`、`ResponseCacheKey` 與
@@ -34,27 +34,17 @@ contract 納入 baseline：
 `async_model_gateway.model_runtime.model_artifact` 公開 `ModelArtifact` 與
 `LoaderFamily`，並由 `model_runtime` 作為後續 model-runtime family layout 的
 umbrella root，用來表達 shared read contract 的最小 artifact metadata 與顯式
-loader family vocabulary。repo 也已落地最小 local acquisition boundary：
-`async_model_gateway.model_runtime.model_pool.ModelPool` 以 async
-`acquire(...)` 消費 `ModelArtifact`，並保有私有的 `LocalModelLoader`。該 loader
-只依 `LoaderFamily` 的顯式 `pickle`、`torch`、`onnx` 分支路由，且以
-`assert_never(...)` 收束 closed enum 的不可達 fallback；它不依 path 或內容猜測
-family。repo 也已在
-`async_model_gateway.model_runtime.runtime_model` 落地 abstract
-`LoadedRuntimeModel` consumption contract：其唯一 public semantic 是
-`loader_family`；ONNX route 會在這條 acquisition path lazy 建立 CPU-only provider
-session，並由 loader-local private opaque handle 保存。provider runtime 只透過
-non-public internal handoff 交給最小 `ModelExecution` boundary，並非 application /
-orchestrator 可取得的 session 或 `LoadedRuntimeModel.execute(...)` API。
-`ModelPool.acquire(...)` 與 private loader 的 return type 已收窄為這個 contract。
-repo 現在也已在
-`async_model_gateway.model_runtime.model_execution` 公開 generic `ModelExecution`：
-它以 injected typed async callable 在內部消費 provider runtime 與 invocation，並
-direct-await 單次呼叫後回傳 result；一般例外與 cancellation 會原樣傳播。因此已落地的
-local path 為 `ModelArtifact → LocalModelLoader → provider session →
-LoadedRuntimeModel → ModelExecution → result`。這不代表真實 provider invocation /
-ONNX invoker、provider framework、完整 orchestration、remote execution、lifecycle、
-timeout 或 retry 已完成。
+loader family vocabulary。repo 也已落地 internal-only local runtime binding：私有
+composition 會在 pool acquisition 前，依顯式 `LoaderFamily` 解析同一組 Loader、
+Executor 與 concurrency policy；ONNX route 才 lazy 建立 CPU-only provider session。
+`ModelPool` 以注入的 generic Loader 建立 concrete generic
+`LoadedRuntimeModel`，後者只保存 runtime、execution gate 與 aware-UTC 使用時間。
+Executor 在取得 gate 後更新時間並直接 await invocation；一般例外與 cancellation
+原樣傳播。這些 runtime composition、pool、loader、executor 與 loaded model 都沒有
+public package entrypoint，provider session 亦不會穿透 application / orchestrator
+boundary。PICKLE 與 TORCH 仍 fail closed；真實 provider invocation / ONNX invoker、
+provider framework、完整 orchestration、remote execution、lifecycle、timeout 與 retry
+仍未完成。
 root package 目前只公開 `__version__` 與 `main`；`ModelRegistry` 由
 `async_model_gateway.model_registry` 提供，
 `async_model_gateway.model_registry.stores` 提供 submodule public 的
@@ -76,11 +66,10 @@ flow 或 broader cache architecture 已完成。
 - local / remote model source
 
 這些詞彙大多數仍屬設計層級，用來做規劃與對齊；目前只有最小
-model-registry boundary、最小 operational response-cache boundary，以及狹義的
-model-artifact、local acquisition、runtime-model consumption 與 `ModelExecution`
-boundary 已落地。除此之外，較寬的 `features` semantics、response cache
-architecture、`orchestrator` 與完整 `runtime-model` flow 仍不是已完成的 Python
-type 或 runtime feature。
+model-registry boundary、最小 operational response-cache boundary，以及 internal
+model-artifact / local runtime binding slice 已落地。除此之外，較寬的 `features`
+semantics、response cache architecture、`orchestrator` 與完整 `runtime-model` flow
+仍不是已完成的 Python type 或 runtime feature。
 
 目前已落地的最小 model-registry boundary 包含：
 
@@ -112,20 +101,15 @@ type 或 runtime feature。
 - `async_model_gateway.model_runtime.model_artifact.ModelArtifact`
 - `async_model_gateway.model_runtime.model_artifact.LoaderFamily`
 
-其中 `ModelArtifact` 只負責 shared read contract。最小 `ModelPool` 只提供
-async local acquisition；其私有 `LocalModelLoader` 消費這個 contract 並作 explicit
-family dispatch。現階段只有 ONNX route 會 lazy 建立 provider session，再以
-`LoadedRuntimeModel` 作 opaque typed return boundary；PICKLE 與 TORCH 仍 fail closed。
-未來的 provider invocation/framework 與完整 lifecycle 仍 deferred。
+其中 `ModelArtifact` 只負責 shared read contract。internal composition 會在 pool
+acquisition 前，依顯式 family 解析配對的 Loader 與 Executor；ONNX route 會 lazy 建立
+provider session，並由 pool 建立 concrete `LoadedRuntimeModel`。PICKLE 與 TORCH 仍
+fail closed；provider runtime 不對 package consumer 開放。未來的 provider invocation /
+framework 與完整 lifecycle 仍 deferred。
 
-目前已落地的最小 model-execution boundary 包含：
-
-- `async_model_gateway.model_runtime.model_execution.ModelExecution`
-- injected typed async callable seam
-- 單次 invocation 的 direct-await
-- 一般例外與 cancellation 原樣傳播
-
-它只擁有最小 invocation semantics；真實 provider invocation、loader I/O、完整
+目前已落地的 internal runtime slice 包含 resolve-before-acquire 的 binding continuity、
+generic loader/pool acquisition、被 Semaphore 保護的 execution lifecycle 與 aware-UTC
+timestamps。它不提供 public runtime entrypoint；真實 provider invocation、完整
 orchestration、remote execution、lifecycle、timeout 與 retry 仍 deferred。
 
 在目前階段，`model_source_kind` 只鎖 `local | remote`，而 capability 差異先收斂在 `features`，不先拆成多方法名公開介面。

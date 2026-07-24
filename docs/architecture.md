@@ -50,15 +50,15 @@ shared read contract：`model_runtime` 是 umbrella root，而
 3. Derive a `ResponseCacheKey` from payload identity and `features`
 4. Check response cache
 5. Return cached response on hit
-6. Acquire a `runtime-model` from `ModelPool` or `ModelGateway` on miss
-7. Delegate invocation of that `runtime-model` to `ModelExecution`
+6. Use the relevant model-side provider path on miss
+7. Delegate any provider invocation through its model-side boundary
 8. Persist the generated response into response cache
 9. Return the response
 
 這裡描述的是高層概念 flow。除了最小 `ModelRegistry` boundary、`model-payload`
-hashing core、最小 keyed `response_cache` boundary，以及狹義的
-`ModelExecution` invocation seam 已落地外，其餘 orchestration 與完整 runtime
-acquisition/execution flow 仍未在 repository 中落地。
+hashing core、最小 keyed `response_cache` boundary，以及 internal local runtime slice
+已落地外，其餘 orchestration 與完整 runtime acquisition/execution flow 仍未在
+repository 中落地。
 
 ## Responsibility Boundaries
 
@@ -84,10 +84,10 @@ async `ResponseCacheStore` port 消費這個 key 與 `ResponseCacheEntry`，而�
 
 目前 model side 被理解為負責：
 
-- `ModelPool` 作為 local `runtime-model` provider / lifecycle owner
+- internal local runtime composition 作為 local binding owner
+- `ModelPool` 作為 internal local runtime acquisition resource
 - `ModelGateway` 作為 remote `runtime-model` provider / access boundary
-- `ModelExecution` 作為 `runtime-model` invocation semantics owner
-- `runtime-model` 作為 provider boundary 與 execution boundary 之間的 unified consumption surface
+- internal executor 作為 loaded runtime invocation lifecycle owner
 
 local 與 remote 被視為 model-source concern，而不是不同的 gateway mode。
 
@@ -96,31 +96,24 @@ local 與 remote 被視為 model-source concern，而不是不同的 gateway mod
 explicit `LoaderFamily` 與最小 artifact metadata，不承擔 loader runtime、
 artifact I/O 或 identity authority。
 
-repo 已落地其中最小的 local acquisition slice：
-`async_model_gateway.model_runtime.model_pool.ModelPool` 提供 async
-`acquire(...)`，並保有私有 `LocalModelLoader`。loader 只消費 `ModelArtifact`，以
-`LoaderFamily.PICKLE`、`LoaderFamily.TORCH`、`LoaderFamily.ONNX` 的 explicit
-`match/case` 分支選擇對應 private handler；closed enum 的不可達 fallback 使用
-`assert_never(...)`。`async_model_gateway.model_runtime.runtime_model` 已提供 abstract
-`LoadedRuntimeModel` consumption contract；它只公開 readonly `loader_family`，並以
-non-public `_provider_runtime()` 交給 `ModelExecution` 作 internal handoff。
-concrete local handle 位於 private loader module，`ModelPool` 與 private loader 均以
-此 contract 作 return type。ONNX route 會在 `LocalModelLoader.load(...)` 的 acquisition
-時 lazy 建立 CPU-only provider session，而不是 application startup 時預先建立；該
-session 不穿透 public boundary。已落地的 local flow 是：
+repo 已落地其中最小的 internal local runtime slice。private composition 先依
+`artifact.loader_family` 解析一組配對的 Loader、Executor 與 `max_concurrency`，再把
+同一個 Loader 注入 `ModelPool` acquisition，並把同一個 Executor 用於 execution；
+pool 不保有 resolver、executor、cache 或 retained loader state。它建立 concrete generic
+`LoadedRuntimeModel`，只保存 provider runtime、`asyncio.Semaphore`、loaded timestamp
+與 last-used timestamp。Executor 在成功取得 gate 後更新 last-used timestamp，再
+direct-await provider invocation；一般例外與 cancellation 原樣傳播，且不做 late
+type/family dispatch。
 
-`ModelArtifact → LocalModelLoader → provider session → LoadedRuntimeModel → ModelExecution → result`。
+ONNX Loader 在 acquisition 時 lazy 建立 CPU-only provider session，而不是 application
+startup 時預先建立；PICKLE 與 TORCH 仍在 loading 前 fail closed。local flow 是：
 
-這個 slice 的實作僅限 ONNX session acquisition；PICKLE 與 TORCH 仍 fail closed。它不
-實作 provider framework、cache、close/unload 或其他 lifecycle policy。
+`ModelArtifact → resolve binding → injected Loader → ModelPool → LoadedRuntimeModel → paired Executor → result`。
 
-repo 目前也已在 `async_model_gateway.model_runtime.model_execution` 落地最小
-generic `ModelExecution` boundary。它只接受 injected typed async callable，從
-`LoadedRuntimeModel` 取得 provider runtime 後 direct-await 單次 invocation；一般
-例外與 cancellation 原樣傳播。它不建立 provider framework，不負責 loader I/O、
-orchestrator 或 remote execution wiring，也不管理 lifecycle、timeout 或 retry。
-`_provider_runtime()` 是此 execution boundary 的 internal handoff，而非 consumer
-escape hatch；`ModelExecution` 也不依 `loader_family` 做 provider-specific dispatch。
+所有 runtime composition、pool、loader、executor 與 loaded model surface 都是 internal；
+沒有 public package export 或 compatibility adapter，provider session 也不會穿透
+application / orchestrator boundary。此 slice 不實作真實 provider invocation、provider
+framework、cache、close/unload、完整 lifecycle、timeout 或 retry。
 
 ## Shared Vocabulary
 
@@ -134,7 +127,6 @@ escape hatch；`ModelExecution` 也不依 `loader_family` 做 provider-specific 
 - `features`
 - `ModelPool`
 - `ModelGateway`
-- `ModelExecution`
 - response cache
 - `runtime-model`
 - local model source
@@ -142,8 +134,8 @@ escape hatch；`ModelExecution` 也不依 `loader_family` 做 provider-specific 
 
 這些詞彙大多仍維持在概念層，還不對應到完整的 Python API schema；目前已落地的
 狹義實作，限於最小 `ModelRegistry` boundary、`model-payload` 的 canonical hashing
-core、最小 `ModelPool` local acquisition slice、abstract `LoadedRuntimeModel`
-consumption contract，以及最小 `ModelExecution` typed async invocation seam。
+core、internal local runtime binding/acquisition/execution slice；它不提供 public
+runtime-model consumption API。
 
 ## Initialization 階段的 Out Of Scope
 
