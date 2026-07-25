@@ -9,10 +9,8 @@ from collections.abc import Callable
 from contextlib import suppress
 from pathlib import Path
 
-import onnx
 import onnxruntime
 import pytest
-from onnx import TensorProto, helper
 
 from async_model_gateway.model_runtime.model_artifact import LoaderFamily, ModelArtifact
 from async_model_gateway.model_runtime.model_pool.loaders._onnx_model_loader import (
@@ -23,6 +21,7 @@ from async_model_gateway.model_runtime.model_pool.pool import ModelPool
 
 InferenceSessionConstructor = Callable[..., object]
 InferenceSessionImporter = Callable[[], InferenceSessionConstructor]
+_MINIMAL_IDENTITY_MODEL_PATH = Path(__file__).with_name("fixtures") / "minimal_identity.onnx"
 
 
 def _return_constructor(
@@ -34,21 +33,6 @@ def _return_constructor(
     return importer
 
 
-def _write_identity_model(path: Path) -> None:
-    graph = helper.make_graph(
-        [helper.make_node("Identity", inputs=["input"], outputs=["output"])],
-        "identity",
-        [helper.make_tensor_value_info("input", TensorProto.FLOAT, [1])],
-        [helper.make_tensor_value_info("output", TensorProto.FLOAT, [1])],
-    )
-    model = helper.make_model(
-        graph,
-        ir_version=10,
-        opset_imports=[helper.make_operatorsetid("", 13)],
-    )
-    onnx.save_model(model, path)
-
-
 def _artifact(path: Path, *, loader_options: dict[str, object] | None = None) -> ModelArtifact:
     return ModelArtifact(
         loader_family=LoaderFamily.ONNX,
@@ -58,10 +42,8 @@ def _artifact(path: Path, *, loader_options: dict[str, object] | None = None) ->
 
 
 @pytest.fixture
-def onnx_model_path(tmp_path: Path) -> Path:
-    path = tmp_path / "identity-runtime"
-    _write_identity_model(path)
-    return path
+def onnx_model_path() -> Path:
+    return _MINIMAL_IDENTITY_MODEL_PATH
 
 
 @pytest.mark.asyncio
