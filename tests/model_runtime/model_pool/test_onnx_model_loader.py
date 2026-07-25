@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import ast
 import inspect
+import shutil
+import subprocess
+import sys
+from pathlib import Path
 
+import onnxruntime
 import pytest
 
 from async_model_gateway.model_runtime.model_artifact import LoaderFamily, ModelArtifact
@@ -17,11 +22,15 @@ from async_model_gateway.model_runtime.model_pool.loaders._onnx_model_loader imp
 )
 from async_model_gateway.model_runtime.runtime_model._onnx_runtime import _OnnxRuntime
 
+_FIXTURES_PATH = Path(__file__).with_name("fixtures")
+_GENERATOR_PATH = _FIXTURES_PATH / "build_minimal_identity_model.py"
+_MINIMAL_IDENTITY_MODEL_PATH = _FIXTURES_PATH / "minimal_identity.onnx"
 
-def _artifact() -> ModelArtifact:
+
+def _artifact(path: Path) -> ModelArtifact:
     return ModelArtifact(
         loader_family=LoaderFamily.ONNX,
-        artifact_path="models/precise-runtime.onnx",
+        artifact_path=str(path),
         loader_options={},
     )
 
@@ -56,26 +65,58 @@ def test_onnx_runtime_protocol_declares_only_get_providers() -> None:
     assert providers_signature.return_annotation == "list[str]"
 
 
-@pytest.mark.asyncio
-async def test_onnx_loader_returns_a_runtime_that_satisfies_the_precise_protocol(
-    monkeypatch: pytest.MonkeyPatch,
+def test_committed_identity_model_matches_its_generator() -> None:
+    result = subprocess.run(
+        [sys.executable, str(_GENERATOR_PATH), "--check"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_identity_model_check_detects_byte_drift_without_rewriting_artifact(
+    tmp_path: Path,
 ) -> None:
-    class _FakeOnnxRuntime:
-        def get_providers(self) -> list[str]:
-            return ["CPUExecutionProvider"]
+    generator_path = tmp_path / _GENERATOR_PATH.name
+    model_path = tmp_path / _MINIMAL_IDENTITY_MODEL_PATH.name
+    shutil.copy2(_GENERATOR_PATH, generator_path)
+    shutil.copy2(_MINIMAL_IDENTITY_MODEL_PATH, model_path)
 
-    raw_runtime = _FakeOnnxRuntime()
+    drifted_bytes = model_path.read_bytes() + b"\x00"
+    model_path.write_bytes(drifted_bytes)
 
-    async def load_onnx_runtime(artifact: ModelArtifact) -> _OnnxRuntime:
-        assert artifact.loader_family is LoaderFamily.ONNX
-        return raw_runtime
+    result = subprocess.run(
+        [sys.executable, str(generator_path), "--check"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
 
-    monkeypatch.setattr(onnx_loader_module, "load_onnx_runtime", load_onnx_runtime)
+    assert result.returncode != 0
+    assert model_path.read_bytes() == drifted_bytes
 
-    actual = await _OnnxModelLoader().load(_artifact())
 
-    assert actual is raw_runtime
-    assert actual.get_providers() == ["CPUExecutionProvider"]
+@pytest.mark.asyncio
+async def test_onnx_loader_returns_a_real_cpu_only_session_from_committed_asset() -> None:
+    session = await _OnnxModelLoader().load(_artifact(_MINIMAL_IDENTITY_MODEL_PATH))
+
+    assert isinstance(session, onnxruntime.InferenceSession)
+    assert session.get_providers() == ["CPUExecutionProvider"]
+
+
+@pytest.mark.asyncio
+async def test_onnx_loader_invalid_artifact_failure_originates_from_provider(
+    tmp_path: Path,
+) -> None:
+    invalid_model_path = tmp_path / "invalid-model.onnx"
+    invalid_model_path.write_bytes(b"not an ONNX model")
+
+    with pytest.raises(Exception) as raised:
+        await _OnnxModelLoader().load(_artifact(invalid_model_path))
+
+    assert type(raised.value).__module__.startswith("onnxruntime.")
 
 
 def test_onnx_loader_casts_only_the_optional_stub_boundary_to_the_runtime_protocol() -> None:

@@ -1,0 +1,10 @@
+{
+  "include": [
+    "../../tests/model_runtime/model_pool/fixtures/build_minimal_identity_model.py",
+    "../../tests/typecheck/onnx_minimal_model_loader_validation.py"
+  ],
+  "extraPaths": ["../../src"],
+  "pythonVersion": "3.10",
+  "typeCheckingMode": "strict",
+  "reportPrivateUsage": "none"
+}
