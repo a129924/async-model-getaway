@@ -1,0 +1,85 @@
+verdict: approved
+
+traceability_matrix:
+  - step: "1. Tester creates fresh RED coverage and the dedicated Protocol witness for the exact runtime/static evidence contract, then records only the declared RED evidence."
+    status: done
+    evidence: "tests/model_runtime/model_pool/test_onnx_model_loader.py:68; tests/model_runtime/model_pool/test_onnx_model_loader.py:79; tests/typecheck/onnx_minimal_model_loader_validation.py:17; plan/onnx-minimal-model-loader-validation/onnx-minimal-model-loader-validation.red-tests.yaml:1"
+  - step: "2. Tester creates the deterministic Identity-model generator and committed ONNX asset, including non-writing byte-drift --check behavior."
+    status: done
+    evidence: "tests/model_runtime/model_pool/fixtures/build_minimal_identity_model.py:14; tests/model_runtime/model_pool/fixtures/build_minimal_identity_model.py:37; tests/model_runtime/model_pool/fixtures/minimal_identity.onnx; tests/model_runtime/model_pool/test_onnx_model_loader.py:79"
+  - step: "3. Implementer updates tests/model_runtime/model_pool/test_onnx_model_loader.py with real Loader session/provider/invalid-artifact evidence and no inference."
+    status: done
+    evidence: "tests/model_runtime/model_pool/test_onnx_model_loader.py:102; tests/model_runtime/model_pool/test_onnx_model_loader.py:110"
+  - step: "4. Implementer updates tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py to use the committed asset while retaining existing async/error coverage."
+    status: done
+    evidence: "tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:24; tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:50; tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:65; tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:86; tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:104; tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:130"
+  - step: "5. Tester creates the topic-local strict Pyright config and the no-provider Protocol witness without changing production/global typing."
+    status: done
+    evidence: "plan/onnx-minimal-model-loader-validation/pyrightconfig.json:2; tests/typecheck/onnx_minimal_model_loader_validation.py:5"
+  - step: "6. Implementer runs validation, verifies scope/path compliance, truthfully updates step state, and hands off for independent review."
+    status: done
+    evidence: "plan/onnx-minimal-model-loader-validation/onnx-minimal-model-loader-validation.step.md:16; independent validation rerun: version preflight, generator check, focused pytest, composition pytest, topic and global Pyright, lock check, full pytest, Ruff, and diff check."
+
+scope_creep_check:
+  - non_goal: "No inference, output-value assertion, ONNX invoker, Executor behavior, GPU support, provider configuration, session lifecycle, cache, close/unload, timeout, or retry."
+    violated: no
+    evidence: "clean; real session evidence reads only get_providers() at tests/model_runtime/model_pool/test_onnx_model_loader.py:105 and tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:60."
+  - non_goal: "No change to production _OnnxRuntime, _OnnxModelLoader, ModelPool, binding, Executor, package exports, public API, dependency manifest, lockfile, global type configuration, README, docs, CI, version, release, commit, or PR state."
+    violated: no
+    evidence: "clean; changed paths are limited to declared topic tests, fixture generator/asset, witness, topic-local config, and topic evidence."
+  - non_goal: "No Any, cast, inline type ignore, dynamic import, fabricated modules, fake importer, or monkeypatch of real Loader/provider in the new evidence."
+    violated: no
+    evidence: "clean; runtime tests use static onnxruntime imports at tests/model_runtime/model_pool/test_onnx_model_loader.py:12 and tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:12; the new drift test copies and executes the real generator at tests/model_runtime/model_pool/test_onnx_model_loader.py:82."
+
+contract_check:
+  - item: "No public API changes. _OnnxRuntime remains private and minimal; _OnnxModelLoader.load(self, artifact: ModelArtifact) -> _OnnxRuntime remains its production return contract."
+    status: matches
+    detail: "No production files changed; the unchanged loader annotation is at src/async_model_gateway/model_runtime/model_pool/loaders/_onnx_model_loader.py:65 and the one-method Protocol is at src/async_model_gateway/model_runtime/runtime_model/_onnx_runtime.py:8."
+  - item: "Runtime isinstance proof is test-only provider evidence, not a new static contract."
+    status: matches
+    detail: "Runtime tests statically import onnxruntime, while the strict witness imports only ModelArtifact, _OnnxModelLoader, and _OnnxRuntime."
+
+test_plan_check:
+  - case_type: "happy path"
+    status: present
+    location: "tests/model_runtime/model_pool/test_onnx_model_loader.py:68; tests/model_runtime/model_pool/test_onnx_model_loader.py:102"
+  - case_type: "invalid input"
+    status: present
+    location: "tests/model_runtime/model_pool/test_onnx_model_loader.py:110; tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:65"
+  - case_type: "edge case: --check fails on byte drift without rewriting the asset"
+    status: present
+    location: "tests/model_runtime/model_pool/test_onnx_model_loader.py:79"
+  - case_type: "regression"
+    status: present
+    location: "tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:86; tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:104; tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py:130; tests/model_runtime/test_local_runtime_composition.py:134"
+  - case_type: "backward compatibility"
+    status: present
+    location: "tests/typecheck/onnx_minimal_model_loader_validation.py:17; tests/model_runtime/model_pool/test_onnx_model_loader.py:60"
+
+validation:
+  - command: "locked ONNX and ONNX Runtime version preflight"
+    result: passed
+  - command: "generator --check"
+    result: passed
+  - command: "focused Loader pytest"
+    result: "passed (8 tests)"
+  - command: "focused acquisition pytest"
+    result: "passed (5 tests)"
+  - command: "composition regression pytest"
+    result: "passed (4 tests)"
+  - command: "topic-local strict Pyright"
+    result: passed
+  - command: "uv lock --check"
+    result: passed
+  - command: "full pytest"
+    result: "passed (176 tests)"
+  - command: "full Pyright"
+    result: passed
+  - command: "Ruff"
+    result: passed
+  - command: "git diff --check"
+    result: passed
+
+blocking_issues: []
+
+next_gate: "Implementation-plan review is approved; the topic may proceed to independent python-code-review."

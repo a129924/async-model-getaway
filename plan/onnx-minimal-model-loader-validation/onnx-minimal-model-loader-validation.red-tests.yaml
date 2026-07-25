@@ -1,0 +1,80 @@
+verdict: red-tests-ready
+d1_verdict:
+  verdict: non-trivial
+  reason: >-
+    The topic adds a deterministic binary-artifact contract, real provider-backed
+    Loader evidence, async acquisition regression coverage, and a bounded strict
+    static witness without changing the production boundary.
+test_mapping:
+  - requirement_id: R1
+    test_case_name: test_committed_identity_model_matches_its_generator
+    coverage_category: boundary/edge
+  - requirement_id: R2
+    test_case_name: test_onnx_loader_returns_a_real_cpu_only_session_from_committed_asset
+    coverage_category: happy path
+  - requirement_id: R3
+    test_case_name: test_onnx_loader_invalid_artifact_failure_originates_from_provider
+    coverage_category: error/exception
+  - requirement_id: R4
+    test_case_name: test_pool_wraps_a_cpu_only_onnx_session_from_the_injected_raw_loader
+    coverage_category: integration points
+  - requirement_id: R4
+    test_case_name: test_onnx_loader_moves_session_construction_off_the_event_loop_thread
+    coverage_category: state/side effects
+  - requirement_id: R4
+    test_case_name: test_onnx_loader_propagates_cancellation_without_translation
+    coverage_category: error/exception
+  - requirement_id: R5
+    test_case_name: check_loader_result_satisfies_minimum_protocol
+    coverage_category: static protocol boundary
+  - requirement_id: R6
+    test_case_name: pyrightconfig.json dedicated strict target
+    coverage_category: static configuration
+validation_checks:
+  d1_decision: non-trivial
+  behavior_contract_source: >-
+    plan/onnx-minimal-model-loader-validation/onnx-minimal-model-loader-validation.spec.md
+  requirements_mapped: true
+  public_contract_coverage: >-
+    No public contract changes are authorized. Runtime evidence uses the private
+    Loader and Protocol while preserving their production annotations.
+  test_categories_present:
+    - happy path
+    - error/exception
+    - boundary/edge
+    - state/side effects
+    - integration points
+  expected_initial_status: red
+  production_code_modified: false
+commands:
+  - command: >-
+      uv run --group dev pytest --no-cov
+      tests/model_runtime/model_pool/test_onnx_model_loader.py
+      tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py -v
+    exit_code: 1
+    result: 9 passed, 3 failed
+    failure_reason: >-
+      The generator and committed minimal_identity.onnx fixture do not exist yet.
+      The failures are test_committed_identity_model_matches_its_generator,
+      test_onnx_loader_returns_a_real_cpu_only_session_from_committed_asset, and
+      test_pool_wraps_a_cpu_only_onnx_session_from_the_injected_raw_loader.
+  - command: >-
+      uv run --group dev pyright --project
+      plan/onnx-minimal-model-loader-validation/pyrightconfig.json
+    exit_code: 0
+    result: static witness passes; Pyright reports the generator include path does not exist
+    failure_reason: >-
+      The generator is intentionally absent before implementation. The witness has
+      no onnxruntime import and the only diagnostic override is reportPrivateUsage.
+  - command: >-
+      uv run --group dev ruff check
+      tests/model_runtime/model_pool/test_onnx_model_loader.py
+      tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py
+      tests/typecheck/onnx_minimal_model_loader_validation.py
+    exit_code: 0
+    result: All checks passed.
+issues: []
+next_step: >-
+  Implementer may add only the planned fixture generator and committed asset, then
+  rerun the recorded focused validation. Do not alter production code, Loader
+  annotations, global typing configuration, dependency metadata, or runtime scope.
