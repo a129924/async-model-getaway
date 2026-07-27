@@ -6,10 +6,12 @@ from async_model_gateway.model_runtime.model_artifact import ModelArtifact
 from async_model_gateway.model_runtime.model_pool.loaders._onnx_model_loader import (
     _OnnxModelLoader,
 )
-from async_model_gateway.model_runtime.runtime_model._onnx_runtime import _OnnxRuntime
+from async_model_gateway.model_runtime.runtime_model._onnx_runtime import (
+    OnnxRuntimeSession,
+)
 
 
-def _accept_onnx_runtime(runtime: _OnnxRuntime) -> None:
+def _accept_onnx_runtime(runtime: OnnxRuntimeSession) -> None:
     """Accept only the existing minimum provider runtime protocol."""
     _ = runtime
 

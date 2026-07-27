@@ -20,7 +20,9 @@ from async_model_gateway.model_runtime.model_pool.loaders._model_loader import M
 from async_model_gateway.model_runtime.model_pool.loaders._onnx_model_loader import (
     _OnnxModelLoader,
 )
-from async_model_gateway.model_runtime.runtime_model._onnx_runtime import _OnnxRuntime
+from async_model_gateway.model_runtime.runtime_model._onnx_runtime import (
+    OnnxRuntimeSession,
+)
 
 _FIXTURES_PATH = Path(__file__).with_name("fixtures")
 _GENERATOR_PATH = _FIXTURES_PATH / "build_minimal_identity_model.py"
@@ -57,12 +59,23 @@ def test_loader_package_is_private_and_model_loader_is_split_into_its_own_module
     assert load_signature.return_annotation == "RuntimeT"
 
 
-def test_onnx_runtime_protocol_declares_only_get_providers() -> None:
-    providers_signature = inspect.signature(_OnnxRuntime.get_providers)
+def test_onnx_runtime_session_declares_the_minimum_loader_and_invocation_capabilities() -> None:
+    providers_signature = inspect.signature(OnnxRuntimeSession.get_providers)
+    run_signature = inspect.signature(OnnxRuntimeSession.run)
 
-    assert {name for name in _OnnxRuntime.__dict__ if not name.startswith("_")} == {"get_providers"}
+    assert {name for name in OnnxRuntimeSession.__dict__ if not name.startswith("_")} == {
+        "get_providers",
+        "run",
+    }
     assert tuple(providers_signature.parameters) == ("self",)
     assert providers_signature.return_annotation == "list[str]"
+    assert tuple(run_signature.parameters) == (
+        "self",
+        "output_names",
+        "input_feed",
+        "run_options",
+    )
+    assert run_signature.return_annotation == "list[object]"
 
 
 def test_committed_identity_model_matches_its_generator() -> None:
@@ -119,14 +132,15 @@ async def test_onnx_loader_invalid_artifact_failure_originates_from_provider(
     assert type(raised.value).__module__.startswith("onnxruntime.")
 
 
-def test_onnx_loader_casts_only_the_optional_stub_boundary_to_the_runtime_protocol() -> None:
+def test_onnx_loader_casts_only_the_optional_stub_boundary_to_the_session_protocol() -> None:
     source = inspect.getsource(onnx_loader_module)
 
     assert "asyncio.to_thread" in source
-    assert _cast_targets(source) == ["_OnnxRuntime"]
+    assert _cast_targets(source) == ["OnnxRuntimeSession"]
 
 
-def test_runtime_binding_erases_the_precise_onnx_pairing_only_at_outer_resolution() -> None:
+def test_runtime_binding_keeps_the_precise_onnx_pairing_without_outer_erasure() -> None:
     source = inspect.getsource(binding_module)
 
-    assert _cast_targets(source) == ["RuntimeBinding[object, object, object]"]
+    assert _cast_targets(source) == []
+    assert "RuntimeBinding[object, object, object]" not in source

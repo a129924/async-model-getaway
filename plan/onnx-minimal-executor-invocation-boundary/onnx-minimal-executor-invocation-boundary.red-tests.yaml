@@ -1,0 +1,44 @@
+verdict: red-tests-ready
+d1_verdict:
+  verdict: non-trivial
+  reason: >-
+    The topic adds a private provider invocation boundary, changes four internal
+    type contracts, and requires async cancellation and strict typing coverage.
+test_mapping:
+  - requirement_id: R1
+    test_case_name: test_onnx_runtime_session_declares_the_minimum_loader_and_invocation_capabilities
+    coverage_category: backward compatibility
+  - requirement_id: R2
+    test_case_name: test_onnx_executor_preserves_provider_result_and_call_shape
+    coverage_category: happy path
+  - requirement_id: R3
+    test_case_name: test_onnx_executor_rejects_invalid_invocations_before_provider_work
+    coverage_category: error/exception
+  - requirement_id: R3
+    test_case_name: test_onnx_executor_propagates_cancellation_without_waiting_for_worker
+    coverage_category: boundary/edge
+  - requirement_id: R4
+    test_case_name: test_composition_keeps_the_private_onnx_session_pairing_exact
+    coverage_category: state/side effects
+  - requirement_id: R5
+    test_case_name: test_real_identity_session_invokes_through_the_private_onnx_executor
+    coverage_category: integration points
+validation_checks:
+  d1_decision: non-trivial
+  behavior_contract_source: plan/onnx-minimal-executor-invocation-boundary/onnx-minimal-executor-invocation-boundary.spec.md
+  requirements_mapped: true
+  public_contract_coverage: no-public-api-change package-surface coverage present
+  test_categories_present: true
+  expected_initial_status: red
+  production_code_modified: false
+  command: >-
+    uv run pytest --no-header -rN tests/model_runtime/model_execution/test_model_execution.py
+    tests/model_runtime/model_execution/test_model_execution_package_surface.py
+    tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py
+    tests/model_runtime/model_pool/test_onnx_model_loader.py
+    tests/model_runtime/test_local_runtime_composition.py
+  observed_status: >-
+    4 collection errors: missing _onnx_model_executor and missing
+    OnnxRuntimeSession before production implementation.
+issues: []
+next_step: Proceed to implementation inside the approved artifact paths.

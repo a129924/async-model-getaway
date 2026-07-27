@@ -9,6 +9,9 @@ import async_model_gateway as root_module
 import async_model_gateway.model_runtime as model_runtime_root_module
 import async_model_gateway.model_runtime.model_execution as model_execution_module
 import async_model_gateway.model_runtime.model_execution.execution as execution_module
+from async_model_gateway.model_runtime.model_execution import (
+    _onnx_model_executor as onnx_executor_module,
+)
 
 
 def test_model_execution_package_reexports_no_executor_types() -> None:
@@ -59,3 +62,24 @@ def test_executor_source_has_no_binding_owner_or_late_dispatch() -> None:
         isinstance(node, ast.Attribute) and node.attr == "loader_family"
         for node in ast.walk(syntax_tree)
     )
+    assert not any(
+        isinstance(node, ast.ClassDef) and node.name == "_OnnxModelExecutor"
+        for node in ast.walk(syntax_tree)
+    )
+
+
+def test_private_onnx_executor_owns_provider_invocation_without_dispatch() -> None:
+    syntax_tree = ast.parse(inspect.getsource(onnx_executor_module))
+    source = inspect.getsource(onnx_executor_module)
+    called_attributes = {
+        node.func.attr
+        for node in ast.walk(syntax_tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+    }
+
+    assert hasattr(onnx_executor_module, "_OnnxModelExecutor")
+    assert "run" in called_attributes
+    assert "asyncio.to_thread" in source
+    assert "create_task" not in source
+    assert "asyncio.shield" not in source
+    assert "onnxruntime" not in source

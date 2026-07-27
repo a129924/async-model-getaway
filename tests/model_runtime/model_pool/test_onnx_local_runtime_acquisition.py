@@ -10,9 +10,13 @@ from contextlib import suppress
 from pathlib import Path
 
 import onnxruntime
+import numpy
 import pytest
 
 from async_model_gateway.model_runtime.model_artifact import LoaderFamily, ModelArtifact
+from async_model_gateway.model_runtime.model_execution._onnx_model_executor import (
+    _OnnxModelExecutor,
+)
 from async_model_gateway.model_runtime.model_pool.loaders._onnx_model_loader import (
     _OnnxModelLoader,
     load_onnx_runtime,
@@ -59,6 +63,24 @@ async def test_pool_wraps_a_cpu_only_onnx_session_from_the_injected_raw_loader(
     assert isinstance(loaded.runtime, onnxruntime.InferenceSession)
     assert loaded.runtime.get_providers() == ["CPUExecutionProvider"]
     assert loaded.execution_gate.locked() is False
+
+
+@pytest.mark.asyncio
+async def test_real_identity_session_invokes_through_the_private_onnx_executor(
+    onnx_model_path: Path,
+) -> None:
+    loaded = await ModelPool().acquire(
+        _artifact(onnx_model_path),
+        loader=_OnnxModelLoader(),
+        max_concurrency=1,
+    )
+    invocation = {"input": numpy.array([2.5], dtype=numpy.float32)}
+
+    result = await _OnnxModelExecutor().execute(loaded, invocation)
+
+    assert isinstance(result, list)
+    assert len(result) == 1
+    numpy.testing.assert_array_equal(result[0], invocation["input"])
 
 
 @pytest.mark.asyncio
