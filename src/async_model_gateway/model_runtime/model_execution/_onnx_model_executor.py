@@ -20,7 +20,7 @@ def _run_session(
     return runtime.run(None, invocation, None)
 
 
-def _is_dict_invocation(value: object) -> TypeGuard[dict[str, object]]:
+def _is_dict_invocation(value: object) -> TypeGuard[dict[object, object]]:
     """Narrow an untyped runtime value before validating its key contract."""
     return isinstance(value, dict)
 
@@ -31,7 +31,7 @@ def _validate_invocation(invocation: object) -> None:
         msg = "ONNX invocation must be a dict with string keys"
         raise TypeError(msg)
     for key in invocation:
-        if type(key) is not str:
+        if not isinstance(key, str):
             msg = "ONNX invocation must be a dict with string keys"
             raise TypeError(msg)
 

@@ -163,6 +163,10 @@ class _BlockingOnnxRuntime:
         return []
 
 
+class _InputName(str):
+    """Represent a valid provider input-name subtype."""
+
+
 @pytest.mark.asyncio
 async def test_onnx_executor_rejects_invalid_invocations_before_provider_work() -> None:
     runtime = _RecordingOnnxRuntime()
@@ -184,6 +188,18 @@ async def test_onnx_executor_rejects_invalid_invocations_before_provider_work() 
 async def test_onnx_executor_preserves_provider_result_and_call_shape() -> None:
     runtime = _RecordingOnnxRuntime()
     invocation = {"input": object()}
+    model = LoadedRuntimeModel(runtime=runtime, execution_gate=asyncio.Semaphore(1))
+
+    result = await _OnnxModelExecutor().execute(model, invocation)
+
+    assert result is runtime.result
+    assert runtime.calls == [(None, invocation, None)]
+
+
+@pytest.mark.asyncio
+async def test_onnx_executor_accepts_string_subclasses_as_input_names() -> None:
+    runtime = _RecordingOnnxRuntime()
+    invocation = {_InputName("input"): object()}
     model = LoadedRuntimeModel(runtime=runtime, execution_gate=asyncio.Semaphore(1))
 
     result = await _OnnxModelExecutor().execute(model, invocation)
