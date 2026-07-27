@@ -103,6 +103,7 @@ async def test_executor_preserves_failure_and_cancellation_identity_and_releases
     assert caught_cancellation.value is cancellation
     assert model.execution_gate.locked() is False
 
+
 class _RecordingOnnxRuntime:
     """Record the provider call made by the private ONNX executor."""
 

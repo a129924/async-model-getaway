@@ -36,9 +36,7 @@ def _validate_invocation(invocation: object) -> None:
             raise TypeError(msg)
 
 
-class _OnnxModelExecutor(
-    ModelExecutor[OnnxRuntimeSession, dict[str, object], list[object]]
-):
+class _OnnxModelExecutor(ModelExecutor[OnnxRuntimeSession, dict[str, object], list[object]]):
     """Invoke one ONNX session without exposing provider details."""
 
     async def _invoke(
@@ -51,7 +49,8 @@ class _OnnxModelExecutor(
         return await asyncio.to_thread(_run_session, runtime, invocation)
 
 
-def create_onnx_model_executor(
-) -> ModelExecutor[OnnxRuntimeSession, dict[str, object], list[object]]:
+def create_onnx_model_executor() -> ModelExecutor[
+    OnnxRuntimeSession, dict[str, object], list[object]
+]:
     """Create the executor used by the closed ONNX runtime binding."""
     return _OnnxModelExecutor()

@@ -32,9 +32,9 @@ class _LocalRuntimeComposition:
         invocation: dict[str, object],
     ) -> list[object]:
         """Resolve once, then acquire and execute through that same binding."""
-        binding: RuntimeBinding[
-            OnnxRuntimeSession, dict[str, object], list[object]
-        ] = self._binding_resolver.resolve(artifact.loader_family)
+        binding: RuntimeBinding[OnnxRuntimeSession, dict[str, object], list[object]] = (
+            self._binding_resolver.resolve(artifact.loader_family)
+        )
         loaded_model = await self._model_pool.acquire(
             artifact,
             loader=binding.loader,
