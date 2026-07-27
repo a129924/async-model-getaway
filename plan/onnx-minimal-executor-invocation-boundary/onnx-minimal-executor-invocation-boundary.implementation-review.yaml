@@ -1,0 +1,56 @@
+verdict: approved
+traceability_matrix:
+  - step: Write fresh RED tests and strict type witness without production source edits.
+    status: done
+    evidence: plan/onnx-minimal-executor-invocation-boundary/onnx-minimal-executor-invocation-boundary.red-tests.yaml
+  - step: Add the internal ONNX session Protocol and private direct-await executor.
+    status: done
+    evidence: src/async_model_gateway/model_runtime/runtime_model/_onnx_runtime.py; src/async_model_gateway/model_runtime/model_execution/_onnx_model_executor.py
+  - step: Replace ONNX binding/composition erasure with the exact generic chain.
+    status: done
+    evidence: src/async_model_gateway/model_runtime/model_pool/_runtime_binding.py; src/async_model_gateway/model_runtime/_local_runtime_composition.py
+  - step: Run the declared validation sequence and update fresh evidence.
+    status: done
+    evidence: final focused pytest 30 passed; final full pytest 182 passed; strict/global Pyright, Ruff, lock and diff checks passed after the non-dict guard repair
+scope_creep_check:
+  - non_goal: No package re-export or public runtime API.
+    violated: no
+    evidence: package initializers unchanged; surface tests present
+  - non_goal: No new Any, cast, inline suppression, dynamic import or monkeypatch.
+    violated: no
+    evidence: changed paths add none; loader retains only its pre-existing provider boundary
+  - non_goal: No cancellation worker-drain, timeout, retry, release or config expansion.
+    violated: no
+    evidence: _onnx_model_executor.py direct-awaits asyncio.to_thread; only topic-local strict config added
+  - non_goal: No RuntimeBinding object erasure.
+    violated: no
+    evidence: _runtime_binding.py has no cast or RuntimeBinding[object, object, object]
+contract_check:
+  - item: OnnxRuntimeSession is internal-only and not package re-exported.
+    status: matches
+    detail: private module declaration plus package-surface tests
+  - item: _OnnxModelExecutor is private and invokes run(None, invocation, None).
+    status: matches
+    detail: private module implementation and fake/real invocation tests
+  - item: Cancellation and provider exceptions propagate without translation.
+    status: matches
+    detail: direct await asyncio.to_thread with focused cancellation/failure tests
+  - item: Exact OnnxRuntimeSession -> dict[str, object] -> list[object] pairing has no outer erasure.
+    status: matches
+    detail: loader, binding, composition, AST checks and strict Pyright witness
+test_plan_check:
+  - case_type: happy path
+    status: present
+    location: tests/model_runtime/model_execution/test_model_execution.py
+  - case_type: invalid input
+    status: present
+    location: tests/model_runtime/model_execution/test_model_execution.py
+  - case_type: edge case cancellation
+    status: present
+    location: tests/model_runtime/model_execution/test_model_execution.py
+  - case_type: regression integration
+    status: present
+    location: tests/model_runtime/model_pool/test_onnx_local_runtime_acquisition.py
+  - case_type: backward compatibility surface
+    status: present
+    location: tests/model_runtime/model_execution/test_model_execution_package_surface.py

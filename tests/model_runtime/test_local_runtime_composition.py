@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 
 import pytest
 
@@ -19,6 +20,8 @@ from async_model_gateway.model_runtime.model_pool._runtime_binding import (
 from async_model_gateway.model_runtime.runtime_model.loaded_runtime_model import (
     LoadedRuntimeModel,
 )
+import async_model_gateway.model_runtime._local_runtime_composition as composition_module
+import async_model_gateway.model_runtime.model_pool._runtime_binding as binding_module
 
 
 class _Runtime:
@@ -175,3 +178,16 @@ async def test_actual_binding_resolver_fails_closed_before_pool_can_load(
         await composition.execute(_artifact(loader_family), object())
 
     assert pool.acquire_calls == 0
+
+
+def test_composition_keeps_the_private_onnx_session_pairing_exact() -> None:
+    execute_signature = inspect.signature(_LocalRuntimeComposition.execute)
+    composition_source = inspect.getsource(composition_module)
+    binding_source = inspect.getsource(binding_module)
+
+    assert execute_signature.parameters["invocation"].annotation == "dict[str, object]"
+    assert execute_signature.return_annotation == "list[object]"
+    assert "OnnxRuntimeSession" in composition_source
+    assert "OnnxRuntimeSession" in binding_source
+    assert "RuntimeBinding[object, object, object]" not in binding_source
+    assert "cast(" not in binding_source

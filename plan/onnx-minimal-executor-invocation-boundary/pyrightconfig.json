@@ -1,0 +1,8 @@
+{
+  "include": [
+    "../../tests/typecheck/onnx_minimal_executor_invocation_boundary.py"
+  ],
+  "extraPaths": ["../../src"],
+  "pythonVersion": "3.10",
+  "typeCheckingMode": "strict"
+}

@@ -1,0 +1,6 @@
+{
+  "verdict": "cleared",
+  "gate": "human-implementation-clearance",
+  "authorization": "Execution Authorized",
+  "scope": "onnx-minimal-executor-invocation-boundary recovery plan approved in the fresh plan-review artifact"
+}

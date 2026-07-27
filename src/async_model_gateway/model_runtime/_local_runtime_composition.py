@@ -4,9 +4,13 @@ from __future__ import annotations
 
 from async_model_gateway.model_runtime.model_artifact import ModelArtifact
 from async_model_gateway.model_runtime.model_pool._runtime_binding import (
+    RuntimeBinding,
     _RuntimeBindingResolver,  # pyright: ignore[reportPrivateUsage]
 )
 from async_model_gateway.model_runtime.model_pool.pool import ModelPool
+from async_model_gateway.model_runtime.runtime_model._onnx_runtime import (
+    OnnxRuntimeSession,
+)
 
 
 class _LocalRuntimeComposition:
@@ -22,9 +26,15 @@ class _LocalRuntimeComposition:
         self._model_pool = model_pool
         self._binding_resolver = binding_resolver
 
-    async def execute(self, artifact: ModelArtifact, invocation: object) -> object:
+    async def execute(
+        self,
+        artifact: ModelArtifact,
+        invocation: dict[str, object],
+    ) -> list[object]:
         """Resolve once, then acquire and execute through that same binding."""
-        binding = self._binding_resolver.resolve(artifact.loader_family)
+        binding: RuntimeBinding[
+            OnnxRuntimeSession, dict[str, object], list[object]
+        ] = self._binding_resolver.resolve(artifact.loader_family)
         loaded_model = await self._model_pool.acquire(
             artifact,
             loader=binding.loader,
