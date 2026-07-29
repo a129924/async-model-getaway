@@ -1,0 +1,162 @@
+verdict: approved
+review_status: complete
+topic: response-cache-freshness-policy
+phase: implementation-review
+approval_basis:
+  plan_review: approved
+  human_check: cleared_for_implement_plan
+  revision: historical-red-traceability-correction
+  step_gate: all_six_implementation_steps_marked_X
+
+traceability_matrix:
+  - step: >-
+      Historical predecessor-path RED, mechanical rename to the unique current
+      path, direct imports, old-to-new evidence mapping, and focused/full GREEN
+      validation; no post-implementation RED.
+    status: done
+    evidence: >-
+      plan/response-cache-freshness-policy/response-cache-freshness-policy.red-tests.yaml:75-90
+      maps tests/response_cache/test_freshness_policy.py to
+      tests/response_cache/test_response_cache_freshness_policy.py; :105-117
+      records renamed-path focused/full GREEN and new_red_evidence_created: false.
+      tests/response_cache/test_response_cache_freshness_policy.py:9 uses a direct import;
+      retained regression paths were unchanged and passed in the full suite.
+  - step: >-
+      Add the internal FreshnessPolicy contract without a policy collection,
+      pipeline, generic cache-policy abstraction, or re-export.
+    status: done
+    evidence: >-
+      src/async_model_gateway/response_cache/freshness_policy.py:9-14 defines
+      only is_fresh(*, written_at, now) -> bool; package non-re-export coverage
+      is at tests/response_cache/test_response_cache_package_surface.py:53-64.
+  - step: >-
+      Add internal injected TtlFreshnessPolicy with positive-timedelta
+      validation and strict-before-expiry synchronous semantics.
+    status: done
+    evidence: >-
+      src/async_model_gateway/response_cache/ttl_freshness_policy.py:8-20;
+      tests/response_cache/test_ttl_freshness_policy.py:12-49.
+  - step: >-
+      Add the internal in-memory ResponseCacheStore implementation with
+      keyword-only policy injection, aware-UTC write timestamps, non-renewing
+      reads, overwrite timestamp replacement, and expired-as-None lookup.
+    status: done
+    evidence: >-
+      src/async_model_gateway/response_cache/_in_memory_store.py:16-56;
+      tests/response_cache/test_in_memory_store.py:36-123.
+  - step: >-
+      Update only the four declared documentation files and preserve readonly
+      public-boundary, key/hash, and version paths.
+    status: done
+    evidence: >-
+      README.md:32-34; docs/architecture.md:74-82;
+      docs/settings-policy.md:9-26; docs/specs/response-cache-boundary.md:7-9
+      and :37-53. Git comparison to HEAD shows no changes to the declared
+      readonly response-cache public paths, pyproject.toml, package version, or uv.lock.
+  - step: >-
+      Run all declared validation commands and mark implementation work complete
+      without modifying Human-owned gate evidence.
+    status: done
+    evidence: >-
+      plan/response-cache-freshness-policy/response-cache-freshness-policy.step.md:27-40
+      marks all six steps [X]. Independent rerun passed focused pytest (1), full
+      pytest (196), Ruff, Pyright (0 errors), and pre-commit all-files.
+
+scope_creep_check:
+  - non_goal: No generic cache-policy framework, policy collection, or pipeline.
+    violated: no
+    evidence: >-
+      Clean: the two new policy modules provide only the frozen freshness
+      decision and TTL implementation.
+  - non_goal: >-
+      No capacity, admission, eviction, invalidation, deletion, persistence,
+      serialization, metrics, tracing, or settings system.
+    violated: no
+    evidence: >-
+      src/async_model_gateway/response_cache/_in_memory_store.py:38-56 performs
+      keyed in-process lookup/write only; an expired record returns None without removal.
+  - non_goal: >-
+      No public concrete-store/policy surface, orchestrator wiring, external I/O,
+      lock, lifecycle, timeout, retry, cancellation wrapper, or version bump.
+    violated: no
+    evidence: >-
+      Package roots remain unchanged at
+      src/async_model_gateway/response_cache/__init__.py:8-13 and
+      src/async_model_gateway/response_cache/ports/__init__.py:3-5; no out-of-inventory
+      production or release path changed.
+  - non_goal: No post-implementation RED creation for the non-semantic test-path rename.
+    violated: no
+    evidence: >-
+      red-tests.yaml:105-109 explicitly records historical predecessor evidence,
+      red_evidence_reused: true, and new_red_evidence_created: false as required.
+
+contract_check:
+  - item: >-
+      No public API changes: ResponseCacheStore signatures and all package
+      exports remain unchanged.
+    status: matches
+    detail: >-
+      Git comparison to HEAD shows no changes to ResponseCacheStore, ResponseCache,
+      entry, key, factory, or either package root. Existing surface assertions
+      pass at tests/response_cache/test_response_cache_package_surface.py:18-86.
+  - item: >-
+      Internal contracts are FreshnessPolicy.is_fresh(*, written_at, now) -> bool,
+      TtlFreshnessPolicy(ttl: timedelta), and
+      InMemoryResponseCacheStore(*, freshness_policy: FreshnessPolicy).
+    status: matches
+    detail: >-
+      The frozen signatures are implemented at freshness_policy.py:9-14,
+      ttl_freshness_policy.py:8-20, and _in_memory_store.py:29-56.
+  - item: >-
+      Store/key/hash/entry ownership, root and ports exports, dependency set,
+      and version metadata remain locked.
+    status: matches
+    detail: >-
+      ResponseCacheStore remains submodule-public at ports/store.py:13-22;
+      readonly paths are unchanged and full pytest passed.
+
+test_plan_check:
+  - case_type: Happy path — fresh injected policy returns a successful write.
+    status: present
+    location: >-
+      tests/response_cache/test_in_memory_store.py:47-63;
+      tests/response_cache/test_ttl_freshness_policy.py:12-20.
+  - case_type: Invalid input — zero and negative TTL raise ValueError.
+    status: present
+    location: tests/response_cache/test_ttl_freshness_policy.py:45-49.
+  - case_type: Edge case — exact/later expiry misses and reads retain write time.
+    status: present
+    location: >-
+      tests/response_cache/test_ttl_freshness_policy.py:23-42;
+      tests/response_cache/test_in_memory_store.py:65-88.
+  - case_type: Regression — facade, entry, key, factory, and store-port contracts persist.
+    status: present
+    location: >-
+      tests/response_cache/test_cache.py; tests/response_cache/test_entry.py;
+      tests/response_cache/test_key.py; tests/response_cache/test_key_factory.py;
+      tests/response_cache/test_response_cache_package_surface.py:72-86.
+  - case_type: Backward compatibility — internal types do not leak through package roots.
+    status: present
+    location: tests/response_cache/test_response_cache_package_surface.py:53-64.
+
+validation_evidence:
+  focused_pytest: passed_1
+  full_pytest: passed_196_coverage_97_74_percent
+  ruff: passed
+  pyright: passed_0_errors_0_warnings
+  pre_commit: passed_all_files
+  diff_check: passed
+  dynamic_module_loading: >-
+    passed; declared response-cache tests use direct imports only, and no exception
+    is authorized or needed.
+
+path_boundary_check:
+  status: passed
+  detail: >-
+    All observed production, test, documentation, and topic artifact paths are
+    listed in the approved inventory. No settings module, orchestrator/provider
+    path, persistence backend, capacity/eviction policy, public-boundary, or
+    release metadata path changed.
+
+blocking_issues: []
+next_gate: independent_python_code_review_allowed

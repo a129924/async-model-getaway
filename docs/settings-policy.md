@@ -9,19 +9,21 @@
 ## 目前定位
 
 - settings 以 developer-injected policy 為主
-- 近期只預留 cache-related policy 概念
+- internal response-cache TTL freshness 以 developer injection 提供，不形成 settings surface
 - remote 或 provider-specific config 延後
 - 不先把 settings 擴張成 runtime orchestration surface
 
 ## 近期預留概念
 
-目前只預留這類 policy 類型的概念：
+目前只預留或限定這類 policy 類型：
 
-- TTL 類型設定
+- process-local response-cache 的正 TTL freshness policy 由呼叫端明確注入；它不是
+  settings loading、env var 或 persistence config
 - eviction 類型設定
 - 與 cache 行為有關的開關或策略
 
-這些目前仍是概念層級，不代表已定案的 Python type、env var 名稱或設定載入方式。
+除上述 internal 注入式 TTL policy 外，其餘仍是概念層級，不代表已定案的 Python type、
+env var 名稱或設定載入方式。
 
 ## 明確延後
 
