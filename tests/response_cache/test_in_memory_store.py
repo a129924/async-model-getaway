@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import inspect
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
 from async_model_gateway.response_cache import ResponseCacheEntry, ResponseCacheKey
+from async_model_gateway.response_cache import _in_memory_store as in_memory_store_module
 from async_model_gateway.response_cache._in_memory_store import InMemoryResponseCacheStore
 from async_model_gateway.response_cache.freshness_policy import FreshnessPolicy
 from async_model_gateway.response_cache.ports.store import ResponseCacheStore
@@ -89,21 +90,33 @@ async def test_in_memory_store_returns_none_when_injected_policy_reports_expired
 
 
 @pytest.mark.asyncio
-async def test_in_memory_store_overwrite_replaces_entry_and_write_timestamp() -> None:
+async def test_in_memory_store_overwrite_replaces_entry_and_write_timestamp(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """A same-key overwrite must establish a new record rather than return old content."""
     policy = RecordingFreshnessPolicy([True, True])
     store = InMemoryResponseCacheStore(freshness_policy=policy)
     original = ResponseCacheEntry(response="original response")
     replacement = ResponseCacheEntry(response="replacement response")
+    first_written_at = datetime(2026, 7, 28, 12, 0, tzinfo=timezone.utc)
+    timestamps = iter(
+        (
+            first_written_at,
+            first_written_at + timedelta(seconds=1),
+            first_written_at + timedelta(seconds=2),
+            first_written_at + timedelta(seconds=3),
+        )
+    )
+    monkeypatch.setattr(in_memory_store_module, "_utc_now", lambda: next(timestamps))
 
     await store.set(key=_key(), entry=original)
     assert await store.get(key=_key()) is original
-    first_written_at = policy.calls[0][0]
 
     await store.set(key=_key(), entry=replacement)
     assert await store.get(key=_key()) is replacement
 
-    assert policy.calls[1][0] != first_written_at
+    assert policy.calls[0][0] == first_written_at
+    assert policy.calls[1][0] == first_written_at + timedelta(seconds=2)
 
 
 @pytest.mark.asyncio

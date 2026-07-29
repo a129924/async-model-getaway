@@ -14,10 +14,13 @@ def test_ttl_freshness_policy_reports_a_hit_strictly_before_expiry() -> None:
     policy = TtlFreshnessPolicy(timedelta(seconds=30))
     written_at = datetime(2026, 7, 28, 12, 0, tzinfo=timezone.utc)
 
-    assert policy.is_fresh(
-        written_at=written_at,
-        now=written_at + timedelta(seconds=29),
-    ) is True
+    assert (
+        policy.is_fresh(
+            written_at=written_at,
+            now=written_at + timedelta(seconds=29),
+        )
+        is True
+    )
 
 
 def test_ttl_freshness_policy_reports_a_miss_at_exact_expiry() -> None:
@@ -25,10 +28,13 @@ def test_ttl_freshness_policy_reports_a_miss_at_exact_expiry() -> None:
     policy = TtlFreshnessPolicy(timedelta(seconds=30))
     written_at = datetime(2026, 7, 28, 12, 0, tzinfo=timezone.utc)
 
-    assert policy.is_fresh(
-        written_at=written_at,
-        now=written_at + timedelta(seconds=30),
-    ) is False
+    assert (
+        policy.is_fresh(
+            written_at=written_at,
+            now=written_at + timedelta(seconds=30),
+        )
+        is False
+    )
 
 
 def test_ttl_freshness_policy_reports_a_miss_after_expiry() -> None:
@@ -36,10 +42,21 @@ def test_ttl_freshness_policy_reports_a_miss_after_expiry() -> None:
     policy = TtlFreshnessPolicy(timedelta(seconds=30))
     written_at = datetime(2026, 7, 28, 12, 0, tzinfo=timezone.utc)
 
-    assert policy.is_fresh(
-        written_at=written_at,
-        now=written_at + timedelta(seconds=31),
-    ) is False
+    assert (
+        policy.is_fresh(
+            written_at=written_at,
+            now=written_at + timedelta(seconds=31),
+        )
+        is False
+    )
+
+
+def test_ttl_freshness_policy_accepts_a_large_ttl_without_overflow() -> None:
+    """A legal large TTL must not overflow while evaluating freshness."""
+    policy = TtlFreshnessPolicy(timedelta.max)
+    written_at = datetime(2026, 7, 28, 12, 0, tzinfo=timezone.utc)
+
+    assert policy.is_fresh(written_at=written_at, now=written_at) is True
 
 
 @pytest.mark.parametrize("ttl", [timedelta(0), timedelta(microseconds=-1)])
