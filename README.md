@@ -29,7 +29,9 @@ boundary：`async_model_gateway.response_cache` 公開
 `ResponseCache`、`ResponseCacheEntry`、`ResponseCacheKey` 與
 `ResponseCacheKeyFactory`，而 `async_model_gateway.response_cache.ports`
 提供 `FeatureHasher` port；`ResponseCacheStore` 仍維持為 submodule-only
-surface。repo 也已把最小 `ModelArtifact` + `LoaderFamily` shared read
+surface。repo 另有 internal、developer-injected 的正 TTL freshness policy 與
+process-local `ResponseCacheStore` 實作：成功寫入才記錄 aware-UTC 時間、讀取不續期，
+到期只回傳 miss；這些都不是新增的 public surface。repo 也已把最小 `ModelArtifact` + `LoaderFamily` shared read
 contract 納入 baseline：
 `async_model_gateway.model_runtime.model_artifact` 公開 `ModelArtifact` 與
 `LoaderFamily`，並由 `model_runtime` 作為後續 model-runtime family layout 的
@@ -49,7 +51,7 @@ root package 目前只公開 `__version__` 與 `main`；`ModelRegistry` 由
 `async_model_gateway.model_registry` 提供，
 `async_model_gateway.model_registry.stores` 提供 submodule public 的
 `InMemoryRegistryStore`，而 `model-payload` hashing 的 public owner 仍維持為
-`ModelPayloadHasher`。這不代表 cache backend、TTL policy、`orchestrator`
+`ModelPayloadHasher`。這不代表 broader cache backend/policy、`orchestrator`
 flow 或 broader cache architecture 已完成。
 
 ## 核心概念
@@ -95,6 +97,9 @@ semantics、response cache architecture、`orchestrator` 與完整 `runtime-mode
 - `async_model_gateway.response_cache.ports.FeatureHasher`
 
 其中 `ResponseCacheStore` 仍維持為 submodule-only surface。
+內部 process-local store 接受 developer-injected 的正 TTL freshness policy；它不會
+把 policy 或 concrete store 加入 package root 或 `ports` surface，也不代表 persistence、
+settings、eviction 或 orchestration 已落地。
 
 目前已落地的最小 model-artifact shared read contract 包含：
 

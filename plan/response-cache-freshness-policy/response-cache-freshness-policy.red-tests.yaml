@@ -1,0 +1,125 @@
+verdict: red-tests-ready
+d1_verdict:
+  verdict: non-trivial
+  reason: feature
+test_mapping:
+  - requirement_id: R1
+    test_case_name: test_freshness_policy_exposes_only_keyword_timestamp_freshness_contract
+    coverage_category: public-contract
+  - requirement_id: R2
+    test_case_name: test_ttl_freshness_policy_reports_a_hit_strictly_before_expiry
+    coverage_category: happy-path
+  - requirement_id: R2
+    test_case_name: test_ttl_freshness_policy_reports_a_miss_at_exact_expiry
+    coverage_category: boundary-edge
+  - requirement_id: R2
+    test_case_name: test_ttl_freshness_policy_reports_a_miss_after_expiry
+    coverage_category: boundary-edge
+  - requirement_id: R2
+    test_case_name: test_ttl_freshness_policy_rejects_non_positive_ttl
+    coverage_category: error-exception
+  - requirement_id: R3
+    test_case_name: test_in_memory_store_implements_unchanged_async_port_with_keyword_policy
+    coverage_category: integration-point
+  - requirement_id: R3
+    test_case_name: test_in_memory_store_returns_entry_when_injected_policy_reports_fresh
+    coverage_category: happy-path
+  - requirement_id: R3
+    test_case_name: test_in_memory_store_reads_do_not_renew_original_write_timestamp
+    coverage_category: state-side-effect
+  - requirement_id: R3
+    test_case_name: test_in_memory_store_overwrite_replaces_entry_and_write_timestamp
+    coverage_category: state-side-effect
+  - requirement_id: R3
+    test_case_name: test_in_memory_store_isolates_entries_by_response_cache_key
+    coverage_category: state-side-effect
+  - requirement_id: R4
+    test_case_name: test_in_memory_store_returns_none_when_injected_policy_reports_expired
+    coverage_category: boundary-edge
+  - requirement_id: R4
+    test_case_name: test_response_cache_packages_do_not_reexport_internal_freshness_or_store_types
+    coverage_category: backward-compatibility
+  - requirement_id: R5
+    test_case_name: test_response_cache_packages_do_not_reexport_internal_freshness_or_store_types
+    coverage_category: backward-compatibility
+  - requirement_id: R5
+    test_case_name: test_response_cache_store_is_only_public_from_store_submodule
+    coverage_category: regression
+  - requirement_id: R5
+    test_case_name: test_response_cache_public_contract_is_async_only
+    coverage_category: regression
+  - requirement_id: R5
+    test_case_name: test_response_cache_entry_is_a_frozen_dataclass_with_one_string_field
+    coverage_category: regression
+  - requirement_id: R5
+    test_case_name: test_response_cache_key_is_a_frozen_dataclass_with_three_string_fields
+    coverage_category: regression
+  - requirement_id: R5
+    test_case_name: test_build_returns_response_cache_key_from_explicit_hash_input
+    coverage_category: regression
+validation_checks:
+  d1_decision: passed
+  d2_evidence: sufficient
+  behavior_contract_source: plan/response-cache-freshness-policy/response-cache-freshness-policy.spec.md
+  requirements_mapped: true
+  public_contract_coverage: true
+  test_categories_present:
+    - happy-path
+    - error-exception
+    - boundary-edge
+    - state-side-effect
+    - integration-point
+  expected_initial_status: red
+  production_code_modified: false
+  static_imports_only: true
+  test_path_revision:
+    original_path: tests/response_cache/test_freshness_policy.py
+    current_path: tests/response_cache/test_response_cache_freshness_policy.py
+    change: mechanical-rename-only
+  red_validation:
+    historical: true
+    command: >-
+      uv run pytest --no-header -rN tests/response_cache/test_freshness_policy.py
+      tests/response_cache/test_ttl_freshness_policy.py
+      tests/response_cache/test_in_memory_store.py
+      tests/response_cache/test_response_cache_package_surface.py
+    result: expected-red
+    evidence: >-
+      Collection reports four ModuleNotFoundError errors for the planned internal
+      modules freshness_policy, ttl_freshness_policy, and _in_memory_store; no
+      production implementation exists yet.
+  regression_validation:
+    command: >-
+      uv run pytest --no-header -rN --no-cov tests/response_cache/test_cache.py
+      tests/response_cache/test_entry.py tests/response_cache/test_key.py
+      tests/response_cache/test_key_factory.py
+    result: 17 passed
+  static_check:
+    historical: true
+    command: >-
+      uv run ruff check tests/response_cache/test_freshness_policy.py
+      tests/response_cache/test_ttl_freshness_policy.py
+      tests/response_cache/test_in_memory_store.py
+      tests/response_cache/test_response_cache_package_surface.py
+    result: passed
+  post_implementation_validation:
+    current_test_status: pass-after-implementation
+    production_code_present: true
+    red_evidence_reused: true
+    new_red_evidence_created: false
+    focused_renamed_test:
+      command: >-
+        uv run pytest tests/response_cache/test_response_cache_freshness_policy.py
+        -v --no-cov
+      result: 1 passed
+    full_pytest:
+      command: uv run pytest
+      result: 196 passed; coverage 97.74%
+    ruff:
+      command: uv run ruff check README.md docs src tests plan/response-cache-freshness-policy
+      result: passed
+    pyright:
+      command: uv run pyright
+      result: 0 errors, 0 warnings, 0 informations
+issues: []
+next_step: "Implementer: run the remaining declared pre-commit validation, then update its implementation work record for review."

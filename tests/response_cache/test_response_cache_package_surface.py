@@ -9,7 +9,10 @@ import async_model_gateway.response_cache.cache as response_cache_cache_module
 import async_model_gateway.response_cache.ports as response_cache_ports_module
 import async_model_gateway.response_cache.ports.store as response_cache_store_module
 from async_model_gateway.response_cache import ResponseCacheKey, ResponseCacheKeyFactory
+from async_model_gateway.response_cache._in_memory_store import InMemoryResponseCacheStore
+from async_model_gateway.response_cache.freshness_policy import FreshnessPolicy
 from async_model_gateway.response_cache.ports import FeatureHasher
+from async_model_gateway.response_cache.ttl_freshness_policy import TtlFreshnessPolicy
 
 
 def test_response_cache_package_reexports_operational_and_key_surfaces() -> None:
@@ -45,6 +48,20 @@ def test_response_cache_package_does_not_reexport_store_port() -> None:
 def test_response_cache_ports_package_does_not_reexport_store_port() -> None:
     """The ports package root should keep store exposure off the gateway module."""
     assert not hasattr(response_cache_ports_module, "ResponseCacheStore")
+
+
+def test_response_cache_packages_do_not_reexport_internal_freshness_or_store_types() -> None:
+    """Freshness policy and concrete storage must remain module-internal details."""
+    internal_type_names = {
+        FreshnessPolicy.__name__,
+        TtlFreshnessPolicy.__name__,
+        InMemoryResponseCacheStore.__name__,
+    }
+
+    assert internal_type_names.isdisjoint(response_cache_module.__all__)
+    assert all(not hasattr(response_cache_module, name) for name in internal_type_names)
+    assert internal_type_names.isdisjoint(response_cache_ports_module.__all__)
+    assert all(not hasattr(response_cache_ports_module, name) for name in internal_type_names)
 
 
 def test_response_cache_cache_module_does_not_expose_store_port() -> None:

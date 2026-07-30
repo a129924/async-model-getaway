@@ -4,7 +4,9 @@
 
 `ResponseCache` 是 response reuse boundary。
 
-它的角色是讓相同條件下的 response 可以被重用。repo 目前已落地既有 keyed boundary，加上最小 operational boundary，但仍不處理實際 backend、schema 或 persistence implementation。
+它的角色是讓相同條件下的 response 可以被重用。repo 目前已落地既有 keyed boundary、
+最小 operational boundary，以及 internal process-local storage 的有限 freshness slice；
+它仍不處理 persistence backend、schema 或 broader cache architecture。
 
 ## Identity Dependency
 
@@ -38,6 +40,8 @@
 - `ResponseCacheEntry` 只保留 `response: str`
 - `ResponseCache` 只透過 async `get(...)` / `set(...)` 消費既有 `ResponseCacheKey`
 - `ResponseCacheStore` 只維持在 `response_cache.ports.store` 的 submodule-public path
+- internal `InMemoryResponseCacheStore` 接受 developer-injected 的正 TTL freshness policy，
+  在成功寫入記錄 aware-UTC 時間，讀取不續期，並將到期既有 record 視為 `None` miss
 
 在這個 boundary 中：
 
@@ -46,6 +50,7 @@
 - store miss 以 `None` 表達
 - store failures 原樣向外傳播
 - `ResponseCache` 不建立、關閉或重置 store resources
+- internal policy 與 concrete store 不會 re-export 至 package root 或 `ports`
 
 ## Owner Responsibility
 
@@ -62,8 +67,8 @@
 
 這一輪不定義：
 
-- concrete operational cache storage implementation
-- TTL / eviction implementation
+- public concrete-store 或 policy API
+- settings/env TTL surface、TTL renewal、capacity、admission、eviction、invalidation 或 deletion
 - persistence schema
 - database / Redis / `SQLAlchemy`
 - provider adapter

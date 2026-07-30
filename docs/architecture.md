@@ -56,7 +56,7 @@ shared read contract：`model_runtime` 是 umbrella root，而
 9. Return the response
 
 這裡描述的是高層概念 flow。除了最小 `ModelRegistry` boundary、`model-payload`
-hashing core、最小 keyed `response_cache` boundary，以及 internal local runtime slice
+hashing core、最小 keyed/operational `response_cache` boundary，以及 internal local runtime slice
 已落地外，其餘 orchestration 與完整 runtime acquisition/execution flow 仍未在
 repository 中落地。
 
@@ -76,7 +76,10 @@ repository 中落地。
 產生的 `model_payload_hash`，以及 `FeatureHasher` 產生的 `feature_hash`
 組成。repo 現在另外落地最小 operational `ResponseCache` boundary：它只透過
 async `ResponseCacheStore` port 消費這個 key 與 `ResponseCacheEntry`，而不是
-自行計算 hashes 或擁有 backend/policy semantics。
+自行計算 hashes。內部 process-local store 以 developer-injected 的正 TTL freshness
+policy 決定 hit/miss：successful write 記錄 aware-UTC 時間，read 不續期，TTL 到期則只回傳
+miss。policy 與 concrete store 都不穿透 package root 或 `ports` surface，且不擁有
+persistence、eviction 或 orchestration semantics。
 
 但 gateway side 不直接擁有 model invocation semantics。
 
@@ -147,7 +150,7 @@ initialization 階段不包含：
 - adapter schemas
 - framework integration
 - 除 ONNX session acquisition 外的 artifact I/O、provider framework 與完整 model pool lifecycle
-- response cache implementation
+- broader response cache implementation，例如 persistence、settings、eviction 與 orchestration wiring
 - provider-specific execution runtime behavior 與完整 execution flow
 - infrastructure selection
 
