@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from hashlib import sha256
-import json
 from typing import TypeGuard
+
+from typing_extensions import override
 
 from .ports import FeatureHasher
 
@@ -18,6 +20,7 @@ def _is_feature_string(value: object) -> TypeGuard[str]:
 class CanonicalFeatureHasher(FeatureHasher):
     """Derive a deterministic digest from response-cache feature material."""
 
+    @override
     def hash_features(self, features: Mapping[str, str]) -> str:
         """Return the locked canonical SHA-256 digest for ``features``."""
         pairs: list[tuple[str, str]] = []
