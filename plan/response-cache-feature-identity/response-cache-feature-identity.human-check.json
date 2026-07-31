@@ -1,0 +1,7 @@
+{
+    "topic": "response-cache-feature-identity",
+    "gate": "human-check",
+    "status": "cleared",
+    "decision": "approved-for-implementation",
+    "note": "同意依已審核 plan 進入 implementation；不得擴張既定 scope、path 或 contract。"
+}

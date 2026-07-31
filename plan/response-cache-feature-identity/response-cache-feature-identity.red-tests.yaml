@@ -1,0 +1,60 @@
+status: COMPLETE
+verdict: red-tests-ready
+d1_verdict:
+  verdict: non-trivial
+  reason: feature
+test_mapping:
+  - requirement_id: AC-1
+    test_case_name: test_canonical_feature_hasher_implements_port_and_remains_internal
+    coverage_category: public_contract
+  - requirement_id: AC-2
+    test_case_name: test_hash_features_uses_locked_utf8_json_representation_for_unicode
+    coverage_category: happy_path
+  - requirement_id: AC-2
+    test_case_name: test_hash_features_accepts_string_subclasses_via_isinstance_validation
+    coverage_category: boundary_edge
+  - requirement_id: AC-3
+    test_case_name: test_hash_features_matches_golden_empty_mapping_digest
+    coverage_category: boundary_edge
+  - requirement_id: AC-4
+    test_case_name: test_hash_features_preserves_raw_whitespace_case_and_unicode_material
+    coverage_category: boundary_edge
+  - requirement_id: AC-5
+    test_case_name: test_hash_features_rejects_non_string_keys_or_values
+    coverage_category: error_exception
+  - requirement_id: AC-6
+    test_case_name: test_factory_uses_concrete_hasher_without_rewriting_identity_material
+    coverage_category: integration_point
+  - requirement_id: AC-5
+    test_case_name: test_factory_propagates_concrete_hasher_type_error_without_constructing_a_key
+    coverage_category: error_exception
+  - requirement_id: AC-6
+    test_case_name: test_factory_uses_concrete_hasher_without_rewriting_identity_material
+    coverage_category: state_side_effect
+validation_checks:
+  d1_decision: non-trivial
+  behavior_contract_source: plan/response-cache-feature-identity/response-cache-feature-identity.spec.md
+  plan_review_verdict: approved
+  human_check_status: cleared
+  requirements_mapped: true
+  public_contract_coverage: true
+  test_categories_present:
+    - happy_path
+    - error_exception
+    - boundary_edge
+    - state_side_effect
+    - integration_point
+  expected_initial_status: red
+  production_code_modified: false
+  direct_import_only: true
+  dynamic_module_loading: false
+  focused_pytest:
+    command: uv run pytest tests/response_cache/test_canonical_feature_hasher.py -v --no-cov
+    exit_code: 2
+    outcome: red
+    evidence: >-
+      Collection failed with ModuleNotFoundError for
+      async_model_gateway.response_cache._canonical_feature_hasher, which is the
+      planned production module and does not yet exist.
+issues: []
+next_step: Proceed to Implementer for the approved internal module only; retain these tests unchanged except for necessary correctness fixes.
