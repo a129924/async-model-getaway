@@ -1,0 +1,25 @@
+{
+  "verdict": "approved",
+  "blocking_issues": [],
+  "copilot_feedback_triage": {
+    "ADDRESS": [
+      {
+        "comment": "Accepted `str` subclass keys can remain distinct mapping keys while canonicalizing to the same base-string key; key-only sorting would preserve emitted order when their values differ.",
+        "location": "PR #23 review thread PRRT_kwDOS7D3Es6VWZh9",
+        "why": "The revised plan and behavior specification lock lexicographic sorting of each complete `(base_key, base_value)` pair. They require direct-hasher and `ResponseCacheKeyFactory(CanonicalFeatureHasher())` regressions with equal base keys, distinct values, and opposite emitted orders; this input remains valid and is neither rejected nor deduplicated."
+      },
+      {
+        "comment": "`str(key)` / `str(value)` can invoke an accepted `str` subclass override of `__str__`, allowing identity drift or collisions.",
+        "location": "PR #23 review thread PRRT_kwDOS7D3Es6VVPhW",
+        "why": "The locked contract keeps `str.__str__(key)` and `str.__str__(value)` after runtime validation and requires hostile-subclass regressions against a plain-`str` baseline."
+      },
+      {
+        "comment": "An unpaired surrogate is a runtime `str`, but `ensure_ascii=False` followed by strict UTF-8 encoding raises `UnicodeEncodeError`.",
+        "location": "PR #23 review thread PRRT_kwDOS7D3Es6VVPhZ",
+        "why": "The locked error policy translates only that UTF-8 boundary error into `TypeError` chained from the original `UnicodeEncodeError`; direct-hasher and factory non-wrapping/no-key regressions are required."
+      }
+    ],
+    "DISCUSS": [],
+    "SKIP": []
+  }
+}

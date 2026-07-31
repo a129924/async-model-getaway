@@ -1,0 +1,116 @@
+topic: response-cache-feature-identity
+review: implementation-review
+verdict: approved
+
+preconditions:
+  plan_review: approved
+  human_check: cleared
+  implementation_step_gate: passed
+  red_test_evidence: red-tests-ready
+
+traceability_matrix:
+  - step: >-
+      1. Add direct-import RED regressions and fresh evidence for base-str
+      material, complete-pair ordering, strict UTF-8 failure, and factory propagation.
+    status: done
+    evidence:
+      - tests/response_cache/test_canonical_feature_hasher.py:20
+      - tests/response_cache/test_canonical_feature_hasher.py:90
+      - tests/response_cache/test_canonical_feature_hasher.py:111
+      - tests/response_cache/test_canonical_feature_hasher.py:130
+      - tests/response_cache/test_canonical_feature_hasher.py:211
+      - tests/response_cache/test_canonical_feature_hasher.py:237
+      - tests/response_cache/test_canonical_feature_hasher.py:294
+      - plan/response-cache-feature-identity/response-cache-feature-identity.red-tests.yaml
+  - step: >-
+      2. Modify only CanonicalFeatureHasher to use base-str material, complete
+      pair sorting, the frozen representation, and chained UTF-8 failure translation.
+    status: done
+    evidence:
+      - src/async_model_gateway/response_cache/_canonical_feature_hasher.py:27
+      - src/async_model_gateway/response_cache/_canonical_feature_hasher.py:34
+      - src/async_model_gateway/response_cache/_canonical_feature_hasher.py:36
+      - src/async_model_gateway/response_cache/_canonical_feature_hasher.py:37
+      - src/async_model_gateway/response_cache/_canonical_feature_hasher.py:42
+  - step: >-
+      3. Make the focused tests green and run the suite, lint, type, and
+      pre-commit validation.
+    status: done
+    evidence:
+      - "uv run pytest tests/response_cache/test_canonical_feature_hasher.py -v --no-cov: 19 passed"
+      - "uv run pytest: 216 passed; coverage 97.85% (required 90.0%)"
+      - "uv run ruff check src tests plan/response-cache-feature-identity: passed"
+      - "uv run pyright: 0 errors, 0 warnings, 0 informations"
+      - "uv run pre-commit run --all-files: passed"
+
+scope_creep_check:
+  - non_goal: >-
+      No change to FeatureHasher, ResponseCacheKey, ResponseCacheKeyFactory,
+      their signatures, or ResponseCacheKey fields.
+    violated: no
+    evidence: src/async_model_gateway/response_cache/key_factory.py:20 unchanged
+  - non_goal: >-
+      No model-payload, TTL/freshness/store, persistence, settings, orchestrator,
+      response-generation, dependency, version, or documentation change.
+    violated: no
+    evidence: git diff names only the two authorized implementation paths and topic artifacts
+  - non_goal: No package-root or ports re-export, hash migration, or versioning.
+    violated: no
+    evidence: src/async_model_gateway/response_cache/__init__.py:3 unchanged; src/async_model_gateway/response_cache/ports/__init__.py:3 unchanged
+  - non_goal: Tests must use direct imports; dynamic module loading is not authorized.
+    violated: no
+    evidence: tests/response_cache/test_canonical_feature_hasher.py:10
+
+contract_check:
+  - item: Internal-only FeatureHasher implementation with unchanged public exports.
+    status: matches
+    detail: Concrete class remains only in the private module; package-root and ports exports are unchanged.
+  - item: Base-str material and frozen sorted JSON/UTF-8/SHA-256 representation.
+    status: matches
+    detail: Validation precedes str.__str__ extraction; exact base-string pairs are sorted lexicographically as complete tuples, then serialized with ensure_ascii=False and compact separators before SHA-256.
+  - item: Duplicate base keys with distinct values remain valid and insertion-order independent.
+    status: matches
+    detail: pairs.sort() orders both base-key and base-value; direct and factory tests retain both duplicate-key pairs and match in opposite emission order.
+  - item: Strict UTF-8 failure is TypeError chained from the original UnicodeEncodeError.
+    status: matches
+    detail: Only UnicodeEncodeError from the UTF-8 encode boundary is translated with raise TypeError(...) from exc.
+  - item: Factory remains unchanged and propagates errors without key construction.
+    status: matches
+    detail: The unchanged factory delegates before ResponseCacheKey construction; focused test verifies the chained error and absent construction.
+
+test_plan_check:
+  - case_type: direct imports and internal-only implementation
+    status: present
+    location: tests/response_cache/test_canonical_feature_hasher.py:10
+  - case_type: frozen empty and Unicode golden digests with insertion-order independence
+    status: present
+    location: tests/response_cache/test_canonical_feature_hasher.py:50
+  - case_type: base-str material rejects hostile __str__ identity drift and collision
+    status: present
+    location: tests/response_cache/test_canonical_feature_hasher.py:90
+  - case_type: base-string ordering resists hostile __lt__
+    status: present
+    location: tests/response_cache/test_canonical_feature_hasher.py:111
+  - case_type: duplicate base keys are complete-pair sorted without rejection or deduplication
+    status: present
+    location: tests/response_cache/test_canonical_feature_hasher.py:130
+  - case_type: factory preserves complete-pair ordering for duplicate base keys
+    status: present
+    location: tests/response_cache/test_canonical_feature_hasher.py:237
+  - case_type: non-string material and unpaired surrogate fail closed with chained encoding cause
+    status: present
+    location: tests/response_cache/test_canonical_feature_hasher.py:196
+  - case_type: factory propagates failures without constructing a key
+    status: present
+    location: tests/response_cache/test_canonical_feature_hasher.py:294
+  - case_type: full response-cache regression coverage
+    status: present
+    location: "uv run pytest: 216 passed"
+
+validation_evidence:
+  focused_pytest: 19 passed
+  full_pytest: 216 passed
+  coverage: 97.85%
+  ruff: passed
+  pyright_strict: passed
+  pre_commit: passed

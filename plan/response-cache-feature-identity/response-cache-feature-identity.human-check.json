@@ -1,0 +1,7 @@
+{
+  "topic": "response-cache-feature-identity",
+  "gate": "human-check",
+  "status": "cleared",
+  "decision": "approved-for-implementation",
+  "note": "同意依 fresh replan 進入 implementation：維持既有 canonical digest format；feature material 必須可嚴格 UTF-8 編碼；不可編碼字串 fail-closed raise TypeError 並保留 UnicodeEncodeError cause；str subclass 使用基底 str material；canonical pairs 依完整 (base_key, base_value) lexicographic 排序；factory 原樣傳播錯誤，且不得擴張既定 scope、path 或 contract。"
+}
