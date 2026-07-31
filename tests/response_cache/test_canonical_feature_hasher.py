@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator, Mapping
 from unittest.mock import patch
 
 import pytest
@@ -14,6 +15,29 @@ from async_model_gateway.response_cache._canonical_feature_hasher import (
     CanonicalFeatureHasher,
 )
 from async_model_gateway.response_cache.ports import FeatureHasher
+
+
+class DuplicateBaseKeyFeatures(Mapping[str, str]):
+    """Mapping-like test input that can emit duplicate canonical key material."""
+
+    def __init__(self, pairs: list[tuple[str, str]]) -> None:
+        self._pairs = pairs
+
+    def __getitem__(self, key: str) -> str:
+        for emitted_key, value in self._pairs:
+            if emitted_key == key:
+                return value
+        raise KeyError(key)
+
+    def __iter__(self) -> Iterator[str]:
+        return (key for key, _ in self._pairs)
+
+    def __len__(self) -> int:
+        return len(self._pairs)
+
+    def items(self) -> list[tuple[str, str]]:
+        """Return every emitted pair, including duplicate base-string keys."""
+        return self._pairs
 
 
 def test_canonical_feature_hasher_implements_port_and_remains_internal() -> None:
@@ -103,6 +127,41 @@ def test_hash_features_normalizes_string_subclasses_before_sorting() -> None:
     assert subclass_digest == baseline_digest
 
 
+def test_hash_features_orders_duplicate_base_keys_by_complete_pair() -> None:
+    """Equal base keys with distinct values remain valid and insertion-order independent."""
+
+    class FirstFeatureKey(str):
+        pass
+
+    class SecondFeatureKey(str):
+        pass
+
+    forward_features = DuplicateBaseKeyFeatures(
+        [
+            (FirstFeatureKey("mode"), "chat"),
+            (SecondFeatureKey("mode"), "completion"),
+        ],
+    )
+    reversed_features = DuplicateBaseKeyFeatures(
+        [
+            (SecondFeatureKey("mode"), "completion"),
+            (FirstFeatureKey("mode"), "chat"),
+        ],
+    )
+    baseline_features = DuplicateBaseKeyFeatures(
+        [("mode", "chat"), ("mode", "completion")],
+    )
+    hasher = CanonicalFeatureHasher()
+
+    forward_digest = hasher.hash_features(forward_features)
+    reversed_digest = hasher.hash_features(reversed_features)
+    baseline_digest = hasher.hash_features(baseline_features)
+
+    assert forward_digest == reversed_digest == baseline_digest
+    assert forward_digest != hasher.hash_features({"mode": "chat"})
+    assert forward_digest != hasher.hash_features({"mode": "completion"})
+
+
 def test_hash_features_distinguishes_representative_key_and_value_changes() -> None:
     """A changed identity key or value must not share the baseline digest."""
     hasher = CanonicalFeatureHasher()
@@ -173,6 +232,51 @@ def test_factory_uses_concrete_hasher_without_rewriting_identity_material() -> N
     assert key.model_payload_hash == "  payload-hash  "
     assert key.feature_hash == hasher.hash_features(features)
     assert features == {"mode": "chat", "safety": "strict"}
+
+
+def test_factory_uses_complete_pair_ordering_for_duplicate_base_keys() -> None:
+    """Factory integration keeps duplicate base-key feature hashes deterministic."""
+
+    class FirstFeatureKey(str):
+        pass
+
+    class SecondFeatureKey(str):
+        pass
+
+    forward_features = DuplicateBaseKeyFeatures(
+        [
+            (FirstFeatureKey("mode"), "chat"),
+            (SecondFeatureKey("mode"), "completion"),
+        ],
+    )
+    reversed_features = DuplicateBaseKeyFeatures(
+        [
+            (SecondFeatureKey("mode"), "completion"),
+            (FirstFeatureKey("mode"), "chat"),
+        ],
+    )
+    baseline_features = DuplicateBaseKeyFeatures(
+        [("mode", "chat"), ("mode", "completion")],
+    )
+    factory = ResponseCacheKeyFactory(CanonicalFeatureHasher())
+
+    forward_key = factory.build(
+        namespace="response-cache",
+        model_payload_hash="payload-hash",
+        features=forward_features,
+    )
+    reversed_key = factory.build(
+        namespace="response-cache",
+        model_payload_hash="payload-hash",
+        features=reversed_features,
+    )
+    baseline_key = factory.build(
+        namespace="response-cache",
+        model_payload_hash="payload-hash",
+        features=baseline_features,
+    )
+
+    assert forward_key.feature_hash == reversed_key.feature_hash == baseline_key.feature_hash
 
 
 def test_factory_propagates_concrete_hasher_type_error_without_constructing_a_key() -> None:

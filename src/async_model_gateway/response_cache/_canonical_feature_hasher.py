@@ -33,7 +33,7 @@ class CanonicalFeatureHasher(FeatureHasher):
                 raise TypeError(msg)
             pairs.append((str.__str__(key), str.__str__(value)))
 
-        pairs.sort(key=lambda pair: pair[0])
+        pairs.sort()
         serialized_pairs = json.dumps(
             pairs,
             ensure_ascii=False,

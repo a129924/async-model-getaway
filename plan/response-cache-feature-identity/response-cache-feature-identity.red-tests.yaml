@@ -28,6 +28,9 @@ test_mapping:
     test_case_name: test_hash_features_normalizes_string_subclasses_before_sorting
     coverage_category: boundary_edge
   - requirement_id: AC-4
+    test_case_name: test_hash_features_orders_duplicate_base_keys_by_complete_pair
+    coverage_category: boundary_edge
+  - requirement_id: AC-4
     test_case_name: test_hash_features_distinguishes_representative_key_and_value_changes
     coverage_category: boundary_edge
   - requirement_id: AC-4
@@ -41,6 +44,9 @@ test_mapping:
     coverage_category: error_exception
   - requirement_id: AC-6
     test_case_name: test_factory_uses_concrete_hasher_without_rewriting_identity_material
+    coverage_category: integration_point
+  - requirement_id: AC-6
+    test_case_name: test_factory_uses_complete_pair_ordering_for_duplicate_base_keys
     coverage_category: integration_point
   - requirement_id: AC-5
     test_case_name: test_factory_propagates_concrete_hasher_type_error_without_constructing_a_key
@@ -73,11 +79,18 @@ validation_checks:
     exit_code: 1
     outcome: red
     evidence: >-
-      Fresh execution against the committed production baseline collected 17 tests:
-      14 passed and the three fresh tests failed. The hostile str-subclass test
-      reached the current polymorphic str(key)/str(value) call and raised its
-      AssertionError. The direct and factory unpaired-surrogate tests received
-      the current raw UnicodeEncodeError instead of the required chained
-      TypeError; the factory did not construct a key before the failure.
+      Fresh execution against the unchanged production baseline collected 19
+      tests: 17 passed and the two new complete-pair-ordering regressions
+      failed. The direct and factory cases both show different hashes for the
+      opposite pair-emission order because the current implementation sorts
+      only by base key; the baseline duplicate-pair input is otherwise valid.
+  focused_ruff:
+    command: uv run ruff check tests/response_cache/test_canonical_feature_hasher.py
+    exit_code: 0
+    outcome: pass
+  focused_type_check:
+    command: uv run pyright
+    exit_code: 0
+    outcome: pass
 issues: []
-next_step: Proceed to Implementer for the approved internal module only after fresh RED execution is recorded.
+next_step: Proceed to Implementer for the approved internal module only; sort complete canonical pairs without rejection or deduplication.

@@ -4,14 +4,19 @@
   "copilot_feedback_triage": {
     "ADDRESS": [
       {
-        "comment": "`str(key)` / `str(value)` may invoke a `str` subclass override of `__str__`, allowing identity drift or collisions.",
-        "location": "PR #23 review pullrequestreview-4825894175",
-        "why": "The revised plan/spec require `str.__str__(key)` and `str.__str__(value)` after runtime validation, preserve the frozen pair-list digest representation, and require direct-hasher plus factory-propagation regression tests proving overridden `__str__` cannot alter or collapse identity."
+        "comment": "Accepted `str` subclass keys can remain distinct mapping keys while canonicalizing to the same base-string key; key-only sorting would preserve emitted order when their values differ.",
+        "location": "PR #23 review thread PRRT_kwDOS7D3Es6VWZh9",
+        "why": "The revised plan and behavior specification lock lexicographic sorting of each complete `(base_key, base_value)` pair. They require direct-hasher and `ResponseCacheKeyFactory(CanonicalFeatureHasher())` regressions with equal base keys, distinct values, and opposite emitted orders; this input remains valid and is neither rejected nor deduplicated."
       },
       {
-        "comment": "An unpaired surrogate is a runtime `str`, but `ensure_ascii=False` followed by UTF-8 encoding raises an uncontracted `UnicodeEncodeError`.",
-        "location": "PR #23 review pullrequestreview-4825894175",
-        "why": "The revised plan/spec define feature material as strictly UTF-8-encodable text; the hasher must translate that encoding failure to `TypeError` with the original `UnicodeEncodeError` as its cause, while the unchanged factory propagates it without wrapping. Focused direct-hasher and factory tests are required."
+        "comment": "`str(key)` / `str(value)` can invoke an accepted `str` subclass override of `__str__`, allowing identity drift or collisions.",
+        "location": "PR #23 review thread PRRT_kwDOS7D3Es6VVPhW",
+        "why": "The locked contract keeps `str.__str__(key)` and `str.__str__(value)` after runtime validation and requires hostile-subclass regressions against a plain-`str` baseline."
+      },
+      {
+        "comment": "An unpaired surrogate is a runtime `str`, but `ensure_ascii=False` followed by strict UTF-8 encoding raises `UnicodeEncodeError`.",
+        "location": "PR #23 review thread PRRT_kwDOS7D3Es6VVPhZ",
+        "why": "The locked error policy translates only that UTF-8 boundary error into `TypeError` chained from the original `UnicodeEncodeError`; direct-hasher and factory non-wrapping/no-key regressions are required."
       }
     ],
     "DISCUSS": [],
