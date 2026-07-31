@@ -13,7 +13,7 @@ created: 2026-07-31
 ## Workflow Stages
 
 - [X] plan-authoring
-- [ ] plan-review
+- [X] plan-review
 - [X] tdd-test-authoring
 - [X] implementation
 - [X] implementation-review
