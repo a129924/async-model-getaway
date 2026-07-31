@@ -2,7 +2,18 @@
   "verdict": "approved",
   "blocking_issues": [],
   "copilot_feedback_triage": {
-    "ADDRESS": [],
+    "ADDRESS": [
+      {
+        "comment": "`str(key)` / `str(value)` may invoke a `str` subclass override of `__str__`, allowing identity drift or collisions.",
+        "location": "PR #23 review pullrequestreview-4825894175",
+        "why": "The revised plan/spec require `str.__str__(key)` and `str.__str__(value)` after runtime validation, preserve the frozen pair-list digest representation, and require direct-hasher plus factory-propagation regression tests proving overridden `__str__` cannot alter or collapse identity."
+      },
+      {
+        "comment": "An unpaired surrogate is a runtime `str`, but `ensure_ascii=False` followed by UTF-8 encoding raises an uncontracted `UnicodeEncodeError`.",
+        "location": "PR #23 review pullrequestreview-4825894175",
+        "why": "The revised plan/spec define feature material as strictly UTF-8-encodable text; the hasher must translate that encoding failure to `TypeError` with the original `UnicodeEncodeError` as its cause, while the unchanged factory propagates it without wrapping. Focused direct-hasher and factory tests are required."
+      }
+    ],
     "DISCUSS": [],
     "SKIP": []
   }

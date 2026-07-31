@@ -31,7 +31,7 @@ class CanonicalFeatureHasher(FeatureHasher):
             if not _is_feature_string(value):
                 msg = "feature values must be strings"
                 raise TypeError(msg)
-            pairs.append((str(key), str(value)))
+            pairs.append((str.__str__(key), str.__str__(value)))
 
         pairs.sort(key=lambda pair: pair[0])
         serialized_pairs = json.dumps(
@@ -39,4 +39,9 @@ class CanonicalFeatureHasher(FeatureHasher):
             ensure_ascii=False,
             separators=(",", ":"),
         )
-        return sha256(serialized_pairs.encode("utf-8")).hexdigest()
+        try:
+            encoded_pairs = serialized_pairs.encode("utf-8")
+        except UnicodeEncodeError as exc:
+            msg = "feature identity material must be strictly UTF-8 encodable"
+            raise TypeError(msg) from exc
+        return sha256(encoded_pairs).hexdigest()

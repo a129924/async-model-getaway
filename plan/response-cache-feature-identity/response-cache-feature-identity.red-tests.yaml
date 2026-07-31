@@ -2,19 +2,33 @@ status: COMPLETE
 verdict: red-tests-ready
 d1_verdict:
   verdict: non-trivial
-  reason: feature
+  reason: >-
+    This correction changes the executable feature-identity and error-propagation
+    contract for hostile str subclasses and strictly UTF-8-unencodable material.
 test_mapping:
   - requirement_id: AC-1
     test_case_name: test_canonical_feature_hasher_implements_port_and_remains_internal
     coverage_category: public_contract
   - requirement_id: AC-2
-    test_case_name: test_hash_features_uses_locked_utf8_json_representation_for_unicode
-    coverage_category: happy_path
-  - requirement_id: AC-2
     test_case_name: test_hash_features_accepts_string_subclasses_via_isinstance_validation
+    coverage_category: boundary_edge
+  - requirement_id: AC-2
+    test_case_name: test_hash_features_uses_base_string_material_for_str_subclasses_with_overridden_str
     coverage_category: boundary_edge
   - requirement_id: AC-3
     test_case_name: test_hash_features_matches_golden_empty_mapping_digest
+    coverage_category: boundary_edge
+  - requirement_id: AC-3
+    test_case_name: test_hash_features_is_insertion_order_independent
+    coverage_category: happy_path
+  - requirement_id: AC-3
+    test_case_name: test_hash_features_uses_locked_utf8_json_representation_for_unicode
+    coverage_category: happy_path
+  - requirement_id: AC-4
+    test_case_name: test_hash_features_normalizes_string_subclasses_before_sorting
+    coverage_category: boundary_edge
+  - requirement_id: AC-4
+    test_case_name: test_hash_features_distinguishes_representative_key_and_value_changes
     coverage_category: boundary_edge
   - requirement_id: AC-4
     test_case_name: test_hash_features_preserves_raw_whitespace_case_and_unicode_material
@@ -22,12 +36,18 @@ test_mapping:
   - requirement_id: AC-5
     test_case_name: test_hash_features_rejects_non_string_keys_or_values
     coverage_category: error_exception
+  - requirement_id: AC-5
+    test_case_name: test_hash_features_rejects_unpaired_surrogate_as_chained_type_error
+    coverage_category: error_exception
   - requirement_id: AC-6
     test_case_name: test_factory_uses_concrete_hasher_without_rewriting_identity_material
     coverage_category: integration_point
   - requirement_id: AC-5
     test_case_name: test_factory_propagates_concrete_hasher_type_error_without_constructing_a_key
     coverage_category: error_exception
+  - requirement_id: AC-6
+    test_case_name: test_factory_propagates_unpaired_surrogate_type_error_without_constructing_a_key
+    coverage_category: integration_point
   - requirement_id: AC-6
     test_case_name: test_factory_uses_concrete_hasher_without_rewriting_identity_material
     coverage_category: state_side_effect
@@ -50,11 +70,14 @@ validation_checks:
   dynamic_module_loading: false
   focused_pytest:
     command: uv run pytest tests/response_cache/test_canonical_feature_hasher.py -v --no-cov
-    exit_code: 2
+    exit_code: 1
     outcome: red
     evidence: >-
-      Collection failed with ModuleNotFoundError for
-      async_model_gateway.response_cache._canonical_feature_hasher, which is the
-      planned production module and does not yet exist.
+      Fresh execution against the committed production baseline collected 17 tests:
+      14 passed and the three fresh tests failed. The hostile str-subclass test
+      reached the current polymorphic str(key)/str(value) call and raised its
+      AssertionError. The direct and factory unpaired-surrogate tests received
+      the current raw UnicodeEncodeError instead of the required chained
+      TypeError; the factory did not construct a key before the failure.
 issues: []
-next_step: Proceed to Implementer for the approved internal module only; retain these tests unchanged except for necessary correctness fixes.
+next_step: Proceed to Implementer for the approved internal module only after fresh RED execution is recorded.

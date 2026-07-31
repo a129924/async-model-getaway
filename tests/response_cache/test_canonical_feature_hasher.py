@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 
 import async_model_gateway.response_cache as response_cache_module
+import async_model_gateway.response_cache.key_factory as key_factory_module
 import async_model_gateway.response_cache.ports as response_cache_ports_module
 from async_model_gateway.response_cache import ResponseCacheKeyFactory
 from async_model_gateway.response_cache._canonical_feature_hasher import (
@@ -58,6 +61,27 @@ def test_hash_features_accepts_string_subclasses_via_isinstance_validation() -> 
     )
 
     assert digest == CanonicalFeatureHasher().hash_features({"mode": "chat"})
+
+
+def test_hash_features_uses_base_string_material_for_str_subclasses_with_overridden_str() -> None:
+    """Hostile ``__str__`` overrides cannot rewrite or collapse identity material."""
+
+    class HostileFeatureString(str):
+        def __str__(self) -> str:
+            msg = "Canonical feature hashing must not call subclass __str__."
+            raise AssertionError(msg)
+
+    hasher = CanonicalFeatureHasher()
+    baseline_digest = hasher.hash_features({"mode": "chat"})
+    hostile_digest = hasher.hash_features(
+        {HostileFeatureString("mode"): HostileFeatureString("chat")},
+    )
+    distinct_hostile_digest = hasher.hash_features(
+        {HostileFeatureString("mode"): HostileFeatureString("relaxed")},
+    )
+
+    assert hostile_digest == baseline_digest
+    assert distinct_hostile_digest != baseline_digest
 
 
 def test_hash_features_normalizes_string_subclasses_before_sorting() -> None:
@@ -125,6 +149,14 @@ def test_hash_features_rejects_non_string_keys_or_values(
         CanonicalFeatureHasher().hash_features(invalid_features)  # type: ignore[arg-type]
 
 
+def test_hash_features_rejects_unpaired_surrogate_as_chained_type_error() -> None:
+    """Canonical material that cannot strictly UTF-8 encode must fail closed."""
+    with pytest.raises(TypeError) as raised_error:
+        CanonicalFeatureHasher().hash_features({"mode": "\ud800"})
+
+    assert isinstance(raised_error.value.__cause__, UnicodeEncodeError)
+
+
 def test_factory_uses_concrete_hasher_without_rewriting_identity_material() -> None:
     """Factory injection preserves literal upstream material and caller mapping state."""
     hasher = CanonicalFeatureHasher()
@@ -153,3 +185,19 @@ def test_factory_propagates_concrete_hasher_type_error_without_constructing_a_ke
             model_payload_hash="payload-hash",
             features={"mode": 1},  # type: ignore[dict-item]
         )
+
+
+def test_factory_propagates_unpaired_surrogate_type_error_without_constructing_a_key() -> None:
+    """Factory propagation must retain the concrete hasher's chained error policy."""
+    factory = ResponseCacheKeyFactory(CanonicalFeatureHasher())
+
+    with patch.object(key_factory_module, "ResponseCacheKey") as response_cache_key:
+        with pytest.raises(TypeError) as raised_error:
+            factory.build(
+                namespace="response-cache",
+                model_payload_hash="payload-hash",
+                features={"mode": "\ud800"},
+            )
+
+    assert isinstance(raised_error.value.__cause__, UnicodeEncodeError)
+    response_cache_key.assert_not_called()

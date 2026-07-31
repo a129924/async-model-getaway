@@ -10,131 +10,100 @@ preconditions:
 
 traceability_matrix:
   - step: >-
-      1. Add direct-import RED tests and RED evidence covering canonical identity,
-      failures, factory injection, and no regression-test changes.
+      1. Revise direct-import RED tests and record fresh RED evidence for base-str
+      identity material, safe ordering, strict UTF-8 failure, and factory propagation.
     status: done
     evidence:
-      - tests/response_cache/test_canonical_feature_hasher.py:16
-      - tests/response_cache/test_canonical_feature_hasher.py:23
-      - tests/response_cache/test_canonical_feature_hasher.py:36
-      - tests/response_cache/test_canonical_feature_hasher.py:43
-      - tests/response_cache/test_canonical_feature_hasher.py:50
-      - tests/response_cache/test_canonical_feature_hasher.py:63
-      - tests/response_cache/test_canonical_feature_hasher.py:75
-      - tests/response_cache/test_canonical_feature_hasher.py:94
-      - tests/response_cache/test_canonical_feature_hasher.py:109
-      - tests/response_cache/test_canonical_feature_hasher.py:127
+      - tests/response_cache/test_canonical_feature_hasher.py:13
+      - tests/response_cache/test_canonical_feature_hasher.py:66
+      - tests/response_cache/test_canonical_feature_hasher.py:87
+      - tests/response_cache/test_canonical_feature_hasher.py:152
+      - tests/response_cache/test_canonical_feature_hasher.py:190
       - plan/response-cache-feature-identity/response-cache-feature-identity.red-tests.yaml
   - step: >-
-      2. Add the one internal CanonicalFeatureHasher with pre-sort string
-      validation and locked sorted-pair JSON/UTF-8/SHA-256 behavior.
+      2. Modify only CanonicalFeatureHasher to use base-str material, retain the
+      frozen representation, and translate only UTF-8 UnicodeEncodeError.
     status: done
     evidence:
-      - src/async_model_gateway/response_cache/_canonical_feature_hasher.py:13
-      - src/async_model_gateway/response_cache/_canonical_feature_hasher.py:18
-      - src/async_model_gateway/response_cache/_canonical_feature_hasher.py:21
-      - src/async_model_gateway/response_cache/_canonical_feature_hasher.py:23
-      - src/async_model_gateway/response_cache/_canonical_feature_hasher.py:33
+      - src/async_model_gateway/response_cache/_canonical_feature_hasher.py:24
+      - src/async_model_gateway/response_cache/_canonical_feature_hasher.py:28
       - src/async_model_gateway/response_cache/_canonical_feature_hasher.py:34
-      - src/async_model_gateway/response_cache/_canonical_feature_hasher.py:39
+      - src/async_model_gateway/response_cache/_canonical_feature_hasher.py:36
+      - src/async_model_gateway/response_cache/_canonical_feature_hasher.py:37
+      - src/async_model_gateway/response_cache/_canonical_feature_hasher.py:42
   - step: >-
-      3. Make the RED tests green and run focused, suite, lint, type, and
+      3. Make fresh RED tests green and run focused, suite, lint, type, and
       pre-commit validation.
     status: done
     evidence:
-      - "uv run pytest tests/response_cache/test_canonical_feature_hasher.py -v --no-cov: 13 passed"
-      - "uv run pytest: 210 passed; coverage 97.83% (required 90.0%)"
+      - "uv run pytest tests/response_cache/test_canonical_feature_hasher.py -v --no-cov: 17 passed"
+      - "uv run pytest: 214 passed; coverage 97.85% (required 90.0%)"
       - "uv run ruff check src tests plan/response-cache-feature-identity: passed"
       - "uv run pyright: 0 errors, 0 warnings, 0 informations"
       - "uv run pre-commit run --all-files: passed"
 
 scope_creep_check:
-  allowed_new_production_path: src/async_model_gateway/response_cache/_canonical_feature_hasher.py
-  allowed_new_test_path: tests/response_cache/test_canonical_feature_hasher.py
-  changed_paths:
-    - plan/response-cache-feature-identity/response-cache-feature-identity.plan.md
-    - plan/response-cache-feature-identity/response-cache-feature-identity.spec.md
-    - plan/response-cache-feature-identity/response-cache-feature-identity.step.md
-    - plan/response-cache-feature-identity/response-cache-feature-identity.plan-review.json
-    - plan/response-cache-feature-identity/response-cache-feature-identity.human-check.json
-    - plan/response-cache-feature-identity/response-cache-feature-identity.red-tests.yaml
-    - src/async_model_gateway/response_cache/_canonical_feature_hasher.py
-    - tests/response_cache/test_canonical_feature_hasher.py
-  status: clean
-  detail: >-
-    All paths are listed in the plan's executable inventory. No existing
-    production, test, export, port, factory, TTL/store, payload, metadata,
-    documentation, dependency, or orchestrator path changed.
+  - non_goal: >-
+      No change to the FeatureHasher port, ResponseCacheKey, ResponseCacheKeyFactory,
+      their signatures, or ResponseCacheKey fields.
+    violated: no
+    evidence: src/async_model_gateway/response_cache/key_factory.py:20 unchanged
+  - non_goal: >-
+      No model-payload, TTL/freshness/store, persistence, settings, orchestrator,
+      response-generation, dependency, version, or documentation change.
+    violated: no
+    evidence: clean; changed paths are limited to the executable inventory
+  - non_goal: No package-root or ports re-export, hash migration, or versioning.
+    violated: no
+    evidence: src/async_model_gateway/response_cache/__init__.py:3 unchanged; src/async_model_gateway/response_cache/ports/__init__.py:3 unchanged
+  - non_goal: Tests must use direct imports; dynamic module loading is not authorized.
+    violated: no
+    evidence: tests/response_cache/test_canonical_feature_hasher.py:9
 
 contract_check:
-  internal_only_no_export:
+  - item: Internal-only FeatureHasher implementation with unchanged public exports.
     status: matches
-    evidence:
-      - src/async_model_gateway/response_cache/_canonical_feature_hasher.py:18
-      - src/async_model_gateway/response_cache/__init__.py:3
-      - src/async_model_gateway/response_cache/ports/__init__.py:3
-      - tests/response_cache/test_canonical_feature_hasher.py:16
-  unchanged_port_and_factory_boundary:
+    detail: Concrete class remains only in the private module; package-root and ports exports are unchanged.
+  - item: Base-str material and frozen sorted JSON/UTF-8/SHA-256 representation.
     status: matches
-    evidence:
-      - src/async_model_gateway/response_cache/ports/feature_hasher.py:13
-      - src/async_model_gateway/response_cache/key_factory.py:20
-      - tests/response_cache/test_canonical_feature_hasher.py:109
-      - tests/response_cache/test_canonical_feature_hasher.py:127
-  canonical_algorithm:
+    detail: Validation precedes str.__str__ extraction; plain-string pairs are sorted and serialized with ensure_ascii=False and compact separators before SHA-256.
+  - item: Strict UTF-8 failure is TypeError chained from the original UnicodeEncodeError.
     status: matches
-    detail: >-
-      isinstance accepts str subclasses before sorting; unmodified keys sort
-      normally; json.dumps uses ensure_ascii=False and compact separators;
-      exact UTF-8 bytes feed sha256().hexdigest().
-    evidence:
-      - src/async_model_gateway/response_cache/_canonical_feature_hasher.py:13
-      - src/async_model_gateway/response_cache/_canonical_feature_hasher.py:24
-      - src/async_model_gateway/response_cache/_canonical_feature_hasher.py:33
-      - src/async_model_gateway/response_cache/_canonical_feature_hasher.py:34
-      - src/async_model_gateway/response_cache/_canonical_feature_hasher.py:39
-  raw_material_and_error_propagation:
+    detail: Only UnicodeEncodeError from the UTF-8 encode boundary is translated with raise TypeError(...) from exc.
+  - item: Factory remains unchanged and propagates errors without key construction.
     status: matches
-    evidence:
-      - tests/response_cache/test_canonical_feature_hasher.py:75
-      - tests/response_cache/test_canonical_feature_hasher.py:94
-      - tests/response_cache/test_canonical_feature_hasher.py:127
-  dynamic_loading_policy:
-    status: matches
-    detail: Direct import only; no dynamic module-loading construct is present.
-    evidence:
-      - tests/response_cache/test_canonical_feature_hasher.py:10
+    detail: The unchanged factory delegates before ResponseCacheKey construction; focused test verifies the chained error and absent construction.
 
 test_plan_check:
-  - case_type: internal port implementation and no public re-export
+  - case_type: direct imports and internal-only implementation
     status: present
-    location: tests/response_cache/test_canonical_feature_hasher.py:16
-  - case_type: insertion order, exact lowercase SHA-256, and empty golden digest
+    location: tests/response_cache/test_canonical_feature_hasher.py:9
+  - case_type: frozen empty and Unicode golden digests with insertion-order independence
     status: present
-    location: tests/response_cache/test_canonical_feature_hasher.py:23
-  - case_type: locked UTF-8 JSON representation and str subclass acceptance
+    location: tests/response_cache/test_canonical_feature_hasher.py:26
+  - case_type: base-str material rejects hostile __str__ identity drift and collision
     status: present
-    location: tests/response_cache/test_canonical_feature_hasher.py:43
-  - case_type: key/value distinction and raw whitespace/case/Unicode preservation
+    location: tests/response_cache/test_canonical_feature_hasher.py:66
+  - case_type: base-string ordering resists hostile __lt__
     status: present
-    location: tests/response_cache/test_canonical_feature_hasher.py:63
-  - case_type: non-string key/value TypeError
+    location: tests/response_cache/test_canonical_feature_hasher.py:87
+  - case_type: non-string key or value fails closed before a digest
     status: present
-    location: tests/response_cache/test_canonical_feature_hasher.py:94
-  - case_type: factory injection preserves namespace/upstream payload/mapping
+    location: tests/response_cache/test_canonical_feature_hasher.py:144
+  - case_type: direct unpaired-surrogate TypeError chains UnicodeEncodeError
     status: present
-    location: tests/response_cache/test_canonical_feature_hasher.py:109
-  - case_type: factory propagates TypeError without fallback key
+    location: tests/response_cache/test_canonical_feature_hasher.py:152
+  - case_type: factory preserves valid input and propagates both failure modes without a key
     status: present
-    location: tests/response_cache/test_canonical_feature_hasher.py:127
-  - case_type: response-cache regression coverage
+    location: tests/response_cache/test_canonical_feature_hasher.py:160
+  - case_type: full response-cache regression coverage
     status: present
-    location: "uv run pytest: 210 passed"
+    location: "uv run pytest: 214 passed"
 
 validation_evidence:
-  focused_pytest: 13 passed
-  full_pytest: 210 passed
-  coverage: 97.83%
+  focused_pytest: 17 passed
+  full_pytest: 214 passed
+  coverage: 97.85%
   ruff: passed
   pyright_strict: passed
   pre_commit: passed
