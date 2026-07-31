@@ -31,7 +31,7 @@ class CanonicalFeatureHasher(FeatureHasher):
             if not _is_feature_string(value):
                 msg = "feature values must be strings"
                 raise TypeError(msg)
-            pairs.append((key, value))
+            pairs.append((str(key), str(value)))
 
         pairs.sort(key=lambda pair: pair[0])
         serialized_pairs = json.dumps(

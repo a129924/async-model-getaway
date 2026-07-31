@@ -60,6 +60,25 @@ def test_hash_features_accepts_string_subclasses_via_isinstance_validation() -> 
     assert digest == CanonicalFeatureHasher().hash_features({"mode": "chat"})
 
 
+def test_hash_features_normalizes_string_subclasses_before_sorting() -> None:
+    """String subclasses must not alter canonical ordering through ``__lt__``."""
+
+    class NeverLessThanString(str):
+        def __lt__(self, other: object) -> bool:
+            return False
+
+    hasher = CanonicalFeatureHasher()
+    baseline_digest = hasher.hash_features({"mode": "chat", "safety": "strict"})
+    subclass_digest = hasher.hash_features(
+        {
+            NeverLessThanString("safety"): NeverLessThanString("strict"),
+            NeverLessThanString("mode"): NeverLessThanString("chat"),
+        },
+    )
+
+    assert subclass_digest == baseline_digest
+
+
 def test_hash_features_distinguishes_representative_key_and_value_changes() -> None:
     """A changed identity key or value must not share the baseline digest."""
     hasher = CanonicalFeatureHasher()
