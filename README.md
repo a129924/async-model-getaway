@@ -31,7 +31,7 @@ boundary：`async_model_gateway.response_cache` 公開
 提供 `FeatureHasher` port；`ResponseCacheStore` 仍維持為 submodule-only
 surface。repo 另有 internal、developer-injected 的正 TTL freshness policy 與
 process-local `ResponseCacheStore` 實作：成功寫入才記錄 aware-UTC 時間、讀取不續期，
-到期只回傳 miss；這些都不是新增的 public surface。repo 也已把最小 `ModelArtifact` + `LoaderFamily` shared read
+到期時 lookup 會移除已確認 stale 的 process-local record 並回傳 miss；這些都不是新增的 public surface。repo 也已把最小 `ModelArtifact` + `LoaderFamily` shared read
 contract 納入 baseline：
 `async_model_gateway.model_runtime.model_artifact` 公開 `ModelArtifact` 與
 `LoaderFamily`，並由 `model_runtime` 作為後續 model-runtime family layout 的

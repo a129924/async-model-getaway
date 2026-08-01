@@ -44,6 +44,7 @@ class InMemoryResponseCacheStore(ResponseCacheStore):
             written_at=stored_entry.written_at,
             now=_utc_now(),
         ):
+            del self._entries[key]
             return None
         return stored_entry.entry
 

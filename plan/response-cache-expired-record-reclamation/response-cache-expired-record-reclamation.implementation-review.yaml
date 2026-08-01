@@ -1,0 +1,124 @@
+topic: response-cache-expired-record-reclamation
+review: implementation-review
+verdict: approved
+
+preconditions:
+  plan_review: approved
+  human_check: cleared
+  implementation_step_gate: passed
+  red_test_evidence: red-tests-ready
+
+traceability_matrix:
+  - step: >-
+      1. Add direct-import RED tests and evidence for False-driven reclamation,
+      no recheck, reinsertion, key isolation, and policy-exception preservation.
+    status: done
+    evidence:
+      - tests/response_cache/test_in_memory_store.py:10
+      - tests/response_cache/test_in_memory_store.py:108
+      - tests/response_cache/test_in_memory_store.py:130
+      - tests/response_cache/test_in_memory_store.py:153
+      - plan/response-cache-expired-record-reclamation/response-cache-expired-record-reclamation.red-tests.yaml
+  - step: >-
+      2. Remove only the requested record after the injected policy returns
+      False, retaining all other lookup behavior.
+    status: done
+    evidence:
+      - src/async_model_gateway/response_cache/_in_memory_store.py:40
+      - src/async_model_gateway/response_cache/_in_memory_store.py:43
+      - src/async_model_gateway/response_cache/_in_memory_store.py:47
+      - src/async_model_gateway/response_cache/_in_memory_store.py:49
+  - step: >-
+      3. Align only the existing internal freshness wording in the three
+      approved documentation surfaces.
+    status: done
+    evidence:
+      - README.md:32
+      - docs/architecture.md:79
+      - docs/specs/response-cache-boundary.md:43
+  - step: >-
+      4. Run declared focused/full tests, lint, type, and pre-commit checks,
+      then mark creator-owned completion in the step tracker.
+    status: done
+    evidence:
+      - plan/response-cache-expired-record-reclamation/response-cache-expired-record-reclamation.step.md:26
+      - "uv run pytest tests/response_cache/test_in_memory_store.py -v --no-cov: 9 passed"
+      - "uv run pytest: 219 passed; coverage 97.99% (required 90.0%)"
+      - "uv run ruff check README.md docs src tests plan/response-cache-expired-record-reclamation: passed"
+      - "uv run pyright: 0 errors, 0 warnings, 0 informations"
+      - "uv run pre-commit run --all-files: passed"
+
+scope_creep_check:
+  - non_goal: >-
+      No TTL/freshness authority, expiry arithmetic, write timestamp, or
+      read-renewal change.
+    violated: no
+    evidence: src/async_model_gateway/response_cache/_in_memory_store.py:43
+  - non_goal: >-
+      No capacity/admission/eviction, background sweep, public deletion,
+      persistence, settings, metrics, tracing, or orchestrator work.
+    violated: no
+    evidence: git diff is confined to the five Planned Modify paths and topic artifacts
+  - non_goal: >-
+      No public export, port/signature, dependency, async lifecycle, lock,
+      retry, timeout, cancellation, version, release, or migration change.
+    violated: no
+    evidence: >-
+      src/async_model_gateway/response_cache/ports/store.py:17 and
+      src/async_model_gateway/response_cache/__init__.py:3 are unchanged;
+      production diff adds only src/async_model_gateway/response_cache/_in_memory_store.py:47
+  - non_goal: Tests use direct imports; dynamic module loading is not authorized.
+    violated: no
+    evidence: tests/response_cache/test_in_memory_store.py:10
+
+contract_check:
+  - item: >-
+      ResponseCacheStore.get(*, key) -> ResponseCacheEntry | None,
+      ResponseCacheStore.set(*, key, entry) -> None, ResponseCache, and
+      package exports remain unchanged.
+    status: matches
+    detail: >-
+      The port and package root have no diff; the concrete store retains its
+      keyword-only constructor and async get/set methods.
+  - item: >-
+      Only a False policy decision removes the looked-up dictionary record;
+      get then returns the existing None miss.
+    status: matches
+    detail: >-
+      The pre-existing policy call is unchanged and del self._entries[key]
+      occurs only inside its false branch before return None.
+  - item: >-
+      Fresh hits, original timestamps, overwrite behavior, missing-key
+      behavior, and policy-exception propagation remain unchanged.
+    status: matches
+    detail: >-
+      True still returns stored_entry.entry; policy calls retain written_at and
+      aware-UTC now; no exception handler or timestamp/write-path change was added.
+
+test_plan_check:
+  - case_type: "happy path: fresh hit and same-key replacement"
+    status: present
+    location: tests/response_cache/test_in_memory_store.py:64; tests/response_cache/test_in_memory_store.py:108
+  - case_type: "dependency failure: policy exception propagates and preserves record"
+    status: present
+    location: tests/response_cache/test_in_memory_store.py:130
+  - case_type: "edge case: False reclaims, no second policy call, reinsertion restores lookup"
+    status: present
+    location: tests/response_cache/test_in_memory_store.py:108
+  - case_type: "regression: timestamp-on-write, no-read-renewal, overwrite, and missing-key behavior"
+    status: present
+    location: tests/response_cache/test_in_memory_store.py:82; tests/response_cache/test_in_memory_store.py:171
+  - case_type: "backward compatibility: package/port, key, entry, cache, and settings regressions"
+    status: present
+    location: "uv run pytest: 219 passed"
+  - case_type: key-local reclamation
+    status: present
+    location: tests/response_cache/test_in_memory_store.py:153
+
+validation_evidence:
+  focused_pytest: 9 passed
+  full_pytest: 219 passed
+  coverage: 97.99%
+  ruff: passed
+  pyright_strict: passed
+  pre_commit: passed
