@@ -13,11 +13,11 @@ created: 2026-08-01
 ## Workflow Stages
 
 - [X] plan-authoring
-- [ ] plan-review
-- [ ] tdd-test-authoring
-- [ ] implementation
-- [ ] implementation-review
-- [ ] code-review
+- [X] plan-review
+- [X] tdd-test-authoring
+- [X] implementation
+- [X] implementation-review
+- [X] code-review
 
 > This feature worktree requires a fresh Reviewer-owned `approved` plan-review artifact and fresh Human-owned human-check clearance before Tester may begin RED test authoring. Tester must create RED evidence before the Implementer modifies production behavior. After all implementation steps are complete, an independent Reviewer must create implementation-review evidence before the Observer may route to `pr-comment`. Chat approval does not clear these repo-visible gates.
 
