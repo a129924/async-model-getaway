@@ -1,0 +1,35 @@
+verdict: red-tests-ready
+d1_verdict:
+  verdict: non-trivial
+  reason: bug_fix
+test_mapping:
+  - requirement_id: AC-1
+    test_case_name: test_in_memory_store_reclaims_stale_key_without_rechecking_and_allows_reinsertion
+    coverage_category: state/side effects
+  - requirement_id: AC-2
+    test_case_name: test_in_memory_store_reclaims_stale_key_without_rechecking_and_allows_reinsertion
+    coverage_category: boundary/edge
+  - requirement_id: AC-3
+    test_case_name: test_in_memory_store_preserves_record_when_policy_raises_until_stale_reclamation
+    coverage_category: error/exception
+  - requirement_id: AC-4
+    test_case_name: test_in_memory_store_reclaims_only_stale_key_and_keeps_other_key_readable
+    coverage_category: integration points
+  - requirement_id: AC-5
+    test_case_name: test_in_memory_store_implements_unchanged_async_port_with_keyword_policy
+    coverage_category: happy path
+validation_checks:
+  d1_decision: non-trivial
+  behavior_contract_source: plan/response-cache-expired-record-reclamation/response-cache-expired-record-reclamation.spec.md
+  requirements_mapped: true
+  public_contract_coverage: true
+  test_categories_present:
+    - happy path
+    - error/exception
+    - boundary/edge
+    - state/side effects
+    - integration points
+  expected_initial_status: red
+  production_code_modified: false
+issues: []
+next_step: Implementer may modify only src/async_model_gateway/response_cache/_in_memory_store.py to remove the lookup key after FreshnessPolicy.is_fresh returns False, then run the declared implementation validation.

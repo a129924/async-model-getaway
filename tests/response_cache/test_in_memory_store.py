@@ -26,6 +26,21 @@ class RecordingFreshnessPolicy(FreshnessPolicy):
         return self._decisions.pop(0)
 
 
+class RaisingThenRecordingFreshnessPolicy(FreshnessPolicy):
+    """Policy double that fails once before returning recorded decisions."""
+
+    def __init__(self, exception: Exception, decisions: list[bool]) -> None:
+        self._exception = exception
+        self._decisions = decisions
+        self.calls: list[tuple[datetime, datetime]] = []
+
+    def is_fresh(self, *, written_at: datetime, now: datetime) -> bool:
+        self.calls.append((written_at, now))
+        if len(self.calls) == 1:
+            raise self._exception
+        return self._decisions.pop(0)
+
+
 def _key(feature_hash: str = "feature-hash") -> ResponseCacheKey:
     return ResponseCacheKey(
         namespace="response-cache",
@@ -87,6 +102,69 @@ async def test_in_memory_store_returns_none_when_injected_policy_reports_expired
 
     assert await store.get(key=_key()) is None
     assert len(policy.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_in_memory_store_reclaims_stale_key_without_rechecking_and_allows_reinsertion() -> (
+    None
+):
+    """A confirmed stale record is removed before a replacement is written."""
+    policy = RecordingFreshnessPolicy([False, True])
+    store = InMemoryResponseCacheStore(freshness_policy=policy)
+    key = _key()
+    replacement = ResponseCacheEntry(response="replacement response")
+
+    await store.set(key=key, entry=ResponseCacheEntry(response="stale response"))
+
+    assert await store.get(key=key) is None
+    assert await store.get(key=key) is None
+    assert len(policy.calls) == 1
+
+    await store.set(key=key, entry=replacement)
+
+    assert await store.get(key=key) is replacement
+    assert len(policy.calls) == 2
+
+
+@pytest.mark.asyncio
+async def test_in_memory_store_preserves_record_when_policy_raises_until_stale_reclamation() -> (
+    None
+):
+    """A policy exception is visible and does not itself reclaim the record."""
+    policy_error = RuntimeError("freshness policy failed")
+    policy = RaisingThenRecordingFreshnessPolicy(policy_error, [True, False])
+    store = InMemoryResponseCacheStore(freshness_policy=policy)
+    key = _key()
+    entry = ResponseCacheEntry(response="cached response")
+
+    await store.set(key=key, entry=entry)
+
+    with pytest.raises(RuntimeError, match="freshness policy failed") as raised:
+        await store.get(key=key)
+
+    assert raised.value is policy_error
+    assert await store.get(key=key) is entry
+    assert await store.get(key=key) is None
+    assert await store.get(key=key) is None
+    assert len(policy.calls) == 3
+
+
+@pytest.mark.asyncio
+async def test_in_memory_store_reclaims_only_stale_key_and_keeps_other_key_readable() -> None:
+    """Reclaiming one stale record cannot alter another key's fresh record."""
+    policy = RecordingFreshnessPolicy([False, True])
+    store = InMemoryResponseCacheStore(freshness_policy=policy)
+    stale_key = _key("stale-feature-hash")
+    fresh_key = _key("fresh-feature-hash")
+    fresh_entry = ResponseCacheEntry(response="fresh response")
+
+    await store.set(key=stale_key, entry=ResponseCacheEntry(response="stale response"))
+    await store.set(key=fresh_key, entry=fresh_entry)
+
+    assert await store.get(key=stale_key) is None
+    assert await store.get(key=fresh_key) is fresh_entry
+    assert await store.get(key=stale_key) is None
+    assert len(policy.calls) == 2
 
 
 @pytest.mark.asyncio
