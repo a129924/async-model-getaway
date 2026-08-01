@@ -51,8 +51,8 @@ Analysis-layer routing: incomplete optional-analysis mode. Semantic warning: nei
 
 ## Status / Allowed Transitions
 
-- **Current**: `review-ready`
-- **Transition evidence**: the planning actor has recreated the plan, behavior specification, and step tracker in this feature worktree. No plan-review or human-check evidence is carried into this worktree; scope, paths, decisions, and validation are frozen for a new independent review.
+- **Current**: `publish-in-progress`
+- **Transition evidence**: the Reviewer-owned plan review is `approved`, the Human-owned human check is `cleared` for `implement-plan`, RED-test evidence is `red-tests-ready`, and the independent implementation review is `approved`. The step tracker records all workflow stages and implementation steps complete, including code review. These completed `spec-and-plan-finalization` and `implement-plan` gates make the topic ready for `pr-comment` routing; it is neither merged nor released.
 - **Execution model**: `spec-and-plan-finalization -> implement-plan -> pr-comment -> pr-comment-review-pr-comments-and-fix`; stop at `merged`. The conditional `release` workflow does not apply.
 - **Allowed transitions**:
   - `planned` -> `creator-in-progress`
