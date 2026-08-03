@@ -41,7 +41,8 @@
 - `ResponseCache` 只透過 async `get(...)` / `set(...)` 消費既有 `ResponseCacheKey`
 - `ResponseCacheStore` 只維持在 `response_cache.ports.store` 的 submodule-public path
 - internal `InMemoryResponseCacheStore` 接受 developer-injected 的正 TTL freshness policy，
-  在成功寫入記錄 aware-UTC 時間，讀取不續期，並將到期既有 record 視為 `None` miss
+  在成功寫入記錄 aware-UTC 時間，讀取不續期，並在 policy 確認到期後於 lookup 移除該既有
+  record，並回傳 `None` miss
 
 在這個 boundary 中：
 
