@@ -38,7 +38,8 @@
 
 - package root re-export `ResponseCache`、`ResponseCacheEntry`、`ResponseCacheKey` 與 `ResponseCacheKeyFactory`
 - `ResponseCacheEntry` 只保留 `response: str`
-- `ResponseCache` 只透過 async `get(...)` / `set(...)` 消費既有 `ResponseCacheKey`
+- `ResponseCache` 只透過 async `get(...)` / `set(...)` / explicit-key `invalidate(...)`
+  消費既有 `ResponseCacheKey`
 - `ResponseCacheStore` 只維持在 `response_cache.ports.store` 的 submodule-public path
 - internal `InMemoryResponseCacheStore` 接受 developer-injected 的正 TTL freshness policy，
   在成功寫入記錄 aware-UTC 時間，讀取不續期，並在 policy 確認到期後於 lookup 移除該既有
@@ -47,8 +48,10 @@
 在這個 boundary 中：
 
 - `ResponseCache` 只持有 caller 提供的 `ResponseCacheStore`
-- `ResponseCache.get(...)` / `set(...)` 只做 direct await delegation
+- `ResponseCache.get(...)` / `set(...)` / `invalidate(...)` 只做 direct await delegation
 - store miss 以 `None` 表達
+- explicit-key invalidation 只移除 fresh 的指定 record 並回傳 `True`；absent 或 policy
+  確認 stale 後移除的 record 回傳 `False`
 - store failures 原樣向外傳播
 - `ResponseCache` 不建立、關閉或重置 store resources
 - internal policy 與 concrete store 不會 re-export 至 package root 或 `ports`
@@ -69,7 +72,8 @@
 這一輪不定義：
 
 - public concrete-store 或 policy API
-- settings/env TTL surface、TTL renewal、capacity、admission、eviction、invalidation 或 deletion
+- settings/env TTL surface、TTL renewal、capacity、admission、eviction、clear、prefix/namespace/
+  batch invalidation、broader deletion
 - persistence schema
 - database / Redis / `SQLAlchemy`
 - provider adapter

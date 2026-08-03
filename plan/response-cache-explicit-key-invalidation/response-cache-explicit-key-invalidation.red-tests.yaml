@@ -1,0 +1,77 @@
+verdict: red-tests-ready
+d1_verdict:
+  verdict: non-trivial
+  reason: >-
+    The topic adds public async facade and port contracts, changes process-local
+    cache state behavior, and requires private lookup-decision behavior with
+    propagation-preserving failure paths.
+gate_context:
+  plan_review_artifact: plan/response-cache-explicit-key-invalidation/response-cache-explicit-key-invalidation.plan-review.json
+  plan_review_verdict: approved
+  human_check_artifact: plan/response-cache-explicit-key-invalidation/response-cache-explicit-key-invalidation.human-check.json
+  human_check_status: cleared
+  validated_after_clearance_on: "2026-08-03"
+test_mapping:
+  - requirement_id: AC-1
+    test_case_name: test_response_cache_invalidate_delegates_the_original_key_and_boolean
+    coverage_category: happy_path
+  - requirement_id: AC-1
+    test_case_name: test_response_cache_invalidate_propagates_store_error_unchanged
+    coverage_category: error_exception
+  - requirement_id: AC-1
+    test_case_name: test_response_cache_invalidate_propagates_cancelled_error_unchanged
+    coverage_category: error_exception
+  - requirement_id: AC-2
+    test_case_name: test_response_cache_store_is_only_public_from_store_submodule
+    coverage_category: integration_point
+  - requirement_id: AC-3
+    test_case_name: test_in_memory_store_invalidate_removes_only_fresh_requested_key
+    coverage_category: state_side_effect
+  - requirement_id: AC-4
+    test_case_name: test_in_memory_store_invalidate_absent_key_returns_false_without_policy
+    coverage_category: boundary_edge
+  - requirement_id: AC-4
+    test_case_name: test_in_memory_store_invalidate_stale_key_reclaims_then_returns_false
+    coverage_category: state_side_effect
+  - requirement_id: AC-5
+    test_case_name: test_in_memory_store_invalidate_policy_failure_preserves_record
+    coverage_category: error_exception
+  - requirement_id: AC-6
+    test_case_name: test_in_memory_store_lookup_fresh_hit_returns_the_original_entry
+    coverage_category: happy_path
+  - requirement_id: AC-7
+    test_case_name: test_in_memory_store_lookup_decision_stays_private_to_the_internal_module
+    coverage_category: integration_point
+  - requirement_id: AC-7
+    test_case_name: test_in_memory_store_lookup_absent_miss_skips_policy_access
+    coverage_category: boundary_edge
+  - requirement_id: AC-7
+    test_case_name: test_in_memory_store_lookup_stale_reclamation_returns_miss_once
+    coverage_category: state_side_effect
+  - requirement_id: AC-7
+    test_case_name: test_in_memory_store_lookup_policy_failure_propagates_without_miss
+    coverage_category: error_exception
+validation_checks:
+  d1_decision: non-trivial
+  behavior_contract_source: plan/response-cache-explicit-key-invalidation/response-cache-explicit-key-invalidation.spec.md
+  requirements_mapped: true
+  public_contract_coverage: true
+  test_categories_present:
+    - happy_path
+    - error_exception
+    - boundary_edge
+    - state_side_effect
+    - integration_point
+  expected_initial_status:
+    focused_command: >-
+      uv run pytest tests/response_cache/test_cache.py
+      tests/response_cache/test_in_memory_store.py
+      tests/response_cache/test_response_cache_package_surface.py -v --no-cov
+    result: 18 failed, 21 passed
+    status: red
+  production_code_modified: false
+  direct_imports_only: true
+  dynamic_module_loading_detected: false
+  ruff_check: passed
+issues: []
+next_step: Proceed to implementation; implement only the approved production and documentation paths, then rerun the focused tests.
