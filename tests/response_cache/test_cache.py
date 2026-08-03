@@ -21,12 +21,17 @@ class RecordingStore(ResponseCacheStore):
         stored_entry: ResponseCacheEntry | None = None,
         get_error: BaseException | None = None,
         set_error: BaseException | None = None,
+        invalidation_result: bool = False,
+        invalidation_error: BaseException | None = None,
     ) -> None:
         self.get_calls: list[ResponseCacheKey] = []
         self.set_calls: list[tuple[ResponseCacheKey, ResponseCacheEntry]] = []
+        self.invalidation_calls: list[ResponseCacheKey] = []
         self._stored_entry = stored_entry
         self._get_error = get_error
         self._set_error = set_error
+        self._invalidation_result = invalidation_result
+        self._invalidation_error = invalidation_error
 
     async def get(self, *, key: ResponseCacheKey) -> ResponseCacheEntry | None:
         self.get_calls.append(key)
@@ -39,21 +44,35 @@ class RecordingStore(ResponseCacheStore):
         if self._set_error is not None:
             raise self._set_error
 
+    async def invalidate(self, *, key: ResponseCacheKey) -> bool:
+        self.invalidation_calls.append(key)
+        if self._invalidation_error is not None:
+            raise self._invalidation_error
+        return self._invalidation_result
+
 
 def test_response_cache_public_contract_is_async_only() -> None:
     """The operational cache owner should stay minimal and async-only."""
     init_signature = inspect.signature(ResponseCache.__init__)
     get_signature = inspect.signature(ResponseCache.get)
     set_signature = inspect.signature(ResponseCache.set)
+    invalidate_signature = inspect.signature(ResponseCache.invalidate)
 
     assert tuple(init_signature.parameters) == ("self", "store")
     assert inspect.iscoroutinefunction(ResponseCache.get)
     assert inspect.iscoroutinefunction(ResponseCache.set)
+    assert inspect.iscoroutinefunction(ResponseCache.invalidate)
     assert tuple(get_signature.parameters) == ("self", "key")
     assert get_signature.parameters["key"].kind is inspect.Parameter.KEYWORD_ONLY
     assert tuple(set_signature.parameters) == ("self", "key", "entry")
     assert set_signature.parameters["key"].kind is inspect.Parameter.KEYWORD_ONLY
     assert set_signature.parameters["entry"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert tuple(invalidate_signature.parameters) == ("self", "key")
+    assert invalidate_signature.parameters["key"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert get_type_hints(ResponseCache.invalidate) == {
+        "key": ResponseCacheKey,
+        "return": bool,
+    }
 
 
 def test_response_cache_init_type_hints_resolve_store_port_without_public_reexport() -> None:
@@ -142,3 +161,52 @@ async def test_response_cache_set_propagates_cancelled_error_unchanged() -> None
 
     with pytest.raises(asyncio.CancelledError):
         await cache.set(key=key, entry=entry)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("store_result", [True, False])
+async def test_response_cache_invalidate_delegates_the_original_key_and_boolean(
+    store_result: bool,
+) -> None:
+    """Explicit invalidation must return the store result without reshaping it."""
+    key = ResponseCacheKey(
+        namespace="response-cache",
+        model_payload_hash="payload-hash",
+        feature_hash="feature-hash",
+    )
+    store = RecordingStore(invalidation_result=store_result)
+    cache = ResponseCache(store)
+
+    assert await cache.invalidate(key=key) is store_result
+    assert store.invalidation_calls == [key]
+
+
+@pytest.mark.asyncio
+async def test_response_cache_invalidate_propagates_store_error_unchanged() -> None:
+    """Facade invalidation must not translate a store failure into a miss."""
+    key = ResponseCacheKey(
+        namespace="response-cache",
+        model_payload_hash="payload-hash",
+        feature_hash="feature-hash",
+    )
+    store_error = RuntimeError("invalidation failed")
+    cache = ResponseCache(RecordingStore(invalidation_error=store_error))
+
+    with pytest.raises(RuntimeError, match="invalidation failed") as raised:
+        await cache.invalidate(key=key)
+
+    assert raised.value is store_error
+
+
+@pytest.mark.asyncio
+async def test_response_cache_invalidate_propagates_cancelled_error_unchanged() -> None:
+    """Facade invalidation must leave cancellation owned by its store awaitable."""
+    key = ResponseCacheKey(
+        namespace="response-cache",
+        model_payload_hash="payload-hash",
+        feature_hash="feature-hash",
+    )
+    cache = ResponseCache(RecordingStore(invalidation_error=asyncio.CancelledError()))
+
+    with pytest.raises(asyncio.CancelledError):
+        await cache.invalidate(key=key)

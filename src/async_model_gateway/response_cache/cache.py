@@ -23,3 +23,7 @@ class ResponseCache:
     async def set(self, *, key: ResponseCacheKey, entry: ResponseCacheEntry) -> None:
         """Persist the supplied entry for the provided key."""
         await self._store.set(key=key, entry=entry)
+
+    async def invalidate(self, *, key: ResponseCacheKey) -> bool:
+        """Invalidate the cached entry for the supplied key, when it is fresh."""
+        return await self._store.invalidate(key=key)
