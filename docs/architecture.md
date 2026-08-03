@@ -79,7 +79,8 @@ async `ResponseCacheStore` port 消費這個 key 與 `ResponseCacheEntry`，而�
 自行計算 hashes。內部 process-local store 以 developer-injected 的正 TTL freshness
 policy 決定 hit/miss：successful write 記錄 aware-UTC 時間，read 不續期，TTL 到期且 policy 確認 stale 時
 lookup 會移除該 process-local record 並回傳 miss。此最小 boundary 另支援 explicit-key
-invalidation：只移除 fresh 的指定 record 並回傳成功；absent 或已確認 stale 的 record 回傳未成功。
+invalidation：只移除 fresh 的指定 record 並回傳 `True`；absent 或已確認 stale 的 record
+回傳 `False`。
 policy 與 concrete store 都不穿透 package root 或 `ports` surface，且不擁有
 persistence、eviction 或 orchestration semantics。
 

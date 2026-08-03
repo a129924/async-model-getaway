@@ -19,7 +19,7 @@ created: 2026-08-03
 - [X] implementation-review
 - [ ] code-review
 
-> This topic requires a fresh independent Reviewer-owned `approved` plan-review artifact and fresh Human-owned human-check clearance before Tester may begin RED test authoring. This lookup-decision revision invalidates the existing plan-review verdict for gate purposes; do not alter that JSON here, and require a fresh Reviewer verdict for this exact revision. Tester must create RED evidence before the Implementer modifies production behavior. After all implementation steps are complete, an independent Reviewer must create implementation-review evidence before routing to `pr-comment`. Chat approval does not clear these repo-visible gates.
+> This topic requires a fresh independent Reviewer-owned `approved` plan-review artifact and fresh Human-owned human-check clearance before Tester may begin RED test authoring. Tester must create RED evidence before the Implementer modifies production behavior. After all implementation steps are complete, an independent Reviewer must create implementation-review evidence before routing to `pr-comment`. Chat approval does not clear these repo-visible gates.
 
 ## Implementation Steps
 

@@ -61,7 +61,7 @@ traceability_matrix:
       - "uv run pytest tests/response_cache/test_cache.py tests/response_cache/test_in_memory_store.py tests/response_cache/test_response_cache_package_surface.py -v --no-cov: 39 passed"
       - "uv run pytest: 234 passed; coverage 98.06% (required 90.0%)"
       - "uv run ruff check docs src tests plan/response-cache-explicit-key-invalidation: passed"
-      - "uv run pyright: 0 errors, 0 warnings, 0 informations"
+      - "uv run pyright: 0 errors, 0 warnings, 0 information"
       - "uv run pre-commit run --all-files: passed"
 
 scope_creep_check:
