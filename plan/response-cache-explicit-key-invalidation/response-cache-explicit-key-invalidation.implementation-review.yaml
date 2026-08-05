@@ -1,0 +1,162 @@
+topic: response-cache-explicit-key-invalidation
+review: implementation-review
+verdict: approved
+
+preconditions:
+  plan_review: approved
+  human_check: cleared
+  implementation_step_gate: passed
+  red_test_evidence: red-tests-ready
+
+traceability_matrix:
+  - step: >-
+      1. Add direct-import RED and regression coverage for the facade, port,
+      invalidation outcomes, failure preservation, key locality, and private
+      lookup decision behavior.
+    status: done
+    evidence:
+      - tests/response_cache/test_cache.py:54
+      - tests/response_cache/test_cache.py:166
+      - tests/response_cache/test_in_memory_store.py:220
+      - tests/response_cache/test_in_memory_store.py:298
+      - tests/response_cache/test_response_cache_package_surface.py:73
+      - plan/response-cache-explicit-key-invalidation/response-cache-explicit-key-invalidation.red-tests.yaml
+  - step: >-
+      2. Add the abstract keyword-only async invalidate method to the
+      submodule-public store port without changing get/set or exports.
+    status: done
+    evidence: src/async_model_gateway/response_cache/ports/store.py:24
+  - step: >-
+      3. Add one direct-await ResponseCache.invalidate facade method with no
+      additional failure or async behavior.
+    status: done
+    evidence: src/async_model_gateway/response_cache/cache.py:27
+  - step: >-
+      4. Implement key-local fresh, absent, stale, and failure-preserving
+      invalidation in the in-memory store.
+    status: done
+    evidence: src/async_model_gateway/response_cache/_in_memory_store.py:68
+  - step: >-
+      5. Align only the narrow explicit-key invalidation wording in the two
+      approved response-cache documentation boundaries.
+    status: done
+    evidence:
+      - docs/architecture.md:81
+      - docs/specs/response-cache-boundary.md:41
+      - docs/specs/response-cache-boundary.md:53
+  - step: >-
+      6. Keep _CacheLookupDecision private to the in-memory lookup and map
+      HIT/MISS with match without translating failures.
+    status: done
+    evidence:
+      - src/async_model_gateway/response_cache/_in_memory_store.py:30
+      - src/async_model_gateway/response_cache/_in_memory_store.py:46
+      - src/async_model_gateway/response_cache/_in_memory_store.py:60
+  - step: >-
+      7. Run the declared focused/full test, lint, type, and pre-commit
+      validation, then update creator-owned completion state.
+    status: done
+    evidence:
+      - plan/response-cache-explicit-key-invalidation/response-cache-explicit-key-invalidation.step.md:25
+      - "uv run pytest tests/response_cache/test_cache.py tests/response_cache/test_in_memory_store.py tests/response_cache/test_response_cache_package_surface.py -v --no-cov: 39 passed"
+      - "uv run pytest: 234 passed; coverage 98.06% (required 90.0%)"
+      - "uv run ruff check docs src tests plan/response-cache-explicit-key-invalidation: passed"
+      - "uv run pyright: 0 errors, 0 warnings, 0 information"
+      - "uv run pre-commit run --all-files: passed"
+
+scope_creep_check:
+  - non_goal: >-
+      No new public lookup enum or hit/miss API; get remains
+      ResponseCacheEntry | None.
+    violated: no
+    evidence: src/async_model_gateway/response_cache/_in_memory_store.py:46
+  - non_goal: >-
+      _CacheLookupDecision remains absent from facade, port signatures,
+      exports, and public documentation APIs.
+    violated: no
+    evidence: tests/response_cache/test_response_cache_package_surface.py:96
+  - non_goal: >-
+      No identity, TTL/freshness, entry, broad invalidation, persistence,
+      eviction, background, lock, task, lifecycle, timeout, retry, or
+      orchestrator change.
+    violated: no
+    evidence: "git diff is confined to the eight Planned Modify paths and topic artifacts"
+  - non_goal: >-
+      No root/ports export, dependency, version, release, migration, or
+      dynamic test-module loading change.
+    violated: no
+    evidence: >-
+      response_cache package and ports __all__ assertions remain unchanged at
+      tests/response_cache/test_response_cache_package_surface.py:19 and :38;
+      changed tests use normal imports only.
+
+contract_check:
+  - item: >-
+      ResponseCache.invalidate(*, key: ResponseCacheKey) -> bool directly
+      delegates the unchanged key and propagates errors/cancellation unchanged.
+    status: matches
+    detail: >-
+      cache.py directly awaits store.invalidate(key=key); facade tests cover
+      both boolean results, the original key, RuntimeError, and CancelledError.
+  - item: >-
+      ResponseCacheStore.invalidate(*, key: ResponseCacheKey) -> bool is
+      submodule-public only, while root and ports exports remain unchanged.
+    status: matches
+    detail: >-
+      The abstract keyword-only async method is in ports/store.py only, and
+      package-surface tests lock the export boundary and resolved annotation.
+  - item: >-
+      Fresh invalidation removes exactly the requested record and returns True;
+      absent or policy-confirmed stale records return False, with stale records
+      reclaimed.
+    status: matches
+    detail: >-
+      In-memory invalidation accesses the requested dictionary key, deletes
+      only after a completed True or False policy result, and returns the
+      specified boolean in each branch.
+  - item: >-
+      Policy exception or cancellation propagates unchanged and preserves the
+      record; existing get/set and lookup-time reclamation behavior persist.
+    status: matches
+    detail: >-
+      No failure handler is added before deletion; focused tests prove later
+      fresh access succeeds after RuntimeError and CancelledError, and existing
+      get/set regression tests remain green.
+  - item: >-
+      _CacheLookupDecision is private, has only HIT/MISS, and match preserves
+      the existing ResponseCacheEntry | None lookup contract.
+    status: matches
+    detail: >-
+      The enum and match occur only in _in_memory_store.py; focused tests cover
+      HIT, absent MISS, stale-reclaimed MISS, and failure propagation.
+
+test_plan_check:
+  - case_type: happy path
+    status: present
+    location: tests/response_cache/test_cache.py:166; tests/response_cache/test_in_memory_store.py:298
+  - case_type: invalid input / dependency failure
+    status: present
+    location: tests/response_cache/test_cache.py:184; tests/response_cache/test_in_memory_store.py:339
+  - case_type: edge case
+    status: present
+    location: tests/response_cache/test_in_memory_store.py:315; tests/response_cache/test_in_memory_store.py:325
+  - case_type: regression
+    status: present
+    location: "tests/response_cache/test_in_memory_store.py:84; uv run pytest: 234 passed"
+  - case_type: backward compatibility
+    status: present
+    location: tests/response_cache/test_response_cache_package_surface.py:19
+  - case_type: lookup decision coverage
+    status: present
+    location: tests/response_cache/test_in_memory_store.py:229
+  - case_type: direct-import governance
+    status: present
+    location: tests/response_cache/test_in_memory_store.py:12
+
+validation_evidence:
+  focused_pytest: 39 passed
+  full_pytest: 234 passed
+  coverage: 98.06%
+  ruff: passed
+  pyright_strict: passed
+  pre_commit: passed

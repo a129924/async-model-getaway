@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from enum import Enum
 
 from typing_extensions import override
 
@@ -26,6 +27,13 @@ class _StoredResponseCacheEntry:
     written_at: datetime
 
 
+class _CacheLookupDecision(str, Enum):
+    """Represent the internal outcome of one response-cache lookup."""
+
+    HIT = "hit"
+    MISS = "miss"
+
+
 class InMemoryResponseCacheStore(ResponseCacheStore):
     """Keep response-cache records in process memory with injected freshness."""
 
@@ -39,14 +47,38 @@ class InMemoryResponseCacheStore(ResponseCacheStore):
         """Return a fresh entry, or a normal miss when none is fresh."""
         stored_entry = self._entries.get(key)
         if stored_entry is None:
-            return None
-        if not self._freshness_policy.is_fresh(
+            decision = _CacheLookupDecision.MISS
+        elif self._freshness_policy.is_fresh(
+            written_at=stored_entry.written_at,
+            now=_utc_now(),
+        ):
+            decision = _CacheLookupDecision.HIT
+        else:
+            del self._entries[key]
+            decision = _CacheLookupDecision.MISS
+
+        match decision:
+            case _CacheLookupDecision.HIT:
+                assert stored_entry is not None
+                return stored_entry.entry
+            case _CacheLookupDecision.MISS:
+                return None
+
+    @override
+    async def invalidate(self, *, key: ResponseCacheKey) -> bool:
+        """Remove a fresh entry, returning whether explicit invalidation succeeded."""
+        stored_entry = self._entries.get(key)
+        if stored_entry is None:
+            return False
+        if self._freshness_policy.is_fresh(
             written_at=stored_entry.written_at,
             now=_utc_now(),
         ):
             del self._entries[key]
-            return None
-        return stored_entry.entry
+            return True
+
+        del self._entries[key]
+        return False
 
     @override
     async def set(self, *, key: ResponseCacheKey, entry: ResponseCacheEntry) -> None:

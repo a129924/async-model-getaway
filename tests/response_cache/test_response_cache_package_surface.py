@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+from typing import get_type_hints
 
 import async_model_gateway.response_cache as response_cache_module
 import async_model_gateway.response_cache.cache as response_cache_cache_module
@@ -74,13 +75,31 @@ def test_response_cache_store_is_only_public_from_store_submodule() -> None:
     response_cache_store = response_cache_store_module.ResponseCacheStore
     get_signature = inspect.signature(response_cache_store.get)
     set_signature = inspect.signature(response_cache_store.set)
+    invalidate_signature = inspect.signature(response_cache_store.invalidate)
 
     assert response_cache_store_module.__all__ == ["ResponseCacheStore"]
     assert inspect.isabstract(response_cache_store)
     assert inspect.iscoroutinefunction(response_cache_store.get)
     assert inspect.iscoroutinefunction(response_cache_store.set)
+    assert inspect.iscoroutinefunction(response_cache_store.invalidate)
     assert tuple(get_signature.parameters) == ("self", "key")
     assert get_signature.parameters["key"].kind is inspect.Parameter.KEYWORD_ONLY
     assert tuple(set_signature.parameters) == ("self", "key", "entry")
     assert set_signature.parameters["key"].kind is inspect.Parameter.KEYWORD_ONLY
     assert set_signature.parameters["entry"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert tuple(invalidate_signature.parameters) == ("self", "key")
+    assert invalidate_signature.parameters["key"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert get_type_hints(response_cache_store.invalidate) == {
+        "key": ResponseCacheKey,
+        "return": bool,
+    }
+    private_name = "_CacheLookupDecision"
+
+    assert private_name not in response_cache_module.__all__
+    assert private_name not in response_cache_ports_module.__all__
+    assert not hasattr(response_cache_module, private_name)
+    assert not hasattr(response_cache_module.ResponseCache, private_name)
+    assert not hasattr(response_cache_cache_module, private_name)
+    assert not hasattr(response_cache_ports_module, private_name)
+    assert not hasattr(response_cache_store_module, private_name)
+    assert not hasattr(response_cache_store, private_name)

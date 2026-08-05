@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import inspect
+import asyncio
 from datetime import datetime, timedelta, timezone
+from enum import Enum
 
 import pytest
 
@@ -29,7 +31,7 @@ class RecordingFreshnessPolicy(FreshnessPolicy):
 class RaisingThenRecordingFreshnessPolicy(FreshnessPolicy):
     """Policy double that fails once before returning recorded decisions."""
 
-    def __init__(self, exception: Exception, decisions: list[bool]) -> None:
+    def __init__(self, exception: BaseException, decisions: list[bool]) -> None:
         self._exception = exception
         self._decisions = decisions
         self.calls: list[tuple[datetime, datetime]] = []
@@ -58,6 +60,7 @@ def test_in_memory_store_implements_unchanged_async_port_with_keyword_policy() -
     assert init_signature.parameters["freshness_policy"].kind is inspect.Parameter.KEYWORD_ONLY
     assert inspect.iscoroutinefunction(InMemoryResponseCacheStore.get)
     assert inspect.iscoroutinefunction(InMemoryResponseCacheStore.set)
+    assert inspect.iscoroutinefunction(InMemoryResponseCacheStore.invalidate)
 
 
 @pytest.mark.asyncio
@@ -212,3 +215,144 @@ async def test_in_memory_store_isolates_entries_by_response_cache_key() -> None:
 
     assert await store.get(key=first_key) is first_entry
     assert await store.get(key=second_key) is second_entry
+
+
+def test_in_memory_store_lookup_decision_stays_private_to_the_internal_module() -> None:
+    """Lookup's private HIT/MISS vocabulary must not become a public cache contract."""
+    lookup_decision = in_memory_store_module._CacheLookupDecision
+
+    assert issubclass(lookup_decision, str)
+    assert issubclass(lookup_decision, Enum)
+    assert [member.name for member in lookup_decision] == ["HIT", "MISS"]
+
+
+@pytest.mark.asyncio
+async def test_in_memory_store_lookup_fresh_hit_returns_the_original_entry() -> None:
+    """The private HIT path must preserve the existing public entry-or-None result."""
+    assert in_memory_store_module._CacheLookupDecision.HIT.name == "HIT"
+
+    policy = RecordingFreshnessPolicy([True])
+    store = InMemoryResponseCacheStore(freshness_policy=policy)
+    entry = ResponseCacheEntry(response="fresh response")
+
+    await store.set(key=_key(), entry=entry)
+
+    assert await store.get(key=_key()) is entry
+    assert len(policy.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_in_memory_store_lookup_absent_miss_skips_policy_access() -> None:
+    """The private MISS path for absence must not consult freshness policy."""
+    assert in_memory_store_module._CacheLookupDecision.MISS.name == "MISS"
+
+    policy = RecordingFreshnessPolicy([])
+    store = InMemoryResponseCacheStore(freshness_policy=policy)
+
+    assert await store.get(key=_key()) is None
+    assert policy.calls == []
+
+
+@pytest.mark.asyncio
+async def test_in_memory_store_lookup_stale_reclamation_returns_miss_once() -> None:
+    """A completed stale decision must reclaim the record and become a MISS."""
+    assert in_memory_store_module._CacheLookupDecision.MISS.name == "MISS"
+
+    policy = RecordingFreshnessPolicy([False])
+    store = InMemoryResponseCacheStore(freshness_policy=policy)
+    key = _key()
+
+    await store.set(key=key, entry=ResponseCacheEntry(response="stale response"))
+
+    assert await store.get(key=key) is None
+    assert await store.get(key=key) is None
+    assert len(policy.calls) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "policy_error",
+    [RuntimeError("freshness policy failed"), asyncio.CancelledError()],
+)
+async def test_in_memory_store_lookup_policy_failure_propagates_without_miss(
+    policy_error: BaseException,
+) -> None:
+    """Policy failure or cancellation must preserve the record instead of becoming MISS."""
+    assert in_memory_store_module._CacheLookupDecision.HIT.name == "HIT"
+
+    policy = RaisingThenRecordingFreshnessPolicy(policy_error, [True])
+    store = InMemoryResponseCacheStore(freshness_policy=policy)
+    key = _key()
+    entry = ResponseCacheEntry(response="cached response")
+
+    await store.set(key=key, entry=entry)
+
+    with pytest.raises(type(policy_error)) as raised:
+        await store.get(key=key)
+
+    assert raised.value is policy_error
+    assert await store.get(key=key) is entry
+
+
+@pytest.mark.asyncio
+async def test_in_memory_store_invalidate_removes_only_fresh_requested_key() -> None:
+    """A fresh explicit invalidation succeeds and cannot alter another key."""
+    policy = RecordingFreshnessPolicy([True, True])
+    store = InMemoryResponseCacheStore(freshness_policy=policy)
+    key = _key("invalidate-feature-hash")
+    other_key = _key("other-feature-hash")
+    other_entry = ResponseCacheEntry(response="other response")
+
+    await store.set(key=key, entry=ResponseCacheEntry(response="target response"))
+    await store.set(key=other_key, entry=other_entry)
+
+    assert await store.invalidate(key=key) is True
+    assert await store.invalidate(key=key) is False
+    assert await store.get(key=other_key) is other_entry
+    assert len(policy.calls) == 2
+
+
+@pytest.mark.asyncio
+async def test_in_memory_store_invalidate_absent_key_returns_false_without_policy() -> None:
+    """Absent explicit invalidation is an unsuccessful operation without policy access."""
+    policy = RecordingFreshnessPolicy([])
+    store = InMemoryResponseCacheStore(freshness_policy=policy)
+
+    assert await store.invalidate(key=_key()) is False
+    assert policy.calls == []
+
+
+@pytest.mark.asyncio
+async def test_in_memory_store_invalidate_stale_key_reclaims_then_returns_false() -> None:
+    """A stale record is reclaimed, but stale reclamation is not successful invalidation."""
+    policy = RecordingFreshnessPolicy([False])
+    store = InMemoryResponseCacheStore(freshness_policy=policy)
+    key = _key()
+
+    await store.set(key=key, entry=ResponseCacheEntry(response="stale response"))
+
+    assert await store.invalidate(key=key) is False
+    assert await store.invalidate(key=key) is False
+    assert len(policy.calls) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "policy_error",
+    [RuntimeError("freshness policy failed"), asyncio.CancelledError()],
+)
+async def test_in_memory_store_invalidate_policy_failure_preserves_record(
+    policy_error: BaseException,
+) -> None:
+    """Failed freshness decisions must escape before invalidation removes a record."""
+    policy = RaisingThenRecordingFreshnessPolicy(policy_error, [True])
+    store = InMemoryResponseCacheStore(freshness_policy=policy)
+    key = _key()
+
+    await store.set(key=key, entry=ResponseCacheEntry(response="cached response"))
+
+    with pytest.raises(type(policy_error)) as raised:
+        await store.invalidate(key=key)
+
+    assert raised.value is policy_error
+    assert await store.invalidate(key=key) is True

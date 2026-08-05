@@ -20,3 +20,7 @@ class ResponseCacheStore(ABC):
     @abstractmethod
     async def set(self, *, key: ResponseCacheKey, entry: ResponseCacheEntry) -> None:
         """Persist the supplied entry for the provided key."""
+
+    @abstractmethod
+    async def invalidate(self, *, key: ResponseCacheKey) -> bool:
+        """Remove a fresh entry for the supplied key, when one exists."""
