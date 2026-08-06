@@ -1,105 +1,92 @@
-"""Tests for the minimal response-cache package surface."""
+"""RED coverage for the exact target and compatibility import surfaces."""
 
 from __future__ import annotations
 
 import inspect
-from typing import get_type_hints
 
-import async_model_gateway.response_cache as response_cache_module
-import async_model_gateway.response_cache.cache as response_cache_cache_module
-import async_model_gateway.response_cache.ports as response_cache_ports_module
-import async_model_gateway.response_cache.ports.store as response_cache_store_module
-from async_model_gateway.response_cache import ResponseCacheKey, ResponseCacheKeyFactory
-from async_model_gateway.response_cache._in_memory_store import InMemoryResponseCacheStore
-from async_model_gateway.response_cache.freshness_policy import FreshnessPolicy
-from async_model_gateway.response_cache.ports import FeatureHasher
-from async_model_gateway.response_cache.ttl_freshness_policy import TtlFreshnessPolicy
+import async_model_gateway.response_cache as response_cache
+import async_model_gateway.response_cache.ports as ports
 
 
-def test_response_cache_package_reexports_operational_and_key_surfaces() -> None:
-    """The package root must expose the bounded operational owner and keyed inputs."""
-    assert response_cache_module.__all__ == [
+def test_package_root_exports_only_target_facade_identity_and_outcomes() -> None:
+    """No port, store, adapter, or legacy value is a normal root import."""
+    assert response_cache.__all__ == [
         "ResponseCache",
+        "CacheKey",
+        "CacheHit",
+        "CacheMiss",
+        "Remembered",
+        "Skipped",
+        "Failed",
+    ]
+    assert all(hasattr(response_cache, name) for name in response_cache.__all__)
+    assert all(
+        not hasattr(response_cache, name)
+        for name in (
+            "ResponseCacheEntry",
+            "ResponseCacheKey",
+            "ResponseCacheKeyFactory",
+            "CacheStore",
+            "CacheCodec",
+            "VersionTokenFactory",
+            "CacheInvalidator",
+            "LegacyResponseCacheAdapter",
+        )
+    )
+
+
+def test_ports_root_exports_only_the_target_ports() -> None:
+    """Target ports remain submodule-public without recreating a root facade."""
+    assert ports.__all__ == [
+        "CacheCodec",
+        "CacheInvalidator",
+        "CacheStore",
+        "VersionTokenFactory",
+    ]
+    assert all(hasattr(ports, name) for name in ports.__all__)
+    assert all(
+        not hasattr(ports, name)
+        for name in ("FeatureHasher", "ResponseCacheStore", "ResponseCacheKey")
+    )
+
+
+def test_target_ports_are_async_or_sync_at_the_frozen_boundary() -> None:
+    """Store and invalidator I/O stay async while codec/token work stays synchronous."""
+    from async_model_gateway.response_cache.ports.codec import CacheCodec
+    from async_model_gateway.response_cache.ports.invalidator import CacheInvalidator
+    from async_model_gateway.response_cache.ports.store import CacheStore
+    from async_model_gateway.response_cache.ports.version_token_factory import VersionTokenFactory
+
+    assert tuple(inspect.signature(CacheStore.get).parameters) == ("self", "key")
+    assert tuple(inspect.signature(CacheStore.set).parameters) == ("self", "key", "record")
+    assert tuple(inspect.signature(CacheStore.delete).parameters) == ("self", "key")
+    assert tuple(inspect.signature(CacheStore.delete_if_version).parameters) == (
+        "self",
+        "key",
+        "version_token",
+    )
+    assert inspect.iscoroutinefunction(CacheStore.get)
+    assert inspect.iscoroutinefunction(CacheStore.set)
+    assert inspect.iscoroutinefunction(CacheStore.delete)
+    assert inspect.iscoroutinefunction(CacheStore.delete_if_version)
+    assert inspect.iscoroutinefunction(CacheInvalidator.invalidate)
+    assert not inspect.iscoroutinefunction(CacheCodec.encode)
+    assert not inspect.iscoroutinefunction(CacheCodec.decode)
+    assert not inspect.iscoroutinefunction(VersionTokenFactory.new)
+
+
+def test_compatibility_submodule_has_the_exact_temporary_direct_import_surface() -> None:
+    """The one sanctioned legacy route is narrow and never root-reexported."""
+    import async_model_gateway.response_cache.compat as compat
+
+    assert compat.__all__ == [
+        "CanonicalFeatureHasher",
+        "FeatureHasher",
+        "LegacyCacheClosedError",
+        "LegacyCacheOperationError",
+        "LegacyResponseCacheAdapter",
         "ResponseCacheEntry",
         "ResponseCacheKey",
         "ResponseCacheKeyFactory",
     ]
-    assert response_cache_module.ResponseCache.__name__ == "ResponseCache"
-    assert response_cache_module.ResponseCacheEntry.__name__ == "ResponseCacheEntry"
-    assert response_cache_module.ResponseCacheKey is ResponseCacheKey
-    assert response_cache_module.ResponseCacheKeyFactory is ResponseCacheKeyFactory
-
-
-def test_response_cache_package_does_not_reexport_feature_hasher_port() -> None:
-    """The feature-hash collaborator must remain outside the package root."""
-    assert not hasattr(response_cache_module, "FeatureHasher")
-
-
-def test_response_cache_ports_package_exposes_feature_hasher() -> None:
-    """The abstract collaborator should stay submodule-public."""
-    assert response_cache_ports_module.__all__ == ["FeatureHasher"]
-    assert response_cache_ports_module.FeatureHasher is FeatureHasher
-
-
-def test_response_cache_package_does_not_reexport_store_port() -> None:
-    """The store port must not become part of the package-root promise."""
-    assert not hasattr(response_cache_module, "ResponseCacheStore")
-
-
-def test_response_cache_ports_package_does_not_reexport_store_port() -> None:
-    """The ports package root should keep store exposure off the gateway module."""
-    assert not hasattr(response_cache_ports_module, "ResponseCacheStore")
-
-
-def test_response_cache_packages_do_not_reexport_internal_freshness_or_store_types() -> None:
-    """Freshness policy and concrete storage must remain module-internal details."""
-    internal_type_names = {
-        FreshnessPolicy.__name__,
-        TtlFreshnessPolicy.__name__,
-        InMemoryResponseCacheStore.__name__,
-    }
-
-    assert internal_type_names.isdisjoint(response_cache_module.__all__)
-    assert all(not hasattr(response_cache_module, name) for name in internal_type_names)
-    assert internal_type_names.isdisjoint(response_cache_ports_module.__all__)
-    assert all(not hasattr(response_cache_ports_module, name) for name in internal_type_names)
-
-
-def test_response_cache_cache_module_does_not_expose_store_port() -> None:
-    """The operational owner module must not expose the store port at runtime."""
-    assert not hasattr(response_cache_cache_module, "ResponseCacheStore")
-
-
-def test_response_cache_store_is_only_public_from_store_submodule() -> None:
-    """The store port should stay submodule-public with a locked async contract."""
-    response_cache_store = response_cache_store_module.ResponseCacheStore
-    get_signature = inspect.signature(response_cache_store.get)
-    set_signature = inspect.signature(response_cache_store.set)
-    invalidate_signature = inspect.signature(response_cache_store.invalidate)
-
-    assert response_cache_store_module.__all__ == ["ResponseCacheStore"]
-    assert inspect.isabstract(response_cache_store)
-    assert inspect.iscoroutinefunction(response_cache_store.get)
-    assert inspect.iscoroutinefunction(response_cache_store.set)
-    assert inspect.iscoroutinefunction(response_cache_store.invalidate)
-    assert tuple(get_signature.parameters) == ("self", "key")
-    assert get_signature.parameters["key"].kind is inspect.Parameter.KEYWORD_ONLY
-    assert tuple(set_signature.parameters) == ("self", "key", "entry")
-    assert set_signature.parameters["key"].kind is inspect.Parameter.KEYWORD_ONLY
-    assert set_signature.parameters["entry"].kind is inspect.Parameter.KEYWORD_ONLY
-    assert tuple(invalidate_signature.parameters) == ("self", "key")
-    assert invalidate_signature.parameters["key"].kind is inspect.Parameter.KEYWORD_ONLY
-    assert get_type_hints(response_cache_store.invalidate) == {
-        "key": ResponseCacheKey,
-        "return": bool,
-    }
-    private_name = "_CacheLookupDecision"
-
-    assert private_name not in response_cache_module.__all__
-    assert private_name not in response_cache_ports_module.__all__
-    assert not hasattr(response_cache_module, private_name)
-    assert not hasattr(response_cache_module.ResponseCache, private_name)
-    assert not hasattr(response_cache_cache_module, private_name)
-    assert not hasattr(response_cache_ports_module, private_name)
-    assert not hasattr(response_cache_store_module, private_name)
-    assert not hasattr(response_cache_store, private_name)
+    assert all(hasattr(compat, name) for name in compat.__all__)

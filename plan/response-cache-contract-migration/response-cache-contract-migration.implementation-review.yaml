@@ -1,0 +1,149 @@
+topic: response-cache-contract-migration
+review: implementation-review
+reviewer: independent-reviewer
+verdict: approved
+
+preconditions:
+  plan_review: approved
+  fresh_human_check: cleared
+  forward_preflight: passed
+  implementation_step_gate: passed
+  red_test_evidence: red-tests-ready
+
+traceability_matrix:
+  - step: direct-import target-contract and reconciliation coverage
+    status: done
+    evidence:
+      - tests/response_cache/test_cache.py:33
+      - tests/response_cache/test_response_cache_contract_migration.py:12
+      - tests/response_cache/test_response_cache_package_surface.py:11
+      - tests/response_cache/test_cache.py:371
+  - step: CacheKey, immutable record/token, closed outcomes, and operational errors
+    status: done
+    evidence:
+      - src/async_model_gateway/response_cache/key.py:10
+      - src/async_model_gateway/response_cache/record.py:22
+      - src/async_model_gateway/response_cache/outcomes.py:21
+      - src/async_model_gateway/response_cache/errors.py:16
+  - step: write-time expiry, five collaborators, record construction, and facade outcomes
+    status: done
+    evidence:
+      - src/async_model_gateway/response_cache/cache.py:43
+      - src/async_model_gateway/response_cache/cache.py:59
+      - src/async_model_gateway/response_cache/cache.py:78
+      - src/async_model_gateway/response_cache/ttl_freshness_policy.py:12
+  - step: target codec, token, store, and invalidator ports
+    status: done
+    evidence:
+      - src/async_model_gateway/response_cache/ports/store.py:13
+      - src/async_model_gateway/response_cache/ports/codec.py:10
+      - src/async_model_gateway/response_cache/ports/version_token_factory.py:12
+      - src/async_model_gateway/response_cache/ports/invalidator.py:13
+  - step: complete-record replacement, compare-delete, and key-local invalidation
+    status: done
+    evidence:
+      - src/async_model_gateway/response_cache/_in_memory_store.py:20
+      - src/async_model_gateway/response_cache/_in_memory_store.py:31
+      - src/async_model_gateway/response_cache/invalidation.py:19
+      - tests/response_cache/test_response_cache_contract_migration.py:66
+  - step: deprecated compatibility surface and declared legacy removals
+    status: done
+    evidence:
+      - src/async_model_gateway/response_cache/compat.py:17
+      - src/async_model_gateway/response_cache/compat.py:115
+      - tests/response_cache/test_entry.py:22
+      - tests/response_cache/test_key_factory.py:24
+  - step: exact target root surface and ordinary compat imports
+    status: done
+    evidence:
+      - src/async_model_gateway/response_cache/__init__.py:5
+      - tests/response_cache/test_response_cache_package_surface.py:11
+      - tests/response_cache/test_response_cache_package_surface.py:78
+  - step: README and response-cache boundary documentation synchronization
+    status: done
+    evidence:
+      - README.md:26
+      - docs/architecture.md:75
+      - docs/specs/response-cache-boundary.md:5
+
+scope_creep_check:
+  - non_goal: no third facade method, lifecycle, retry, timeout, task, or background owner
+    violated: no
+    evidence: src/async_model_gateway/response_cache/cache.py:59
+  - non_goal: no root-public port or root legacy export
+    violated: no
+    evidence: tests/response_cache/test_response_cache_package_surface.py:11
+  - non_goal: no persistence, settings, backend selection, eviction, orchestration, or release work
+    violated: no
+    evidence: git diff is limited to the approved response-cache source, tests, documentation, analysis, and topic-plan paths
+  - non_goal: tests use direct imports without unauthorized dynamic module loading
+    violated: no
+    evidence: dynamic-loading audit of tests/response_cache found no loader, importlib, exec, eval, or __import__ use
+
+contract_check:
+  - item: two-method, five-collaborator ResponseCache facade
+    status: matches
+    detail: lookup and remember are the only async facade operations, and all collaborators are keyword-only.
+  - item: CacheKey and complete immutable record authority
+    status: matches
+    detail: CacheKey owns only the three identity components; StoredCacheRecord enforces schema version 1, UTC ordering, token, and metadata limits.
+  - item: write-time expiry, closed outcome translation, and cancellation propagation
+    status: matches
+    detail: remember maps only known operational failures; direct store cancellation preserves the exact CancelledError instance at tests/response_cache/test_cache.py:371.
+  - item: token-guarded stale cleanup and separate invalidation
+    status: matches
+    detail: stale cleanup uses delete_if_version with the observed token; StoreCacheInvalidator alone maps delete results.
+  - item: compatibility adapter constructor and legacy containment
+    status: matches
+    detail: "LegacyResponseCacheAdapter accepts facade: ResponseCache and invalidator: CacheInvalidator; legacy names remain compat-only."
+  - item: root, ports, and documentation boundaries
+    status: matches
+    detail: target root exports are exact, ports remain submodule-only, and documentation describes the target contract rather than legacy operations.
+
+test_plan_check:
+  - case_type: fresh lookup and complete-record remember
+    status: present
+    location: tests/response_cache/test_cache.py:58
+  - case_type: invalid schema, timestamps, metadata, and configuration defects
+    status: present
+    location: tests/response_cache/test_response_cache_contract_migration.py:12
+  - case_type: expired or unsupported record, operational outcomes, and cancellation
+    status: present
+    location: tests/response_cache/test_cache.py:256; tests/response_cache/test_cache.py:371
+  - case_type: compare-delete replacement race and key-local invalidation
+    status: present
+    location: tests/response_cache/test_response_cache_contract_migration.py:66; tests/response_cache/test_in_memory_store.py:50
+  - case_type: legacy compatibility and export/direct-path absence
+    status: present
+    location: tests/response_cache/test_response_cache_package_surface.py:78; tests/response_cache/test_entry.py:22
+  - case_type: test-loading governance
+    status: present
+    location: tests/response_cache direct-import audit
+
+code_review:
+  verdict: approved
+  tooling_detected: pyright strict, ruff, pytest, pre-commit
+  findings:
+    typing:
+      - severity: warning
+        location: src/async_model_gateway/response_cache/compat.py:130
+        issue: "The attr-defined suppression has no inline justification after facade is annotated as ResponseCache."
+        fix: "Remove the suppression if unnecessary, or add the specific pyright rationale inline."
+      - severity: warning
+        location: src/async_model_gateway/response_cache/compat.py:137
+        issue: "The attr-defined suppression has no inline justification after facade is annotated as ResponseCache."
+        fix: "Remove the suppression if unnecessary, or add the specific pyright rationale inline."
+    lint: []
+    readability: []
+    error_handling: []
+    anti_patterns: []
+    test_quality: []
+    observability: []
+
+validation_evidence:
+  focused_pytest: 19 passed
+  response_cache_pytest: 43 passed
+  full_pytest: 203 passed; 94.59% coverage
+  ruff: passed
+  pyright_strict: 0 errors, 0 warnings, 0 informations
+  pre_commit: passed

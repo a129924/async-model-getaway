@@ -1,0 +1,112 @@
+schema_version: 1
+topic: response-cache-contract-migration
+authority:
+  source_ref: refs/heads/dev
+  target_ref: refs/heads/feat/andrew/response-cache-contract-migration
+  transfer_set_count: 6
+  transfer_set_rule: >-
+    The six explicit rows below are the complete transfer set. No directory, glob,
+    aggregate digest, or inferred path is evidence for this handoff.
+evidence_provenance:
+  producer: Worktree-manager migration lane
+  recorder: Planning actor
+  source: >-
+    The Worktree-manager lane's completed six-file handoff report. It captured each
+    final dev-source SHA-256 before target write, re-hashed the feature target, then
+    confirmed source removal. This ledger records that report after the move; it does
+    not reconstruct source bytes from their now-absent dev paths.
+  verification_timing: >-
+    Migration snapshot values were verified by the lane in this order for each row:
+    source hash, target write and target re-hash, digest match, then final source
+    removal result. The current-audit values below were observed while recording this
+    ledger, after the completed move and before the next reviewer run.
+  digest_algorithm: sha256
+transfer_rows:
+  - source_path: analysis/response-cache-contract-migration/requirements.md
+    target_path: analysis/response-cache-contract-migration/requirements.md
+    source_sha256: f125d3cd359c9539077406111700de8c646d80397db727cf16a9845bdbd8dc66
+    target_sha256_at_migration_snapshot: f125d3cd359c9539077406111700de8c646d80397db727cf16a9845bdbd8dc66
+    digest_match_at_migration_snapshot: true
+    target_readable_at_migration_snapshot: true
+    source_removal_result: removed_then_absent_at_lane_final_check
+    target_sha256_at_ledger_audit: f125d3cd359c9539077406111700de8c646d80397db727cf16a9845bdbd8dc66
+  - source_path: analysis/response-cache-contract-migration/technical-spec.md
+    target_path: analysis/response-cache-contract-migration/technical-spec.md
+    source_sha256: b84fbd43fabaeff4aa4de747023956f3542be1283727dc5d6937f71e4134a413
+    target_sha256_at_migration_snapshot: b84fbd43fabaeff4aa4de747023956f3542be1283727dc5d6937f71e4134a413
+    digest_match_at_migration_snapshot: true
+    target_readable_at_migration_snapshot: true
+    source_removal_result: removed_then_absent_at_lane_final_check
+    target_sha256_at_ledger_audit: b84fbd43fabaeff4aa4de747023956f3542be1283727dc5d6937f71e4134a413
+  - source_path: analysis/response-cache-contract-migration/canonical-reconciliation.md
+    target_path: analysis/response-cache-contract-migration/canonical-reconciliation.md
+    source_sha256: e24c45fbba679aa91008b6f3144f47c18ef5e3d90ab9d365daaae204249131ca
+    target_sha256_at_migration_snapshot: e24c45fbba679aa91008b6f3144f47c18ef5e3d90ab9d365daaae204249131ca
+    digest_match_at_migration_snapshot: true
+    target_readable_at_migration_snapshot: true
+    source_removal_result: removed_then_absent_at_lane_final_check
+    target_sha256_at_ledger_audit: e24c45fbba679aa91008b6f3144f47c18ef5e3d90ab9d365daaae204249131ca
+  - source_path: plan/response-cache-contract-migration/response-cache-contract-migration.plan.md
+    target_path: plan/response-cache-contract-migration/response-cache-contract-migration.plan.md
+    source_sha256: 6cbf7522ca95d8db698b08585cc08a8d9e7141e767ee9f7bcfcdf132e75aca9d
+    target_sha256_at_migration_snapshot: 6cbf7522ca95d8db698b08585cc08a8d9e7141e767ee9f7bcfcdf132e75aca9d
+    digest_match_at_migration_snapshot: true
+    target_readable_at_migration_snapshot: true
+    source_removal_result: removed_then_absent_at_lane_final_check
+    target_sha256_at_ledger_audit: 9a31c3f6f208927a4e242a51afce263956dd26422ccd443075eb5fa375877259
+    post_transfer_event: planning_actor_authority_and_ledger_rework
+  - source_path: plan/response-cache-contract-migration/response-cache-contract-migration.spec.md
+    target_path: plan/response-cache-contract-migration/response-cache-contract-migration.spec.md
+    source_sha256: 0892c798c43065a920b97354553db3d60dc876a63a054064e6c3c9d1fbf3fb3c
+    target_sha256_at_migration_snapshot: 0892c798c43065a920b97354553db3d60dc876a63a054064e6c3c9d1fbf3fb3c
+    digest_match_at_migration_snapshot: true
+    target_readable_at_migration_snapshot: true
+    source_removal_result: removed_then_absent_at_lane_final_check
+    target_sha256_at_ledger_audit: 0892c798c43065a920b97354553db3d60dc876a63a054064e6c3c9d1fbf3fb3c
+  - source_path: plan/response-cache-contract-migration/response-cache-contract-migration.plan-review.json
+    target_path: plan/response-cache-contract-migration/response-cache-contract-migration.plan-review.json
+    source_sha256: 4cb94486f3e47c673742c2b4a6cda588a806253f4df250a46e127519f6f8dd19
+    target_sha256_at_migration_snapshot: 4cb94486f3e47c673742c2b4a6cda588a806253f4df250a46e127519f6f8dd19
+    digest_match_at_migration_snapshot: true
+    target_readable_at_migration_snapshot: true
+    source_removal_result: removed_then_absent_at_lane_final_check
+    target_sha256_at_ledger_audit: 140032eee2fea62e666fedeb741fc1e22975fb3f888c5c432f3231b328421ecb
+    post_transfer_event: reviewer_needs_rework_overwrite_expected_and_non_approval
+historical_evidence:
+  classification: >-
+    These paths are outside the six-file transfer set and are non-gating historical
+    provenance only. Their before/after values describe the migration snapshot, not
+    fresh approval or forward evidence.
+  rows:
+    - path: plan/response-cache-contract-migration/response-cache-contract-migration.human-check.json
+      before_transfer_sha256: ee3de8736da283245fde2b2fb0a6a42ed5ca28d6b99c89ff8070f6a936123a6f
+      after_transfer_sha256: ee3de8736da283245fde2b2fb0a6a42ed5ca28d6b99c89ff8070f6a936123a6f
+      unchanged_at_migration_snapshot: true
+      post_transfer_event:
+        classification: Human-authorized post-transfer update
+        current_sha256_at_ledger_audit: f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b
+        authority_effect: >-
+          This authorized later content is not a current immutable baseline and cannot
+          satisfy a fresh human-check or any other gate.
+    - path: plan/response-cache-contract-migration/response-cache-contract-migration.worktree-preflight.yaml
+      before_transfer_sha256: ad2d6060f0df50469491a4a1b32c04b32f0f7985d727df38b444b57b47a30a5d
+      after_transfer_sha256: ad2d6060f0df50469491a4a1b32c04b32f0f7985d727df38b444b57b47a30a5d
+      unchanged_at_migration_snapshot: true
+      current_sha256_at_ledger_audit: ad2d6060f0df50469491a4a1b32c04b32f0f7985d727df38b444b57b47a30a5d
+    - path: plan/response-cache-contract-migration/response-cache-contract-migration.red-tests.yaml
+      before_transfer_sha256: 193e4a6d36d54adb82ee67dbe07973f1dbb7924654404ff1cb8348404dcc514b
+      after_transfer_sha256: 193e4a6d36d54adb82ee67dbe07973f1dbb7924654404ff1cb8348404dcc514b
+      unchanged_at_migration_snapshot: true
+      current_sha256_at_ledger_audit: 193e4a6d36d54adb82ee67dbe07973f1dbb7924654404ff1cb8348404dcc514b
+re_review_routing:
+  status_after_ledger_rework: review-ready
+  next_transition: review-ready_to_reviewer-in-progress
+  required_reviewer_output: >-
+    A fresh JSON-only verdict at
+    plan/response-cache-contract-migration/response-cache-contract-migration.plan-review.json.
+  prohibited_gate_substitutes:
+    - transferred dev plan review
+    - migration snapshot digest match
+    - historical human check
+    - historical worktree preflight
+    - historical RED evidence

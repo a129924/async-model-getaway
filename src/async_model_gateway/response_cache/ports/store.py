@@ -1,26 +1,30 @@
-"""Async store port for the operational response-cache owner."""
+"""Async whole-record storage port."""
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from typing import Protocol
 
-from ..entry import ResponseCacheEntry
-from ..key import ResponseCacheKey
+from ..key import CacheKey
+from ..record import CacheVersionToken, StoredCacheRecord
 
-__all__ = ["ResponseCacheStore"]
+__all__ = ["CacheStore"]
 
 
-class ResponseCacheStore(ABC):
-    """Abstract store collaborator for cache hit/miss lookup and persistence."""
+class CacheStore(Protocol):
+    """Persist coherent records and support token-guarded deletion."""
 
-    @abstractmethod
-    async def get(self, *, key: ResponseCacheKey) -> ResponseCacheEntry | None:
-        """Return the cached entry for the supplied key, if present."""
+    async def get(self, *, key: CacheKey) -> StoredCacheRecord | None:
+        """Return the complete record for ``key``, if present."""
+        ...
 
-    @abstractmethod
-    async def set(self, *, key: ResponseCacheKey, entry: ResponseCacheEntry) -> None:
-        """Persist the supplied entry for the provided key."""
+    async def set(self, *, key: CacheKey, record: StoredCacheRecord) -> None:
+        """Replace the whole record associated with ``key``."""
+        ...
 
-    @abstractmethod
-    async def invalidate(self, *, key: ResponseCacheKey) -> bool:
-        """Remove a fresh entry for the supplied key, when one exists."""
+    async def delete(self, *, key: CacheKey) -> bool:
+        """Delete ``key`` and report whether it was present."""
+        ...
+
+    async def delete_if_version(self, *, key: CacheKey, version_token: CacheVersionToken) -> bool:
+        """Delete ``key`` only when its currently stored token matches."""
+        ...

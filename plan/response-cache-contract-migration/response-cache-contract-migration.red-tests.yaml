@@ -1,0 +1,86 @@
+schema_version: 1
+topic: response-cache-contract-migration
+verdict: red-tests-ready
+d1_verdict:
+  verdict: non-trivial
+  reason: feature
+test_mapping:
+  - requirement_id: AC-1
+    test_case_name: test_response_cache_has_exactly_five_keyword_only_collaborators_and_two_methods
+    coverage_category: public-contract
+  - requirement_id: AC-2
+    test_case_name: test_lookup_returns_hit_for_fresh_supported_record_without_observing_context
+    coverage_category: happy-path
+  - requirement_id: AC-3
+    test_case_name: test_stored_record_and_version_token_are_immutable_and_validate_the_contract
+    coverage_category: boundary-edge
+  - requirement_id: AC-4
+    test_case_name: test_store_compare_delete_is_token_guarded_and_key_local
+    coverage_category: state-side-effect
+  - requirement_id: AC-5
+    test_case_name: test_lookup_misses_and_compare_deletes_unsupported_or_expired_records
+    coverage_category: error-exception
+  - requirement_id: AC-6
+    test_case_name: test_remember_maps_every_known_operational_failure_to_the_closed_outcome
+    coverage_category: error-exception
+  - requirement_id: AC-7
+    test_case_name: test_legacy_adapter_maps_set_and_invalidate_cancellation
+    coverage_category: integration
+  - requirement_id: AC-8
+    test_case_name: test_legacy_adapter_get_maps_target_hit_and_miss_without_context_retention
+    coverage_category: integration
+  - requirement_id: AC-9
+    test_case_name: test_remember_writes_one_complete_facade_owned_record_and_returns_remembered
+    coverage_category: state-side-effect
+  - requirement_id: AC-10
+    test_case_name: test_lookup_maps_known_failure_to_miss_and_propagates_cancellation
+    coverage_category: error-exception
+  - requirement_id: AC-11
+    test_case_name: test_ttl_policy_derives_a_strictly_later_aware_utc_expiry
+    coverage_category: boundary-edge
+  - requirement_id: PLAN-REQ-1
+    test_case_name: test_response_cache_has_exactly_five_keyword_only_collaborators_and_two_methods
+    coverage_category: public-contract
+  - requirement_id: PLAN-REQ-2
+    test_case_name: test_cache_key_does_not_normalize_or_accept_context_as_identity
+    coverage_category: boundary-edge
+  - requirement_id: PLAN-REQ-3
+    test_case_name: test_remember_writes_one_complete_facade_owned_record_and_returns_remembered
+    coverage_category: state-side-effect
+  - requirement_id: PLAN-REQ-4
+    test_case_name: test_freshness_policy_exposes_only_write_time_expiry_derivation
+    coverage_category: public-contract
+  - requirement_id: PLAN-REQ-5
+    test_case_name: test_remember_maps_every_known_operational_failure_to_the_closed_outcome
+    coverage_category: error-exception
+  - requirement_id: PLAN-REQ-6
+    test_case_name: test_compatibility_submodule_has_the_exact_temporary_direct_import_surface
+    coverage_category: integration
+  - requirement_id: PLAN-REQ-7
+    test_case_name: test_package_root_exports_only_target_facade_identity_and_outcomes
+    coverage_category: public-contract
+validation_checks:
+  d1_decision: non-trivial
+  d2_evidence: sufficient
+  behavior_contract_source: plan/response-cache-contract-migration/response-cache-contract-migration.spec.md
+  requirements_mapped: true
+  public_contract_coverage: true
+  test_categories_present:
+    - happy-path
+    - error-exception
+    - boundary-edge
+    - state-side-effect
+    - integration
+  expected_initial_status: red
+  production_code_modified: false
+  dynamic_module_loading_used: false
+  gate_verification:
+    dev_plan_review: approved-and-fresh
+    feature_human_check: approved-terminal-lf-reissued
+    feature_worktree_preflight: passed
+validation_result:
+  command: uv run pytest tests/response_cache -v --no-cov
+  expected: all new target-contract tests fail before production implementation
+  observed: 37 failed, 0 passed
+issues: []
+next_step: Implementer may begin the approved production implementation in this feature worktree; no other role may alter these RED tests first.

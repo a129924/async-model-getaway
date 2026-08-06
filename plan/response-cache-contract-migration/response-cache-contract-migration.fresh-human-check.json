@@ -1,0 +1,21 @@
+{
+    "schema_version": 1,
+    "topic": "response-cache-contract-migration",
+    "gate": "fresh-human-check",
+    "decision": "approved",
+    "status": "cleared",
+    "cleared_for": "forward-preflight",
+    "terminal_lf": true,
+    "reviewed_plan": {
+        "worktree_branch": "feat/andrew/response-cache-contract-migration",
+        "repo_relative_path": "plan/response-cache-contract-migration/response-cache-contract-migration.plan.md",
+        "reviewed_plan_sha256": "9a31c3f6f208927a4e242a51afce263956dd26422ccd443075eb5fa375877259"
+    },
+    "plan_review": {
+        "worktree_branch": "feat/andrew/response-cache-contract-migration",
+        "repo_relative_path": "plan/response-cache-contract-migration/response-cache-contract-migration.plan-review.json",
+        "access": "feature-authoritative",
+        "verdict": "approved"
+    },
+    "authorization": "Execution Authorized"
+}

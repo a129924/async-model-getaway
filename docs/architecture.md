@@ -47,7 +47,7 @@ shared read contract：`model_runtime` 是 umbrella root，而
 
 1. Receive `model_name`, `model_source_kind`, `model-payload`, and `features`
 2. Derive a payload-oriented identity from `model_name`, `model_source_kind`, and `model-payload`
-3. Derive a `ResponseCacheKey` from payload identity and `features`
+3. Derive a `CacheKey` from already-derived payload identity and feature hash
 4. Check response cache
 5. Return cached response on hit
 6. Use the relevant model-side provider path on miss
@@ -71,16 +71,14 @@ repository 中落地。
 - canonical input handling after normalization
 - coordination across provider, execution, and cache boundaries
 
-在目前 repo 已落地的最小 cache boundary 中，gateway side 只先準備
-`ResponseCacheKey`：它由 literal `namespace`、既有 `ModelPayloadHasher`
-產生的 `model_payload_hash`，以及 `FeatureHasher` 產生的 `feature_hash`
-組成。repo 現在另外落地最小 operational `ResponseCache` boundary：它只透過
-async `ResponseCacheStore` port 消費這個 key 與 `ResponseCacheEntry`，而不是
-自行計算 hashes。內部 process-local store 以 developer-injected 的正 TTL freshness
-policy 決定 hit/miss：successful write 記錄 aware-UTC 時間，read 不續期，TTL 到期且 policy 確認 stale 時
-lookup 會移除該 process-local record 並回傳 miss。此最小 boundary 另支援 explicit-key
-invalidation：只移除 fresh 的指定 record 並回傳 `True`；absent 或已確認 stale 的 record
-回傳 `False`。
+在目前 repo 已落地的受限 cache boundary 中，gateway side 只先準備
+`CacheKey`：它由 literal `namespace`、既有 `ModelPayloadHasher` 產生的
+`model_payload_hash` 與已導出的 `feature_hash` 組成，cache 不再自行計算 hashes。
+`ResponseCache` 只透過 async `CacheStore` 消費這個 key，並以 codec、token factory、
+write-time expiry policy 與 injected UTC clock 建立完整 record。lookup 不會更新 expiry；
+過期或不支援 record 的 cleanup 使用觀測到的 version token compare-delete，以免刪除較新的
+replacement。invalidation 由獨立 `CacheInvalidator` 擁有；temporary deprecated legacy bridge
+只在 `response_cache.compat`，不會穿透 package root。
 policy 與 concrete store 都不穿透 package root 或 `ports` surface，且不擁有
 persistence、eviction 或 orchestration semantics。
 
