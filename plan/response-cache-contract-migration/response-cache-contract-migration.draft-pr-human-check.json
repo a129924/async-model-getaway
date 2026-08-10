@@ -1,0 +1,10 @@
+{
+  "topic": "response-cache-contract-migration",
+  "gate": "draft-pr-human-check",
+  "decision": "approved",
+  "status": "cleared",
+  "cleared_for": "publish-in-progress",
+  "authorization": "User requested Draft PR publish preparation",
+  "reviewed_plan_sha256": "e6f7a7ec1644f12a72bf9a9bbaca481eff888087545e01a864aa89b4280fd4df",
+  "notes": "Authorized to run the exact-path-excluded Draft PR preflight, commit, push, and open a Draft PR after all required gates pass."
+}

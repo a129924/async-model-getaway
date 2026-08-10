@@ -55,6 +55,16 @@ transfer_rows:
     source_removal_result: removed_then_absent_at_lane_final_check
     target_sha256_at_ledger_audit: 9a31c3f6f208927a4e242a51afce263956dd26422ccd443075eb5fa375877259
     post_transfer_event: planning_actor_authority_and_ledger_rework
+    post_transfer_plan_revisions:
+      - sha256: cdc176499969d2c8dadd380cae9b5b3a1484ab7e6da6d5cf04cca1618399af1b
+        classification: draft_pr_eof_compatibility_rework
+        reason: >-
+          Adds the exact-path, no-SKIP pre-commit compatibility gate, requires
+          reviewer-owned code-review evidence before Draft PR preflight, requires a
+          separate Human-owned current-plan-bound Draft PR human check, and expands
+          every source/port/test artifact row to its exact repo-relative path. This
+          is a post-transfer planning revision, not a migration-snapshot rewrite.
+        next_gate: fresh_feature_plan_review
   - source_path: plan/response-cache-contract-migration/response-cache-contract-migration.spec.md
     target_path: plan/response-cache-contract-migration/response-cache-contract-migration.spec.md
     source_sha256: 0892c798c43065a920b97354553db3d60dc876a63a054064e6c3c9d1fbf3fb3c
@@ -86,8 +96,21 @@ historical_evidence:
         classification: Human-authorized post-transfer update
         current_sha256_at_ledger_audit: f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b
         authority_effect: >-
-          This authorized later content is not a current immutable baseline and cannot
-          satisfy a fresh human-check or any other gate.
+          This authorized later content is immutable historical provenance for the
+          Draft PR compatibility gate, but cannot satisfy a fresh human-check or any
+          other approval gate.
+        draft_pr_immutability_anchor:
+          sha256: f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b
+          terminal_byte_hex: "7d"
+          final_lf_present: false
+          mutation_policy: >-
+            Never rewrite, normalize, or restore this file as part of validation.
+            The EOF hook is not skipped globally: Draft PR preflight excludes only
+            this exact registered path and verifies this anchor before and after
+            running all configured hooks on every other file.
+          gate_effect: >-
+            A mismatch blocks Draft PR publication but cannot grant review, human,
+            forward-preflight, implementation, code-review, or merge approval.
     - path: plan/response-cache-contract-migration/response-cache-contract-migration.worktree-preflight.yaml
       before_transfer_sha256: ad2d6060f0df50469491a4a1b32c04b32f0f7985d727df38b444b57b47a30a5d
       after_transfer_sha256: ad2d6060f0df50469491a4a1b32c04b32f0f7985d727df38b444b57b47a30a5d

@@ -12,8 +12,9 @@ topic plan、Python spec 與 fresh plan review 都只從 feature worktree 的已
 - **In scope**：下列六份 dev-only planning artifacts 的 SHA-256-preserving move protocol、
   feature-authoritative target paths、fresh independent plan review 重新定址，以及後續
   fresh human check、forward preflight、step tracker 與 implementation review 的 gate
-  重建順序。目標 response-cache contract 的行為仍由 strict analysis 與 Python spec
-  凍結。
+  重建順序；以及不改寫 immutable historical `human-check.json` 下的 Draft PR
+  pre-commit 相容 gate。目標 response-cache contract 的行為仍由 strict analysis 與 Python
+  spec 凍結。
 - **Out of scope**：此 planning rework 不搬移檔案、不修改 source、tests、README、
   architecture docs 或既有 feature evidence；不執行 RED、實作、validation、PR、merge 或
   release；不新建 orchestrator、persistence、settings、backend selection、timeout、retry、
@@ -46,9 +47,11 @@ topic plan、Python spec 與 fresh plan review 都只從 feature worktree 的已
   `red-tests.yaml` 均在 move snapshot 中以 before/after SHA-256 記錄為 immutable historical
   candidates。它們不在六份 move 集合，不得搬、複製、修復、重新建立或升格為本 revision 的
   fresh / forward evidence。`human-check.json` 其後的 Human-authorized update 必須保留為
-  ledger 的獨立 post-transfer event；它不是當前 immutable baseline，也不是 fresh gate。
-- Audit baseline 已確認 `fresh-human-check.json` 與 `forward-preflight.yaml` 目前不存在。
-  因此兩者不得被宣稱已通過，也不得由任何 historical evidence 補足。
+  ledger 的獨立 post-transfer event；其 current digest 是 Draft PR 的 immutable
+  compatibility anchor，但不是 fresh gate。
+- Audit baseline 曾確認 `fresh-human-check.json` 與 `forward-preflight.yaml` 不存在；它們後續
+  僅能由各自 owner 按序建立。historical evidence 不能補足它們，且它們已完成的
+  implementation-entry authority 不會被本次 post-implementation governance rework 改寫。
 - 新的 forward authority 順序固定為：successful six-file move -> fresh independent
   feature plan review -> Human-created fresh human check -> Worktree-manager-created forward
   preflight -> read-only historical candidate verification -> Implementer-created absent step
@@ -61,6 +64,32 @@ topic plan、Python spec 與 fresh plan review 都只從 feature worktree 的已
   temporary legacy surface 僅能位於 `compat.py`。
 - 本 topic 不宣告 stable-library release intent、VERSION bump 或 release workflow。README 與
   docs 僅是之後已核准 implementation 的同步範圍，本 planning rework 不修改它們。
+- **Draft PR EOF / historical-evidence compatibility**：historical
+  `response-cache-contract-migration.human-check.json` 的 post-transfer immutable anchor
+  是 SHA-256 `f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b`，且末位元組為
+  `0x7d`（無 final LF）。它仍為 non-gating historical evidence，不能替代 fresh human check、
+  review 或 merge gate。Draft PR 不得在實際 feature worktree 對此檔執行未排除的
+  `pre-commit run --all-files`，因為 `end-of-file-fixer` 必然改寫該 anchor；這不是可接受的
+  validation side effect。
+- **相容 gate 的唯一形式**：Draft PR preflight 必須執行
+  `uv run pre-commit run --files $(git ls-files -co --exclude-standard | rg -v '^plan/response-cache-contract-migration/response-cache-contract-migration\.human-check\.json$')`。
+  這是目前已驗證可執行的 `pre-commit --files` 介面，而非不受支援的 `--exclude` CLI；它也不是
+  `SKIP`、停用 hook 或廣泛略過 validation。`git ls-files -co --exclude-standard` 列出所有
+  non-ignored tracked / untracked candidates，`rg -v` 唯一移除完整 regex 鎖定的 historical
+  human-check path；所有 configured hooks（包含 `end-of-file-fixer`）仍對其餘候選檔執行。
+  preflight schema 必須記錄 literal command、candidate-selection command、literal excluded-path
+  regex、`skip_used: false`、`hook_overrides_used: false`、每個 hook 的 pass result，以及
+  historical path 的 pre/post digest、terminal byte 與 working-tree-diff result。任何更寬的
+  檔案選取排除、`SKIP`、hook/config 改寫、或對 historical file 補 LF 都是 scope drift。
+- 此 post-implementation governance rework 不改變已核准的 source/test/doc contract，亦不
+  重開已完成的 implementation。它只要求 fresh Plan-Reviewer 核准此 Draft PR gate contract；
+  existing code-review conclusion 必須由 Reviewer 寫入 declared `code-review.yaml` 後才能作為
+  Draft PR preflight 的前置條件。既有 fresh human check 維持其已完成的 implementation-entry
+  authority，不能被改寫或升格為 Draft PR gate。
+- 本 revision 的 fresh Plan-Reviewer `approved` 後，Human 必須另行建立
+  `draft-pr-human-check.json`，明確清除本 revision 的 `publish-in-progress` gate，並記錄當前
+  reviewed plan SHA-256。此 gate 不能由 existing fresh human check、historical human check、
+  code review、pre-commit 或 chat 取代，且 Planning actor 不得預填。
 
 ## Boundaries / Exclusions
 
@@ -71,22 +100,29 @@ topic plan、Python spec 與 fresh plan review 都只從 feature worktree 的已
   implementer-owned evidence。
 - Reviewer 只在 feature-authoritative `plan-review.json` 產生 fresh independent verdict，並在
   step tracker complete 後產生 implementation review；不實作、不建立 tracker、不修改歷史
-  evidence。Human 單獨建立 fresh human check 與 human merge。
+  evidence。Reviewer 也獨立產生 code-review verdict；Human 單獨建立 fresh human check、
+  Draft PR human check 與 human merge。
 - Implementer 只在全部較早 gates 成功後，於 feature worktree 建立尚不存在的 step tracker，
   並依核准計畫執行後續 source/test/doc work；不得將 existing RED candidate 偽稱為新做的 RED。
 - 未登錄的 planning、source、test、doc、legacy import 或 gate artifact 都必須回到
   `spec-and-plan-finalization`，不能由任一 actor 自行擴張。
+- Main Agent 只在 independent code-review 已核准後建立 Draft PR preflight evidence；不得改寫
+  historical file、不得以 `SKIP` 略過 hook，也不得把 side-effect 後再還原當作通過。
 
 ## Status / Allowed Transitions
 
-- **Current**：`review-ready`。Worktree-manager 已完成 six-file move、digest match 與 dev
-  source removal；本 plan 的本次 rework 已把 completed handoff 寫入下列 ledger。此狀態只授權
-  一次新的 feature-authoritative reviewer routing，不是 approval。既有 dev review、已搬遷的
-  舊 review、Reviewer 的 needs-rework 覆寫前身，以及任何 feature historical evidence 都不能
-  使 topic `approved`。
-- **Execution model**：從 `review-ready` 進入 feature-authoritative review，再循
-  `spec-and-plan-finalization` 的 explicit human check。通過 forward-preflight 後才可進入
-  `implement-plan`；無 release workflow，終點為 `merged`。
+- **Current**：`review-ready`，僅等待此 Draft PR EOF compatibility rework 的 fresh
+  Plan-Reviewer verdict。已完成的 implementation 不會由此 planning-only rework 重做；fresh
+  plan review 後，Human 必須清除 declared Draft PR human check，topic 才回到
+  `publish-in-progress`；接著仍必須有 declared `code-review.yaml` 的 Reviewer `approved`
+  verdict，再由 Draft PR preflight 決定是否可進入 `pr-open`。既有 dev review、已搬遷的舊
+  review、Reviewer 的 needs-rework 覆寫前身，以及任何 feature historical evidence 都不能使
+  topic `approved`。
+- **Execution model**：原 feature-authoritative review -> explicit human check -> forward
+  preflight -> `implement-plan` 順序已完成並保留其 implementation-entry authority。本次
+  post-implementation governance rework 從 `review-ready` 進入 fresh plan review，再進入新的
+  Draft PR human check，然後回到 `publish-in-progress` 的 code-review / Draft PR preflight；無
+  release workflow，終點為 `merged`。
 - **Allowed transitions**：
   - `planned` -> `creator-in-progress`
   - `creator-in-progress` -> `review-ready`
@@ -112,6 +148,16 @@ topic plan、Python spec 與 fresh plan review 都只從 feature worktree 的已
   check，historical RED 亦不能證明任何 fresh gate。
 - `pr-open` -> `merged` 仍需要 feature `human-merge.json` 的 explicit Human gate；不得由
   reviewer silence、chat、歷史檔案或無 release intent 推論。
+- **Draft PR routing**：fresh Plan-Reviewer 先核准本相容 contract；Human 接著在 declared
+  `draft-pr-human-check.json` 寫入 current-plan-bound `approved` / `cleared` decision，才可回到
+  `publish-in-progress`。Reviewer 必須在 declared `code-review.yaml` 寫入 `approved` verdict，
+  然後 Main Agent 才可建立 declared `draft-pr-preflight.yaml`。preflight 必須記錄「exact supported
+  files command、candidate-selection command、single literal excluded-path regex、no SKIP、no hook
+  override、all selected-file hooks passed、historical digest/terminal byte pre/post match、historical
+  path 無 working-tree diff」；只有這些條件皆成立時，才可從 `publish-in-progress` 進入 `pr-open`。
+  未排除 historical path 的檔案選取造成 EOF mutation、Draft PR human-check 或 code-review artifact
+  缺失或非 approved、任一 digest/terminal-byte 不符、任何 hook failure 或 preflight 缺失，都保持
+  `publish-in-progress` 並回到此 planning rework；不得開 Draft PR。
 
 ## Artifact Paths
 
@@ -130,14 +176,17 @@ path 表達，不以本機絕對路徑表達。
 | Historical human check | `plan/response-cache-contract-migration/response-cache-contract-migration.human-check.json` | Human | Immutable at the move snapshot; its later Human-authorized post-transfer update is recorded in the transfer ledger. It never satisfies a fresh gate. |
 | Historical worktree preflight | `plan/response-cache-contract-migration/response-cache-contract-migration.worktree-preflight.yaml` | Historical Worktree-manager lane | Existing feature-only immutable historical evidence; never move or modify; old human-check reference has no fresh authority. |
 | Historical RED evidence | `plan/response-cache-contract-migration/response-cache-contract-migration.red-tests.yaml` | Implementer | Existing feature-only immutable historical evidence; never move, modify, recreate, or promote. |
-| Fresh human check | `plan/response-cache-contract-migration/response-cache-contract-migration.fresh-human-check.json` | Human | Feature-authoritative, absent at audit; create only after fresh feature plan review is approved. |
-| Forward preflight | `plan/response-cache-contract-migration/response-cache-contract-migration.forward-preflight.yaml` | Worktree-manager lane | Feature-authoritative, absent at audit; create only after fresh human check; binds fresh check, moved-plan digest and immutable historical-preflight digest. |
-| Step tracking | `plan/response-cache-contract-migration/response-cache-contract-migration.step.md` | Implementer | Feature-authoritative; create only if absent after passed forward preflight, with eight unchecked implementation entries; never copied from historical evidence. |
-| Implementation review | `plan/response-cache-contract-migration/response-cache-contract-migration.implementation-review.yaml` | Reviewer | Feature-authoritative; create only after truthful tracker completion and independent review. |
+| Fresh human check | `plan/response-cache-contract-migration/response-cache-contract-migration.fresh-human-check.json` | Human | Feature-authoritative completed implementation-entry gate; never rewrite, reclassify, or use as Draft PR authority. |
+| Forward preflight | `plan/response-cache-contract-migration/response-cache-contract-migration.forward-preflight.yaml` | Worktree-manager lane | Feature-authoritative completed implementation-entry gate; binds fresh check, moved-plan digest and immutable historical-preflight digest, but does not substitute for Draft PR preflight. |
+| Step tracking | `plan/response-cache-contract-migration/response-cache-contract-migration.step.md` | Implementer | Feature-authoritative completed implementation progress; never copied from historical evidence or rewritten by this governance rework. |
+| Implementation review | `plan/response-cache-contract-migration/response-cache-contract-migration.implementation-review.yaml` | Reviewer | Feature-authoritative completed implementation-conformance evidence; Planning actor leaves it untouched. |
+| Code review | `plan/response-cache-contract-migration/response-cache-contract-migration.code-review.yaml` | Reviewer | Independent implementation quality/boundary verdict required before Draft PR preflight; Planning actor never pre-fills it. |
+| Draft PR human check | `plan/response-cache-contract-migration/response-cache-contract-migration.draft-pr-human-check.json` | Human | Create only after this revision's fresh approved plan review; binds the reviewed current plan SHA-256 and explicitly clears `publish-in-progress` before code-review/preflight can authorize `pr-open`. |
+| Draft PR preflight | `plan/response-cache-contract-migration/response-cache-contract-migration.draft-pr-preflight.yaml` | Main Agent | Create only after approved code review; records the exact supported no-SKIP `pre-commit --files` command, its `git ls-files` / `rg -v` selection contract, per-hook result, and historical human-check pre/post byte proof that authorizes `publish-in-progress` -> `pr-open`. |
 | Human merge | `plan/response-cache-contract-migration/response-cache-contract-migration.human-merge.json` | Human | Feature-authoritative explicit merge gate after PR comments are clear. |
-| Response-cache sources | `src/async_model_gateway/response_cache/__init__.py`, `cache.py`, `key.py`, `entry.py`, `key_factory.py`, `_canonical_feature_hasher.py`, `freshness_policy.py`, `ttl_freshness_policy.py`, `_in_memory_store.py`, `outcomes.py`, `record.py`, `errors.py`, `invalidation.py`, `compat.py` | Implementer | Future implementation scope only; responsibilities and dispositions are frozen in technical spec and reconciliation. |
-| Response-cache ports | `src/async_model_gateway/response_cache/ports/__init__.py`, `feature_hasher.py`, `store.py`, `codec.py`, `version_token_factory.py`, `invalidator.py` | Implementer | Future implementation scope only; normal target port boundary. |
-| Response-cache tests | `tests/response_cache/test_cache.py`, `test_canonical_feature_hasher.py`, `test_entry.py`, `test_in_memory_store.py`, `test_key.py`, `test_key_factory.py`, `test_response_cache_freshness_policy.py`, `test_response_cache_package_surface.py`, `test_ttl_freshness_policy.py`, `test_response_cache_contract_migration.py` | Implementer | Future direct-import behavior, race, cancellation, migration, and absence coverage; no dynamic module loading. |
+| Response-cache sources | `src/async_model_gateway/response_cache/__init__.py`, `src/async_model_gateway/response_cache/cache.py`, `src/async_model_gateway/response_cache/key.py`, `src/async_model_gateway/response_cache/entry.py`, `src/async_model_gateway/response_cache/key_factory.py`, `src/async_model_gateway/response_cache/_canonical_feature_hasher.py`, `src/async_model_gateway/response_cache/freshness_policy.py`, `src/async_model_gateway/response_cache/ttl_freshness_policy.py`, `src/async_model_gateway/response_cache/_in_memory_store.py`, `src/async_model_gateway/response_cache/outcomes.py`, `src/async_model_gateway/response_cache/record.py`, `src/async_model_gateway/response_cache/errors.py`, `src/async_model_gateway/response_cache/invalidation.py`, `src/async_model_gateway/response_cache/compat.py` | Implementer | Future implementation scope only; responsibilities and dispositions are frozen in technical spec and reconciliation. |
+| Response-cache ports | `src/async_model_gateway/response_cache/ports/__init__.py`, `src/async_model_gateway/response_cache/ports/feature_hasher.py`, `src/async_model_gateway/response_cache/ports/store.py`, `src/async_model_gateway/response_cache/ports/codec.py`, `src/async_model_gateway/response_cache/ports/version_token_factory.py`, `src/async_model_gateway/response_cache/ports/invalidator.py` | Implementer | Future implementation scope only; normal target port boundary. |
+| Response-cache tests | `tests/response_cache/test_cache.py`, `tests/response_cache/test_canonical_feature_hasher.py`, `tests/response_cache/test_entry.py`, `tests/response_cache/test_in_memory_store.py`, `tests/response_cache/test_key.py`, `tests/response_cache/test_key_factory.py`, `tests/response_cache/test_response_cache_freshness_policy.py`, `tests/response_cache/test_response_cache_package_surface.py`, `tests/response_cache/test_ttl_freshness_policy.py`, `tests/response_cache/test_response_cache_contract_migration.py` | Implementer | Future direct-import behavior, race, cancellation, migration, and absence coverage; no dynamic module loading. |
 | Documentation | `README.md`, `docs/architecture.md`, `docs/specs/response-cache-boundary.md` | Implementer | Future post-GREEN behavior synchronization only; no planning-task edit. |
 
 ### Feature authority and transfer verification
@@ -211,8 +260,8 @@ instructions to perform work in this planning rework.
 - Confirm the declared transfer-handoff ledger has six, and only six, path pairs; each has the
   recorded matching SHA-256 source/target digests, target readability, and individual dev-source
   removal result. Confirm all six dev sources are absent. Validate the three historical evidence
-  before/after digest rows against their stated migration-snapshot provenance; do not infer a
-  current immutable baseline from the Human-authorized post-transfer `human-check.json` update.
+  before/after digest rows against their stated migration-snapshot provenance; distinguish the
+  Human-authorized post-transfer `human-check.json` current immutable anchor from fresh approval.
 - Confirm a fresh independent Reviewer writes one JSON object at the feature `plan-review.json`
   target after move. Its `approved` verdict and the subsequently created fresh human check are
   both required; the transferred old review is invalid for approval.
@@ -226,6 +275,25 @@ instructions to perform work in this planning rework.
 - Confirm the new feature tracker is absent before its gate, begins with the eight unchecked
   implementation entries above, and is Implementer-only thereafter. Only after all entries are
   truthfully complete can an independent Reviewer create `implementation-review.yaml`.
+- Draft PR validation replaces the unsupported `pre-commit --exclude` interface with this exact,
+  still-hooked files-selection check. Before the command, record the historical human-check SHA-256
+  and terminal byte from the transfer ledger. Run the exact command below with no `SKIP` environment
+  variable or hook override; it must report every configured hook passed for every selected file.
+  Afterwards, require the same SHA-256, terminal byte `0x7d`, and no working-tree diff for the
+  historical path. The Main Agent then writes the declared Draft PR preflight artifact with the
+  literal command, `git ls-files -co --exclude-standard` candidate-selection command, literal
+  `rg -v` excluded-path regex, `skip_used: false`, `hook_overrides_used: false`, per-hook pass
+  result, pre/post digest, pre/post terminal byte, and `historical_path_modified: false`. Do not run
+  an invocation that includes the historical path as a probe: a mutation followed by restoration is
+  a failed gate, not proof.
+- Before the compatibility command, require the Human-owned Draft PR human-check artifact to contain
+  `decision: approved`, `status: cleared`, `cleared_for: publish-in-progress`, and the SHA-256 of
+  this reviewed plan; it is a separate revision gate and does not modify or reuse either existing
+  human-check artifact.
+
+```text
+uv run pre-commit run --files $(git ls-files -co --exclude-standard | rg -v '^plan/response-cache-contract-migration/response-cache-contract-migration\.human-check\.json$')
+```
 - Later implementation validation remains:
 
 ```text
@@ -233,7 +301,7 @@ uv run pytest tests/response_cache -v --no-cov
 uv run pytest
 uv run ruff check src tests docs README.md analysis/response-cache-contract-migration plan/response-cache-contract-migration
 uv run pyright
-uv run pre-commit run --all-files
+uv run pre-commit run --files $(git ls-files -co --exclude-standard | rg -v '^plan/response-cache-contract-migration/response-cache-contract-migration\.human-check\.json$')
 ```
 
 ## Reviewer Handoff
@@ -286,10 +354,11 @@ one identity authority, safe complete-record storage, and one temporary legacy a
 The completed six-file migration handoff is recorded in the declared transfer ledger: all six dev
 sources are absent and the feature targets are the only planning authority. The feature worktree
 retains the three historical candidate paths named in the artifact register; the ledger preserves
-their move-snapshot digests and separately classifies the authorized later Human update. It still
-does not contain a fresh human check or forward preflight evidence. The legacy response-cache
-implementation and target behavior remain fully specified by the moved strict analysis; this plan
-does not re-decide them.
+their move-snapshot digests and classifies the authorized later Human update as the current
+immutable Draft PR anchor. The fresh human check and forward preflight are completed
+implementation-entry evidence, not publication evidence. The legacy response-cache implementation
+and target behavior remain fully specified by the moved strict analysis; this plan does not
+re-decide them.
 
 ### Requirements
 
@@ -300,12 +369,15 @@ does not re-decide them.
    transferred old review content cannot approve this revision.
 3. Preserve the three existing feature historical candidate before/after migration-snapshot
    digests in the ledger and never elevate them to fresh / forward evidence; classify the
-   Human-authorized `human-check.json` post-transfer update separately rather than miscalling it
-   current immutability.
+   Human-authorized `human-check.json` post-transfer update separately as a byte-immutable Draft
+   PR anchor, never as fresh approval.
 4. Recreate fresh human check, forward preflight, step tracker, and implementation review only in
    the stated order and at the feature targets.
 5. Later implementation satisfies every technical-spec and reconciliation mapping, including
    direct-import-only tests and no dynamic module loading.
+6. After fresh Plan-Reviewer approval of this post-implementation rework, require a separately
+   Human-owned, current-plan-bound Draft PR human check before code-review evidence and Draft PR
+   preflight can authorize `pr-open`.
 
 ### Decisions
 
@@ -365,7 +437,12 @@ readability, individual source-removal results, and the three historical before/
 digest rows. Treat the separately recorded Human-authorized post-transfer update as non-gating;
 then fresh feature plan review, human check, forward preflight, tracker creation, and later
 implementation tests follow in the exact gate order. Later tests cover happy path, invalid input,
-edge cases, regression, backward compatibility, cancellation, and races.
+edge cases, regression, backward compatibility, cancellation, and races. For Draft PR, use only
+the declared exact supported files command, then prove the historical human-check's SHA-256 and
+terminal `0x7d` byte are unchanged before writing preflight evidence; no `SKIP`, broad file
+selection exclusion, hook override, or mutate-and-restore sequence is valid. First require the
+separate Draft PR human check to bind
+this plan's reviewed SHA-256; the existing human checks are never publication authority.
 
 ### Handoff notes for the implementer
 
@@ -416,13 +493,20 @@ the feature authority and gate ordering checks pass.
   human and reviewer gates.
 - Creating a tracker or implementation review before forward preflight would falsify workflow
   order and contaminate evidence authority.
+- A files invocation that includes the immutable historical human-check would add a final LF through
+  the EOF fixer; restoring that side effect cannot make the validation pass. A broader file-selection
+  exclusion, hook override, or `SKIP` would silently reduce hook coverage.
+- Reusing the implementation-entry fresh human check after this plan revision would leave Draft PR
+  authorization without a Human-owned, current-plan-bound gate.
 
 ### Rollback Plan
 
 If any transfer check fails, do not remove remaining dev sources; restore an incomplete target only
 from its digest-matched source and repeat the bounded six-file protocol after rework. Before a
 later code merge, revert only the registered source/test/doc paths with the feature-authoritative
-analysis and plan artifacts; never revert or alter the three immutable historical candidates.
+analysis and plan artifacts; never revert or alter the three immutable historical candidates. If
+Draft PR preflight fails, do not repair the historical human-check: remove only the failed
+non-historical preflight artifact, preserve the anchored bytes, and return to this gate contract.
 
 ### Open Questions
 

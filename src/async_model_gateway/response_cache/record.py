@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import cast
+from typing import TypeGuard
 
 __all__ = ["CacheVersionToken", "StoredCacheRecord"]
 
@@ -89,23 +89,19 @@ def _is_version_token(value: object) -> bool:
 
 def _validate_metadata(metadata: object) -> None:
     """Enforce the fixed UTF-8 metadata budget."""
-    if not isinstance(metadata, tuple):
+    if not _is_metadata_tuple(metadata):
         msg = "metadata must be a tuple of string pairs"
         raise ValueError(msg)
-    items = cast(tuple[object, ...], metadata)
+    items = metadata
     if len(items) > _MAX_METADATA_ITEMS:
         msg = "metadata has too many items"
         raise ValueError(msg)
     total_bytes = 0
     for item in items:
-        if not isinstance(item, tuple):
+        if not _is_metadata_pair(item):
             msg = "metadata items must be string pairs"
             raise ValueError(msg)
-        pair = cast(tuple[object, ...], item)
-        if len(pair) != 2:
-            msg = "metadata items must be string pairs"
-            raise ValueError(msg)
-        key, value = pair
+        key, value = item
         if not isinstance(key, str) or not isinstance(value, str):
             msg = "metadata items must be string pairs"
             raise ValueError(msg)
@@ -118,3 +114,15 @@ def _validate_metadata(metadata: object) -> None:
     if total_bytes > _MAX_METADATA_BYTES:
         msg = "metadata exceeds its byte limit"
         raise ValueError(msg)
+
+
+def _is_metadata_pair(value: object) -> TypeGuard[tuple[object, object]]:
+    """Narrow untrusted metadata tuple items to exactly two values."""
+    if not _is_metadata_tuple(value):
+        return False
+    return len(value) == 2
+
+
+def _is_metadata_tuple(value: object) -> TypeGuard[tuple[object, ...]]:
+    """Narrow untrusted metadata to the immutable top-level tuple shape."""
+    return isinstance(value, tuple)

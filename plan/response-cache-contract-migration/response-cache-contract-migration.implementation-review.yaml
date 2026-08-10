@@ -2,22 +2,33 @@ topic: response-cache-contract-migration
 review: implementation-review
 reviewer: independent-reviewer
 verdict: approved
+review_status: COMPLETE
+
+reviewed_implementation:
+  merge_base: bfc2ba0c3f878af4b46cbea5d956926738326579
+  scope: "git diff --binary <merge-base> -- README.md docs src tests"
+  diff_sha256: eb45b69c669ee1de5436cb95b52e0cf4a5e7014e80f834297a3a74c45308a459
+  plan_sha256: cdc176499969d2c8dadd380cae9b5b3a1484ab7e6da6d5cf04cca1618399af1b
 
 preconditions:
   plan_review: approved
   fresh_human_check: cleared
   forward_preflight: passed
   implementation_step_gate: passed
-  red_test_evidence: red-tests-ready
+  implementation_present: true
+  current_draft_pr_human_check:
+    decision: approved
+    status: cleared
+    cleared_for: publish-in-progress
+    reviewed_plan_sha256: cdc176499969d2c8dadd380cae9b5b3a1484ab7e6da6d5cf04cca1618399af1b
 
 traceability_matrix:
   - step: direct-import target-contract and reconciliation coverage
     status: done
     evidence:
-      - tests/response_cache/test_cache.py:33
-      - tests/response_cache/test_response_cache_contract_migration.py:12
+      - tests/response_cache/test_cache.py:20
+      - tests/response_cache/test_response_cache_contract_migration.py:10
       - tests/response_cache/test_response_cache_package_surface.py:11
-      - tests/response_cache/test_cache.py:371
   - step: CacheKey, immutable record/token, closed outcomes, and operational errors
     status: done
     evidence:
@@ -67,83 +78,62 @@ traceability_matrix:
       - docs/specs/response-cache-boundary.md:5
 
 scope_creep_check:
-  - non_goal: no third facade method, lifecycle, retry, timeout, task, or background owner
+  - non_goal: no third facade method, synchronous mirror, public lifecycle, root-public port, root legacy export, timeout, retry, or background owner
     violated: no
-    evidence: src/async_model_gateway/response_cache/cache.py:59
-  - non_goal: no root-public port or root legacy export
+    evidence: response-cache source contains only the two facade operations; legacy method names remain compat-only
+  - non_goal: no persistence infrastructure, settings, backend selection, eviction, capacity, admission, metrics, tracing, data migration, orchestration, or release work
     violated: no
-    evidence: tests/response_cache/test_response_cache_package_surface.py:11
-  - non_goal: no persistence, settings, backend selection, eviction, orchestration, or release work
+    evidence: diff paths are limited to registered topic analysis, plan, response-cache source/tests, and the three approved documentation files
+  - non_goal: no dynamic module loading in tests
     violated: no
-    evidence: git diff is limited to the approved response-cache source, tests, documentation, analysis, and topic-plan paths
-  - non_goal: tests use direct imports without unauthorized dynamic module loading
-    violated: no
-    evidence: dynamic-loading audit of tests/response_cache found no loader, importlib, exec, eval, or __import__ use
+    evidence: tests/response_cache contains no importlib, loader, exec, eval, runpy, or __import__ use; compat and removed-path checks use ordinary imports
 
 contract_check:
-  - item: two-method, five-collaborator ResponseCache facade
+  - item: two-method, five-keyword-only-collaborator ResponseCache facade
     status: matches
-    detail: lookup and remember are the only async facade operations, and all collaborators are keyword-only.
-  - item: CacheKey and complete immutable record authority
+    detail: cache.py exposes only keyword-only lookup and remember, with the five declared collaborators.
+  - item: CacheKey identity and immutable complete record authority
     status: matches
-    detail: CacheKey owns only the three identity components; StoredCacheRecord enforces schema version 1, UTC ordering, token, and metadata limits.
-  - item: write-time expiry, closed outcome translation, and cancellation propagation
+    detail: key.py has only the three frozen/slotted identity fields; record.py validates schema, UTC ordering, opaque token, and metadata bounds.
+  - item: write-time expiry, closed outcomes, and cancellation propagation
     status: matches
-    detail: remember maps only known operational failures; direct store cancellation preserves the exact CancelledError instance at tests/response_cache/test_cache.py:371.
+    detail: facade builds one record at remember, maps only CacheOperationalError subclasses, and does not catch CancelledError.
   - item: token-guarded stale cleanup and separate invalidation
     status: matches
-    detail: stale cleanup uses delete_if_version with the observed token; StoreCacheInvalidator alone maps delete results.
-  - item: compatibility adapter constructor and legacy containment
+    detail: stale paths call delete_if_version with the observed token; StoreCacheInvalidator owns ordinary key-local delete mapping.
+  - item: compatibility containment and target import surfaces
     status: matches
-    detail: "LegacyResponseCacheAdapter accepts facade: ResponseCache and invalidator: CacheInvalidator; legacy names remain compat-only."
-  - item: root, ports, and documentation boundaries
+    detail: legacy names are compat-only, package and ports surfaces are exact, and deleted normal modules have ordinary-import absence coverage.
+  - item: documentation boundary
     status: matches
-    detail: target root exports are exact, ports remain submodule-only, and documentation describes the target contract rather than legacy operations.
+    detail: README.md, docs/architecture.md, and docs/specs/response-cache-boundary.md describe the target facade, separate invalidation, record ownership, and compat-only bridge.
 
 test_plan_check:
-  - case_type: fresh lookup and complete-record remember
+  - case_type: happy path target facade lookup and complete-record remember
     status: present
     location: tests/response_cache/test_cache.py:58
-  - case_type: invalid schema, timestamps, metadata, and configuration defects
+  - case_type: malformed keys, records, timestamps, metadata, and configuration defects
     status: present
-    location: tests/response_cache/test_response_cache_contract_migration.py:12
-  - case_type: expired or unsupported record, operational outcomes, and cancellation
+    location: tests/response_cache/test_response_cache_contract_migration.py:10
+  - case_type: expired/unsupported records, cleanup failures, closed store, and cancellation
     status: present
-    location: tests/response_cache/test_cache.py:256; tests/response_cache/test_cache.py:371
-  - case_type: compare-delete replacement race and key-local invalidation
+    location: tests/response_cache/test_cache.py:130
+  - case_type: coherent replacement and compare-delete race
     status: present
-    location: tests/response_cache/test_response_cache_contract_migration.py:66; tests/response_cache/test_in_memory_store.py:50
-  - case_type: legacy compatibility and export/direct-path absence
+    location: tests/response_cache/test_response_cache_contract_migration.py:66
+  - case_type: compatibility bridge and normal root/direct-path absence without dynamic loading
     status: present
-    location: tests/response_cache/test_response_cache_package_surface.py:78; tests/response_cache/test_entry.py:22
-  - case_type: test-loading governance
-    status: present
-    location: tests/response_cache direct-import audit
-
-code_review:
-  verdict: approved
-  tooling_detected: pyright strict, ruff, pytest, pre-commit
-  findings:
-    typing:
-      - severity: warning
-        location: src/async_model_gateway/response_cache/compat.py:130
-        issue: "The attr-defined suppression has no inline justification after facade is annotated as ResponseCache."
-        fix: "Remove the suppression if unnecessary, or add the specific pyright rationale inline."
-      - severity: warning
-        location: src/async_model_gateway/response_cache/compat.py:137
-        issue: "The attr-defined suppression has no inline justification after facade is annotated as ResponseCache."
-        fix: "Remove the suppression if unnecessary, or add the specific pyright rationale inline."
-    lint: []
-    readability: []
-    error_handling: []
-    anti_patterns: []
-    test_quality: []
-    observability: []
+    location: tests/response_cache/test_response_cache_package_surface.py:78
 
 validation_evidence:
-  focused_pytest: 19 passed
-  response_cache_pytest: 43 passed
-  full_pytest: 203 passed; 94.59% coverage
+  focused_response_cache_pytest: 47 passed
+  full_pytest: 206 passed; 94.73% coverage
   ruff: passed
   pyright_strict: 0 errors, 0 warnings, 0 informations
-  pre_commit: passed
+  git_diff_check: passed
+
+next_gate: independent_python_code_review
+artifact_boundary: >-
+  This artifact contains implementation alignment only. The seven-dimension
+  code-quality verdict is recorded once, separately, in
+  response-cache-contract-migration.code-review.yaml.

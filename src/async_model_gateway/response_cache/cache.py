@@ -57,7 +57,7 @@ class ResponseCache:
         self._clock = clock
 
     async def lookup(self, *, key: CacheKey, context: ContextT) -> CacheHit | CacheMiss:
-        """Return a decoded fresh value, otherwise a closed cache miss."""
+        """Return a decoded fresh value; ``context`` is an ignored compatibility sentinel."""
         del context
         try:
             record = await self._store.get(key=key)
@@ -78,7 +78,7 @@ class ResponseCache:
     async def remember(
         self, *, key: CacheKey, value: str, context: ContextT
     ) -> Remembered | Skipped | Failed:
-        """Write one full record and translate only known operational failures."""
+        """Write one record; ``context`` is an ignored compatibility sentinel."""
         del context
         try:
             written_at = self._clock()
@@ -109,7 +109,7 @@ class ResponseCache:
         try:
             await self._store.delete_if_version(key=key, version_token=record.version_token)
         except CacheOperationalError:
-            pass
+            return CacheMiss()
         return CacheMiss()
 
 

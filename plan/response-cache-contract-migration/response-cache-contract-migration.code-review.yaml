@@ -1,0 +1,110 @@
+review: python-code-review
+topic: response-cache-contract-migration
+reviewer: independent-reviewer
+verdict: approved
+review_status: COMPLETE
+
+reviewed_implementation:
+  merge_base: bfc2ba0c3f878af4b46cbea5d956926738326579
+  scope: "git diff --binary <merge-base> -- README.md docs src tests"
+  diff_sha256: eb45b69c669ee1de5436cb95b52e0cf4a5e7014e80f834297a3a74c45308a459
+  plan_sha256: e6f7a7ec1644f12a72bf9a9bbaca481eff888087545e01a864aa89b4280fd4df
+
+preconditions:
+  implementation_review:
+    verdict: approved
+    artifact: plan/response-cache-contract-migration/response-cache-contract-migration.implementation-review.yaml
+    implementation_diff_sha256: eb45b69c669ee1de5436cb95b52e0cf4a5e7014e80f834297a3a74c45308a459
+  draft_pr_human_check:
+    decision: approved
+    status: cleared
+    cleared_for: publish-in-progress
+    reviewed_plan_sha256: e6f7a7ec1644f12a72bf9a9bbaca481eff888087545e01a864aa89b4280fd4df
+
+review_scope:
+  - README.md
+  - docs/architecture.md
+  - docs/specs/response-cache-boundary.md
+  - src/async_model_gateway/response_cache
+  - tests/response_cache
+
+tooling_detected:
+  - "Ruff: E, W, F, N, D, UP, B, A, C4, ARG, RUF; line-length 100"
+  - "Pyright: strict; Python 3.10"
+  - "pytest: asyncio_mode=strict; coverage threshold 90%"
+
+findings:
+  typing:
+    - severity: warning
+      location: tests/response_cache/test_entry.py:19
+      issue: >-
+        The scoped suppression permits the intentional frozen-dataclass mutation,
+        but does not state that rationale inline.
+      fix: >-
+        Add a brief inline reason if the test continues to require this deliberate
+        type-rule violation.
+    - severity: warning
+      location: tests/response_cache/test_entry.py:57
+      issue: >-
+        The scoped suppression permits replacement of a fixture method, but does
+        not state that rationale inline.
+      fix: >-
+        Add a brief inline reason if the test continues to require this deliberate
+        type-rule violation.
+  lint: []
+  readability: []
+  error_handling: []
+  anti_patterns: []
+  test_quality: []
+  observability: []
+
+review_notes:
+  - >-
+    ResponseCache retains only the two keyword-only async facade operations.
+    ContextT is preserved on both invocation-only context parameters and context
+    is explicitly discarded before collaborator use.
+  - >-
+    Stale cleanup catches only CacheOperationalError. The focused tests prove
+    that both CancelledError and an unexpected RuntimeError from compare-delete
+    propagate by identity, while an operational cleanup failure remains CacheMiss.
+  - >-
+    Production record metadata and compatibility feature normalization use
+    TypeGuard-based narrowing without Any, cast, broad suppression, mutable
+    defaults, dynamic execution, broad exception catches, task ownership, retry,
+    or timeout logic. The two test-only scoped suppressions are reported above.
+  - >-
+    Response-cache tests use ordinary imports. The reviewed topic has no
+    importlib, loader, exec, eval, runpy, or __import__ test path; the repository's
+    grandfathered model-payload exception is outside this topic and was not used as precedent.
+  - >-
+    The public root, submodule-only ports, separate invalidator, compatibility-only
+    legacy surface, whole-record replacement, and documentation all remain within
+    the approved response-cache migration boundary.
+
+validation_evidence:
+  execution: >-
+    Not run by this reviewer; python-code-review is a static seven-dimension
+    review. The implementation-review artifact records the following results for
+    the identical implementation diff digest.
+  implementation_review_recorded:
+    focused_response_cache_pytest: "47 passed"
+    full_pytest: "206 passed; total coverage 94.73%"
+    ruff: passed
+    pyright: "0 errors, 0 warnings, 0 informations"
+  reviewer_static_check:
+    git_diff_check: passed
+
+governance:
+  current_plan_human_gate: >-
+    draft-pr-human-check.json is approved and cleared for publish-in-progress
+    with the current reviewed plan SHA-256 above.
+  artifact_separation: >-
+    This is the sole code-quality artifact for this current implementation digest;
+    code review is not nested or duplicated in the implementation-review artifact.
+
+gate_status: code-review-complete
+next_role: Main Agent
+next_action: >-
+  The implementation and code-review gates are approved. The Main Agent may now run
+  the plan-declared exact-exclude Draft PR preflight; publish readiness remains
+  conditional on that preflight's hook, digest, terminal-byte, and no-modification evidence.

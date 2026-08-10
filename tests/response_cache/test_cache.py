@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 from datetime import datetime, timedelta, timezone
+from typing import get_type_hints
 
 import pytest
 
@@ -52,6 +53,14 @@ def test_response_cache_has_exactly_five_keyword_only_collaborators_and_two_meth
     assert inspect.iscoroutinefunction(ResponseCache.lookup)
     assert inspect.iscoroutinefunction(ResponseCache.remember)
     assert not any(hasattr(ResponseCache, name) for name in ("get", "set", "invalidate"))
+
+
+def test_response_cache_context_annotations_preserve_the_invocation_type_variable() -> None:
+    """Both facade operations retain the technical-spec context annotation."""
+    import async_model_gateway.response_cache.cache as cache_module
+
+    assert get_type_hints(cache_module.ResponseCache.lookup)["context"] is cache_module.ContextT
+    assert get_type_hints(cache_module.ResponseCache.remember)["context"] is cache_module.ContextT
 
 
 @pytest.mark.asyncio

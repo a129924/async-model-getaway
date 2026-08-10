@@ -4,6 +4,11 @@
   "copilot_feedback_triage": {
     "ADDRESS": [],
     "DISCUSS": [],
-    "SKIP": []
+    "SKIP": [
+      {
+        "comment": "Current-SHA-bound fresh independent reviewer evidence: plan SHA-256 e6f7a7ec1644f12a72bf9a9bbaca481eff888087545e01a864aa89b4280fd4df.",
+        "why": "Independent review of these exact plan bytes found no blocking issue: the Draft PR pre-commit gate uses the exact supported --files selector with one anchored historical-path exclusion, prohibits SKIP and hook overrides, requires pre/post digest and EOF-byte proof, and requires separate human, code-review, and preflight publication gates. This approval applies only to the stated SHA-256."
+      }
+    ]
   }
 }

@@ -7,7 +7,7 @@ import warnings
 from collections.abc import Mapping
 from dataclasses import dataclass
 from hashlib import sha256
-from typing import cast
+from typing import TypeGuard
 
 from .cache import ResponseCache
 from .key import CacheKey
@@ -48,7 +48,7 @@ class CanonicalFeatureHasher(FeatureHasher):
 
     def hash_features(self, features: Mapping[str, object]) -> str:
         """Return a stable SHA-256 feature digest."""
-        normalized = _normalize_features(cast(Mapping[object, object], features))
+        normalized = _normalize_features(features)
         serialized = json.dumps(
             normalized,
             ensure_ascii=False,
@@ -112,9 +112,7 @@ class LegacyResponseCacheAdapter:
 
     __slots__ = ("_facade", "_invalidator")
 
-    def __init__(
-        self, *, facade: ResponseCache, invalidator: CacheInvalidator
-    ) -> None:
+    def __init__(self, *, facade: ResponseCache, invalidator: CacheInvalidator) -> None:
         """Bind transition collaborators and signal the deprecated route."""
         warnings.warn(
             "LegacyResponseCacheAdapter is deprecated; use ResponseCache.lookup, "
@@ -127,14 +125,14 @@ class LegacyResponseCacheAdapter:
 
     async def get(self, *, key: CacheKey) -> ResponseCacheEntry | None:
         """Map a target lookup outcome to the former entry-or-none result."""
-        result = await self._facade.lookup(key=key, context=object())  # type: ignore[attr-defined]
+        result = await self._facade.lookup(key=key, context=object())
         if isinstance(result, CacheHit):
             return ResponseCacheEntry(response=result.value)
         return None
 
     async def set(self, *, key: CacheKey, entry: ResponseCacheEntry) -> None:
         """Map target write outcomes to the retired legacy error convention."""
-        result = await self._facade.remember(  # type: ignore[attr-defined]
+        result = await self._facade.remember(
             key=key,
             value=entry.response,
             context=object(),
@@ -153,7 +151,9 @@ class LegacyResponseCacheAdapter:
         return False
 
 
-def _normalize_features(features: Mapping[object, object]) -> dict[str, object]:
+def _normalize_features(
+    features: Mapping[str, object] | Mapping[object, object],
+) -> dict[str, object]:
     """Copy feature mappings into deterministic JSON-compatible material."""
     normalized: dict[str, object] = {}
     for key, value in features.items():
@@ -170,12 +170,22 @@ def _require_key(value: object) -> str:
 
 
 def _normalize_feature_value(value: object) -> object:
-    """Normalize only JSON-shaped migration feature values."""
+    """Normalize the untrusted values at the deprecated feature boundary."""
     if value is None or isinstance(value, (bool, int, float, str)):
         return value
-    if isinstance(value, Mapping):
-        return _normalize_features(cast(Mapping[object, object], value))
-    if isinstance(value, (list, tuple)):
-        return [_normalize_feature_value(item) for item in cast(list[object], value)]
+    if _is_feature_mapping(value):
+        return _normalize_features(value)
+    if _is_feature_sequence(value):
+        return [_normalize_feature_value(item) for item in value]
     msg = "feature values must be JSON-compatible"
     raise TypeError(msg)
+
+
+def _is_feature_mapping(value: object) -> TypeGuard[Mapping[object, object]]:
+    """Narrow an untrusted nested feature object to a mapping for key validation."""
+    return isinstance(value, Mapping)
+
+
+def _is_feature_sequence(value: object) -> TypeGuard[list[object] | tuple[object, ...]]:
+    """Narrow an untrusted nested feature object to a supported sequence."""
+    return isinstance(value, (list, tuple))

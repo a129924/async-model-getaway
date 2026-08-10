@@ -304,6 +304,114 @@ async def test_lookup_cleanup_operational_failure_remains_a_miss() -> None:
 
 
 @pytest.mark.asyncio
+async def test_lookup_cleanup_propagates_cancelled_error_identity() -> None:
+    """Cancellation from compare-delete remains visible to the lookup caller."""
+    from async_model_gateway.response_cache.cache import ResponseCache
+    from async_model_gateway.response_cache.record import CacheVersionToken, StoredCacheRecord
+
+    written_at = datetime(2026, 8, 6, tzinfo=timezone.utc)
+    expired = StoredCacheRecord(
+        1,
+        "utf-8",
+        b"expired",
+        written_at,
+        written_at + timedelta(seconds=1),
+        CacheVersionToken(value="observed"),
+        (),
+    )
+    cancellation = asyncio.CancelledError("sentinel stale-cleanup cancellation")
+
+    class Store:
+        async def get(self, *, key: object) -> object:
+            return expired
+
+        async def set(self, *, key: object, record: object) -> None:
+            raise AssertionError("lookup must not write")
+
+        async def delete(self, *, key: object) -> bool:
+            raise AssertionError("stale cleanup must compare-delete")
+
+        async def delete_if_version(self, *, key: object, version_token: object) -> bool:
+            raise cancellation
+
+    class Codec:
+        codec_id = "utf-8"
+
+        def encode(self, *, value: str) -> bytes:
+            return value.encode()
+
+        def decode(self, *, payload: bytes) -> str:
+            return payload.decode()
+
+    cache = ResponseCache(
+        store=Store(),
+        codec=Codec(),
+        version_token_factory=object(),
+        freshness_policy=object(),
+        clock=lambda: written_at + timedelta(days=1),
+    )
+
+    with pytest.raises(asyncio.CancelledError) as raised:
+        await cache.lookup(key=object(), context=object())
+
+    assert raised.value is cancellation
+
+
+@pytest.mark.asyncio
+async def test_lookup_cleanup_propagates_unexpected_runtime_error_identity() -> None:
+    """Unexpected compare-delete defects never become a stale cache miss."""
+    from async_model_gateway.response_cache.cache import ResponseCache
+    from async_model_gateway.response_cache.record import CacheVersionToken, StoredCacheRecord
+
+    written_at = datetime(2026, 8, 6, tzinfo=timezone.utc)
+    expired = StoredCacheRecord(
+        1,
+        "utf-8",
+        b"expired",
+        written_at,
+        written_at + timedelta(seconds=1),
+        CacheVersionToken(value="observed"),
+        (),
+    )
+    defect = RuntimeError("sentinel stale-cleanup defect")
+
+    class Store:
+        async def get(self, *, key: object) -> object:
+            return expired
+
+        async def set(self, *, key: object, record: object) -> None:
+            raise AssertionError("lookup must not write")
+
+        async def delete(self, *, key: object) -> bool:
+            raise AssertionError("stale cleanup must compare-delete")
+
+        async def delete_if_version(self, *, key: object, version_token: object) -> bool:
+            raise defect
+
+    class Codec:
+        codec_id = "utf-8"
+
+        def encode(self, *, value: str) -> bytes:
+            return value.encode()
+
+        def decode(self, *, payload: bytes) -> str:
+            return payload.decode()
+
+    cache = ResponseCache(
+        store=Store(),
+        codec=Codec(),
+        version_token_factory=object(),
+        freshness_policy=object(),
+        clock=lambda: written_at + timedelta(days=1),
+    )
+
+    with pytest.raises(RuntimeError) as raised:
+        await cache.lookup(key=object(), context=object())
+
+    assert raised.value is defect
+
+
+@pytest.mark.asyncio
 async def test_store_backed_invalidator_is_key_local_and_propagates_failures() -> None:
     """Invalidation alone maps ordinary deletion results; errors stay caller-visible."""
     from async_model_gateway.response_cache.errors import CacheStoreOperationalError
