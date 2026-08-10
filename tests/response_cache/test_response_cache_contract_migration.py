@@ -62,6 +62,40 @@ def test_stored_record_and_version_token_are_immutable_and_validate_the_contract
         )
 
 
+def test_unsupported_schema_record_is_internal_and_preserves_schema_one_invariant() -> None:
+    """Only the narrow read marker represents known schemas that this cache cannot decode."""
+    import async_model_gateway.response_cache.record as record_module
+    from async_model_gateway.response_cache.record import (
+        CacheVersionToken,
+        StoredCacheRecord,
+        UnsupportedSchemaRecord,
+    )
+
+    marker = UnsupportedSchemaRecord(
+        schema_version=2,
+        version_token=CacheVersionToken(value="observed"),
+    )
+
+    assert [field.name for field in fields(marker)] == ["schema_version", "version_token"]
+    assert "UnsupportedSchemaRecord" not in record_module.__all__
+    for schema_version in (True, 1, "2"):
+        with pytest.raises(ValueError):
+            UnsupportedSchemaRecord(
+                schema_version=schema_version,  # type: ignore[arg-type]
+                version_token=CacheVersionToken(value="observed"),
+            )
+    with pytest.raises(ValueError, match="schema_version must be exactly 1"):
+        StoredCacheRecord(
+            schema_version=2,
+            codec_id="utf-8",
+            payload=b"value",
+            written_at=datetime(2026, 8, 6, tzinfo=timezone.utc),
+            expires_at=datetime(2026, 8, 7, tzinfo=timezone.utc),
+            version_token=CacheVersionToken(value="observed"),
+            metadata=(),
+        )
+
+
 @pytest.mark.asyncio
 async def test_stale_cleanup_race_keeps_concurrent_replacement_and_original_lookup_is_miss() -> (
     None

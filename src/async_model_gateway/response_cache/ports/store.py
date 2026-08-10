@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from ..key import CacheKey
-from ..record import CacheVersionToken, StoredCacheRecord
+from ..record import CacheVersionToken, StoredCacheRecord, UnsupportedSchemaRecord
 
 __all__ = ["CacheStore"]
 
@@ -13,7 +13,7 @@ __all__ = ["CacheStore"]
 class CacheStore(Protocol):
     """Persist coherent records and support token-guarded deletion."""
 
-    async def get(self, *, key: CacheKey) -> StoredCacheRecord | None:
+    async def get(self, *, key: CacheKey) -> StoredCacheRecord | UnsupportedSchemaRecord | None:
         """Return the complete record for ``key``, if present."""
         ...
 

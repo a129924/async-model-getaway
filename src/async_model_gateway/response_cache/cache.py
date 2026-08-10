@@ -23,7 +23,7 @@ from .outcomes import (
 from .ports.codec import CacheCodec
 from .ports.store import CacheStore
 from .ports.version_token_factory import VersionTokenFactory
-from .record import StoredCacheRecord
+from .record import CacheVersionToken, StoredCacheRecord, UnsupportedSchemaRecord
 
 __all__ = ["ResponseCache"]
 
@@ -63,13 +63,15 @@ class ResponseCache:
             record = await self._store.get(key=key)
             if record is None:
                 return CacheMiss()
+            if isinstance(record, UnsupportedSchemaRecord):
+                return await self._cleanup_stale(key=key, version_token=record.version_token)
 
             now = self._clock()
             _require_aware_utc(now)
             if record.schema_version != 1 or record.codec_id != self._codec.codec_id:
-                return await self._cleanup_stale(key=key, record=record)
+                return await self._cleanup_stale(key=key, version_token=record.version_token)
             if record.expires_at <= now:
-                return await self._cleanup_stale(key=key, record=record)
+                return await self._cleanup_stale(key=key, version_token=record.version_token)
 
             return CacheHit(value=self._codec.decode(payload=record.payload))
         except CacheOperationalError:
@@ -104,10 +106,10 @@ class ResponseCache:
         except CacheOperationalError as error:
             return Failed(kind=_failure_kind(error))
 
-    async def _cleanup_stale(self, *, key: CacheKey, record: StoredCacheRecord) -> CacheMiss:
+    async def _cleanup_stale(self, *, key: CacheKey, version_token: CacheVersionToken) -> CacheMiss:
         """Best-effort token-guarded cleanup that preserves replacements."""
         try:
-            await self._store.delete_if_version(key=key, version_token=record.version_token)
+            await self._store.delete_if_version(key=key, version_token=version_token)
         except CacheOperationalError:
             return CacheMiss()
         return CacheMiss()

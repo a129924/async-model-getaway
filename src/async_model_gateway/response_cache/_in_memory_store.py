@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from .key import CacheKey
-from .record import CacheVersionToken, StoredCacheRecord
+from .record import CacheVersionToken, StoredCacheRecord, UnsupportedSchemaRecord
 
 
 class InMemoryCacheStore:
@@ -13,7 +13,7 @@ class InMemoryCacheStore:
         """Create an empty per-key record map."""
         self._records: dict[CacheKey, StoredCacheRecord] = {}
 
-    async def get(self, *, key: CacheKey) -> StoredCacheRecord | None:
+    async def get(self, *, key: CacheKey) -> StoredCacheRecord | UnsupportedSchemaRecord | None:
         """Return the current complete record for ``key``."""
         return self._records.get(key)
 

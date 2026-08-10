@@ -9,10 +9,13 @@ from dataclasses import dataclass
 from hashlib import sha256
 from typing import TypeGuard
 
-from .cache import ResponseCache
-from .key import CacheKey
-from .outcomes import CacheHit, Invalidated, Remembered, Skipped
-from .ports.invalidator import CacheInvalidator
+from .cache import ResponseCache as _ResponseCache
+from .key import CacheKey as _CacheKey
+from .outcomes import CacheHit as _CacheHit
+from .outcomes import Invalidated as _Invalidated
+from .outcomes import Remembered as _Remembered
+from .outcomes import Skipped as _Skipped
+from .ports.invalidator import CacheInvalidator as _CacheInvalidator
 
 __all__ = [
     "CanonicalFeatureHasher",
@@ -25,7 +28,12 @@ __all__ = [
     "ResponseCacheKeyFactory",
 ]
 
-ResponseCacheKey = CacheKey
+ResponseCacheKey = _CacheKey
+
+
+def _is_feature_string(value: object) -> TypeGuard[str]:
+    """Return whether runtime feature identity material is a string."""
+    return isinstance(value, str)
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,7 +46,7 @@ class ResponseCacheEntry:
 class FeatureHasher:
     """Legacy feature-hash collaborator shape."""
 
-    def hash_features(self, features: Mapping[str, object]) -> str:
+    def hash_features(self, features: Mapping[str, str]) -> str:
         """Return a stable hash of migration-only feature material."""
         raise NotImplementedError
 
@@ -46,51 +54,56 @@ class FeatureHasher:
 class CanonicalFeatureHasher(FeatureHasher):
     """Canonical migration-only implementation of the former feature hasher."""
 
-    def hash_features(self, features: Mapping[str, object]) -> str:
-        """Return a stable SHA-256 feature digest."""
-        normalized = _normalize_features(features)
-        serialized = json.dumps(
-            normalized,
+    def hash_features(self, features: Mapping[str, str]) -> str:
+        """Return the predecessor canonical SHA-256 digest for ``features``."""
+        pairs: list[tuple[str, str]] = []
+        for key, value in features.items():
+            if not _is_feature_string(key):
+                msg = "feature keys must be strings"
+                raise TypeError(msg)
+            if not _is_feature_string(value):
+                msg = "feature values must be strings"
+                raise TypeError(msg)
+            pairs.append((str.__str__(key), str.__str__(value)))
+
+        pairs.sort()
+        serialized_pairs = json.dumps(
+            pairs,
             ensure_ascii=False,
             separators=(",", ":"),
-            sort_keys=True,
         )
-        return sha256(serialized.encode("utf-8")).hexdigest()
+        try:
+            encoded_pairs = serialized_pairs.encode("utf-8")
+        except UnicodeEncodeError as exc:
+            msg = "feature identity material must be strictly UTF-8 encodable"
+            raise TypeError(msg) from exc
+        return sha256(encoded_pairs).hexdigest()
 
 
 class ResponseCacheKeyFactory:
     """Deprecated helper that forms a target key for legacy callers."""
 
-    def __init__(self, *, namespace: str, feature_hasher: FeatureHasher) -> None:
+    def __init__(self, hasher: FeatureHasher) -> None:
         """Store the temporary factory collaborators and signal its deprecation."""
         warnings.warn(
             "ResponseCacheKeyFactory is deprecated; construct CacheKey directly.",
             DeprecationWarning,
             stacklevel=2,
         )
-        self._namespace = namespace
-        self._feature_hasher = feature_hasher
-
-    def create(self, *, model_payload_hash: str, features: Mapping[str, object]) -> CacheKey:
-        """Return a target key using the factory's legacy namespace."""
-        return self.build(
-            namespace=self._namespace,
-            model_payload_hash=model_payload_hash,
-            features=features,
-        )
+        self._hasher = hasher
 
     def build(
         self,
         *,
         namespace: str,
         model_payload_hash: str,
-        features: Mapping[str, object],
-    ) -> CacheKey:
+        features: Mapping[str, str],
+    ) -> _CacheKey:
         """Retain the former explicit-namespace construction shape temporarily."""
-        return CacheKey(
+        return _CacheKey(
             namespace=namespace,
             model_payload_hash=model_payload_hash,
-            feature_hash=self._feature_hasher.hash_features(features),
+            feature_hash=self._hasher.hash_features(features),
         )
 
 
@@ -112,7 +125,12 @@ class LegacyResponseCacheAdapter:
 
     __slots__ = ("_facade", "_invalidator")
 
-    def __init__(self, *, facade: ResponseCache, invalidator: CacheInvalidator) -> None:
+    def __init__(
+        self,
+        *,
+        facade: _ResponseCache,
+        invalidator: _CacheInvalidator,
+    ) -> None:
         """Bind transition collaborators and signal the deprecated route."""
         warnings.warn(
             "LegacyResponseCacheAdapter is deprecated; use ResponseCache.lookup, "
@@ -123,69 +141,29 @@ class LegacyResponseCacheAdapter:
         self._facade = facade
         self._invalidator = invalidator
 
-    async def get(self, *, key: CacheKey) -> ResponseCacheEntry | None:
+    async def get(self, *, key: _CacheKey) -> ResponseCacheEntry | None:
         """Map a target lookup outcome to the former entry-or-none result."""
         result = await self._facade.lookup(key=key, context=object())
-        if isinstance(result, CacheHit):
+        if isinstance(result, _CacheHit):
             return ResponseCacheEntry(response=result.value)
         return None
 
-    async def set(self, *, key: CacheKey, entry: ResponseCacheEntry) -> None:
+    async def set(self, *, key: _CacheKey, entry: ResponseCacheEntry) -> None:
         """Map target write outcomes to the retired legacy error convention."""
         result = await self._facade.remember(
             key=key,
             value=entry.response,
             context=object(),
         )
-        if isinstance(result, Remembered):
+        if isinstance(result, _Remembered):
             return
-        if isinstance(result, Skipped):
+        if isinstance(result, _Skipped):
             raise LegacyCacheClosedError
         raise LegacyCacheOperationError(result.kind)
 
-    async def invalidate(self, *, key: CacheKey) -> bool:
+    async def invalidate(self, *, key: _CacheKey) -> bool:
         """Map target invalidation outcomes to the former boolean result."""
         result = await self._invalidator.invalidate(key=key)
-        if isinstance(result, Invalidated):
+        if isinstance(result, _Invalidated):
             return True
         return False
-
-
-def _normalize_features(
-    features: Mapping[str, object] | Mapping[object, object],
-) -> dict[str, object]:
-    """Copy feature mappings into deterministic JSON-compatible material."""
-    normalized: dict[str, object] = {}
-    for key, value in features.items():
-        normalized[_require_key(key)] = _normalize_feature_value(value)
-    return normalized
-
-
-def _require_key(value: object) -> str:
-    """Require string feature mapping keys before canonical serialization."""
-    if not isinstance(value, str):
-        msg = "feature keys must be strings"
-        raise TypeError(msg)
-    return value
-
-
-def _normalize_feature_value(value: object) -> object:
-    """Normalize the untrusted values at the deprecated feature boundary."""
-    if value is None or isinstance(value, (bool, int, float, str)):
-        return value
-    if _is_feature_mapping(value):
-        return _normalize_features(value)
-    if _is_feature_sequence(value):
-        return [_normalize_feature_value(item) for item in value]
-    msg = "feature values must be JSON-compatible"
-    raise TypeError(msg)
-
-
-def _is_feature_mapping(value: object) -> TypeGuard[Mapping[object, object]]:
-    """Narrow an untrusted nested feature object to a mapping for key validation."""
-    return isinstance(value, Mapping)
-
-
-def _is_feature_sequence(value: object) -> TypeGuard[list[object] | tuple[object, ...]]:
-    """Narrow an untrusted nested feature object to a supported sequence."""
-    return isinstance(value, (list, tuple))

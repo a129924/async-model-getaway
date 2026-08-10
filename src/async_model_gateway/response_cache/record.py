@@ -33,6 +33,23 @@ class CacheVersionToken:
 
 
 @dataclass(frozen=True, slots=True)
+class UnsupportedSchemaRecord:
+    """Internal read marker for a reclaimable non-current stored schema."""
+
+    schema_version: int
+    version_token: CacheVersionToken
+
+    def __post_init__(self) -> None:
+        """Accept only a non-boolean schema version other than the supported one."""
+        if not _is_schema_version(self.schema_version) or self.schema_version == 1:
+            msg = "unsupported schema_version must be a non-1 integer"
+            raise ValueError(msg)
+        if not _is_version_token(self.version_token):
+            msg = "version_token must be a CacheVersionToken"
+            raise ValueError(msg)
+
+
+@dataclass(frozen=True, slots=True)
 class StoredCacheRecord:
     """One complete, immutable cache storage envelope."""
 

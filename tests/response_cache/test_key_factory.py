@@ -5,20 +5,24 @@ from __future__ import annotations
 import pytest
 
 
-def test_compat_factory_is_deprecated_and_returns_the_target_cache_key() -> None:
-    """The factory remains migration-only and never becomes a normal target import."""
+def test_compat_factory_is_deprecated_and_builds_with_an_explicit_namespace() -> None:
+    """The factory retains only its predecessor constructor and build operation."""
     import async_model_gateway.response_cache.compat as compat
     from async_model_gateway.response_cache.key import CacheKey
 
     with pytest.warns(DeprecationWarning, match="CacheKey"):
-        factory = compat.ResponseCacheKeyFactory(
-            namespace="response-cache", feature_hasher=compat.CanonicalFeatureHasher()
-        )
+        factory = compat.ResponseCacheKeyFactory(compat.CanonicalFeatureHasher())
 
-    key = factory.create(model_payload_hash="payload", features={"a": ["b"]})
+    key = factory.build(
+        namespace="response-cache",
+        model_payload_hash="payload",
+        features={"a": "b"},
+    )
 
     assert type(key) is CacheKey
     assert key.feature_hash
+    assert not hasattr(factory, "_namespace")
+    assert not hasattr(factory, "create")
 
 
 def test_direct_legacy_factory_module_and_normal_key_factory_name_are_absent() -> None:

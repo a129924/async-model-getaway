@@ -3,7 +3,7 @@ topic: response-cache-contract-migration
 gate: draft-pr-preflight
 owner: reviewer/preflight
 status: passed
-plan_sha256: 6e98524d1db223633d4f06105f36d2ca365e79c6b1024ab819a5a4ad6b119f14
+plan_sha256: 5ff88377a69cc2032274cc77b440441b29957266c6110ea142e4d633880a5c76
 draft_pr_human_check: approved
 code_review: approved
 command: >-

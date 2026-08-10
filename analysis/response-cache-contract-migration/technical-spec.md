@@ -66,6 +66,11 @@ class StoredCacheRecord:
     version_token: CacheVersionToken
     metadata: tuple[tuple[str, str], ...]
 
+@dataclass(frozen=True, slots=True)
+class UnsupportedSchemaRecord:
+    schema_version: int
+    version_token: CacheVersionToken
+
 class CacheCodec(Protocol):
     codec_id: str
     def encode(self, *, value: str) -> bytes: ...
@@ -75,7 +80,9 @@ class VersionTokenFactory(Protocol):
     def new(self) -> CacheVersionToken: ...
 
 class CacheStore(Protocol):
-    async def get(self, *, key: CacheKey) -> StoredCacheRecord | None: ...
+    async def get(
+        self, *, key: CacheKey
+    ) -> StoredCacheRecord | UnsupportedSchemaRecord | None: ...
     async def set(self, *, key: CacheKey, record: StoredCacheRecord) -> None: ...
     async def delete(self, *, key: CacheKey) -> bool: ...
     async def delete_if_version(
@@ -93,16 +100,25 @@ class FreshnessPolicy(Protocol):
 
 - `CacheVersionToken` is a frozen opaque value. Only `VersionTokenFactory` constructs it; it
   is not decoded, ordered, serialized to public callers, or supplied by `ResponseCache` callers.
-- `schema_version` is exactly `1`; `codec_id` identifies the sole codec used to create the
-  payload; both `written_at` and `expires_at` are aware UTC timestamps and `expires_at` is later
-  than `written_at`.
+- `StoredCacheRecord.schema_version` is exactly `1`; `codec_id` identifies the sole codec used to
+  create the payload; both `written_at` and `expires_at` are aware UTC timestamps and `expires_at`
+  is later than `written_at`. `UnsupportedSchemaRecord` is a narrow internal read result, not a
+  stored-record alternative: it requires a non-`1` integer schema version and the observed opaque
+  token, has no codec/payload/timestamp/metadata fields, is not in any `__all__`, and is never
+  package-root or ports-root public.
 - metadata has the bounds from the requirements baseline: at most eight pairs, 64/256 UTF-8
   bytes per key/value, and 2 KiB total. Metadata is record-owned implementation data, not an
   input path for `context`.
-- `CacheStore.get` returns one coherent complete record or `None`. `set` is whole-record,
-  per-key replacement. `delete_if_version` is atomic compare-delete. `delete` is ordinary
-  key-local deletion and is used only by invalidation, never stale cleanup.
-- `CacheCodec`, `VersionTokenFactory`, and `CacheStore` ports are submodule-public only.
+- `CacheStore.get` returns one coherent supported record, one internal unsupported-schema marker,
+  or `None`. A store returns `UnsupportedSchemaRecord` only when it observes a known unsupported
+  schema and its associated token; it must not attempt to construct an invalid
+  `StoredCacheRecord`. `set` is whole-record, per-key replacement. `delete_if_version` is atomic
+  compare-delete. `delete` is ordinary key-local deletion and is used only by invalidation, never
+  stale cleanup.
+- `CacheCodec`, `VersionTokenFactory`, and `CacheStore` ports are submodule-public only;
+  specifically, `CacheStore` is importable only from `response_cache.ports.store`, not from the
+  `response_cache.ports` package root. `compat` uses private import aliases so target
+  collaborators do not become accidental compatibility attributes.
   `CacheInvalidator` is a separate submodule-public port; it is not an additional facade.
 - `ResponseCache` receives exactly five keyword-only collaborators: `store`, `codec`,
   `version_token_factory`, `freshness_policy`, and `clock`. It retains the first four only for
@@ -152,7 +168,8 @@ class CacheVersionTokenOperationalError(CacheOperationalError): ... # VERSION_TO
 | --- | --- | --- |
 | lookup absent | `CacheMiss` | none |
 | lookup fresh supported record | `CacheHit(value)` | none; no read-renewal |
-| lookup expired or unsupported-schema record | `CacheMiss` | best-effort `delete_if_version` using observed token |
+| lookup expired record | `CacheMiss` | best-effort `delete_if_version` using the observed record token |
+| lookup `UnsupportedSchemaRecord` | `CacheMiss` | best-effort `delete_if_version` using its observed token; never decode or construct `StoredCacheRecord` |
 | lookup codec/store/record operational failure | `CacheMiss` | no mandatory cleanup |
 | lookup cleanup operational failure | `CacheMiss` | preserve any concurrent replacement; no retry |
 | lookup cancellation or defect | propagate unchanged | no translation |
@@ -192,6 +209,24 @@ It is the exclusive place where the old `get`, `set`, and `invalidate` method na
 factory, entry, and feature-hash helpers can be imported or exercised. It receives the new facade
 and separate invalidator; it does not duplicate store/codec/token logic or retain/observe context.
 
+`ResponseCacheKeyFactory` is only a deprecated predecessor-verification helper:
+
+```python
+class ResponseCacheKeyFactory:
+    def __init__(self, hasher: FeatureHasher) -> None: ...
+
+    def build(
+        self,
+        *,
+        namespace: str,
+        model_payload_hash: str,
+        features: Mapping[str, str],
+    ) -> CacheKey: ...
+```
+
+It does not retain a namespace and has no `create()` method. Its `hasher` is invoked only by
+`build`; this compatibility-only feature hashing never becomes normal cache identity work.
+
 Terminal removal condition: all first-party imports and documentation examples use `CacheKey`,
 `lookup`, `remember`, and `CacheInvalidator`; public-export and compatibility tests prove no
 root legacy exports remain; migration tests are deleted or rewritten as absence tests; and a
@@ -206,13 +241,13 @@ with its replacement paths and must have no package-root re-export.
 | `src/async_model_gateway/response_cache/key.py` | `CacheKey` identity authority only; legacy aliases live exclusively in `compat.py` |
 | `src/async_model_gateway/response_cache/errors.py` | closed operational error family and closed-store signal |
 | `src/async_model_gateway/response_cache/outcomes.py` | closed facade and invalidator outcomes |
-| `src/async_model_gateway/response_cache/record.py` | immutable `StoredCacheRecord` and opaque token value |
+| `src/async_model_gateway/response_cache/record.py` | immutable `StoredCacheRecord`, opaque token value, and non-exported internal `UnsupportedSchemaRecord` |
 | `src/async_model_gateway/response_cache/cache.py` | the two-method `ResponseCache` facade and outcome translation |
 | `src/async_model_gateway/response_cache/invalidation.py` | store-backed invalidator implementation, separate from facade |
 | `src/async_model_gateway/response_cache/compat.py` | temporary deprecated legacy adapter only |
 | `src/async_model_gateway/response_cache/ports/codec.py` | `CacheCodec` port |
 | `src/async_model_gateway/response_cache/ports/version_token_factory.py` | `VersionTokenFactory` port |
-| `src/async_model_gateway/response_cache/ports/store.py` | `CacheStore` and its coherence guarantees |
+| `src/async_model_gateway/response_cache/ports/store.py` | dedicated submodule-public `CacheStore` read union and coherence guarantees |
 | `src/async_model_gateway/response_cache/ports/invalidator.py` | `CacheInvalidator` port |
 | `src/async_model_gateway/response_cache/_in_memory_store.py` | internal coherent `CacheStore` implementation |
 | `src/async_model_gateway/response_cache/freshness_policy.py` | retained internal write-time expiry-policy protocol |

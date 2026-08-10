@@ -7,7 +7,7 @@
     "SKIP": [
       {
         "comment": "Prior reviewer, human, code-review, and preflight evidence bound to earlier plan revisions.",
-        "why": "Those artifacts are explicitly superseded for this review. This fresh approval applies only to plan SHA-256 6e98524d1db223633d4f06105f36d2ca365e79c6b1024ab819a5a4ad6b119f14; it authorizes exactly the four named test paths and five thread fixes plus the single CI Run pre-commit selector, while preserving ordinary imports, prohibiting dynamic loading, retaining the historical human-check bytes, and requiring new Human, code-review, and preflight gates."
+        "why": "This independent approval binds only to response-cache-contract-migration.plan.md SHA-256 5ff88377a69cc2032274cc77b440441b29957266c6110ea142e4d633880a5c76. Review against plan/agent-handoff-workflow.md and plan/topic-plan-contract.md confirmed all canonical sections, the review-ready to reviewer-in-progress to approved route, current-plan-bound Draft-PR human check, explicit human merge, six exact source paths, no stable-library/release intent, JSON reviewer handoff, distinct actor boundaries, the Mapping[str, str] compatibility-hasher bridge, the non-exported UnsupportedSchemaRecord read union, and ordinary-import-only test governance. A fresh Human Draft-PR check, bounded implementation, code review, preflight, and explicit human merge remain required in the declared order."
       }
     ]
   }

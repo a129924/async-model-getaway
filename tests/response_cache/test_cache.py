@@ -262,6 +262,127 @@ async def test_lookup_misses_and_compare_deletes_expired_records(
 
 
 @pytest.mark.asyncio
+async def test_lookup_misses_unsupported_schema_without_decode_or_clock_and_keeps_replacement() -> (
+    None
+):
+    """Unsupported records retain only their observed token for race-safe cleanup."""
+    from async_model_gateway.response_cache.cache import ResponseCache
+    from async_model_gateway.response_cache.outcomes import CacheMiss
+    from async_model_gateway.response_cache.record import (
+        CacheVersionToken,
+        UnsupportedSchemaRecord,
+    )
+
+    observed = UnsupportedSchemaRecord(
+        schema_version=2,
+        version_token=CacheVersionToken(value="A"),
+    )
+    replacement = _record(value="replacement", token="B")
+
+    class Store:
+        def __init__(self) -> None:
+            self.current: object = observed
+            self.cleanup_tokens: list[CacheVersionToken] = []
+
+        async def get(self, *, key: object) -> object:
+            return self.current
+
+        async def set(self, *, key: object, record: object) -> None:
+            self.current = record
+
+        async def delete(self, *, key: object) -> bool:
+            raise AssertionError("unsupported cleanup must not use unconditional delete")
+
+        async def delete_if_version(self, *, key: object, version_token: object) -> bool:
+            assert isinstance(version_token, CacheVersionToken)
+            self.cleanup_tokens.append(version_token)
+            self.current = replacement
+            return False
+
+    class Codec:
+        codec_id = "utf-8"
+
+        def encode(self, *, value: str) -> bytes:
+            return value.encode()
+
+        def decode(self, *, payload: bytes) -> str:
+            raise AssertionError("unsupported records must not be decoded")
+
+    store = Store()
+    cache = ResponseCache(
+        store=store,
+        codec=Codec(),
+        version_token_factory=object(),
+        freshness_policy=object(),
+        clock=lambda: (_ for _ in ()).throw(AssertionError("unsupported records need no clock")),
+    )
+
+    assert await cache.lookup(key=_key(), context=object()) == CacheMiss()
+    assert store.cleanup_tokens == [CacheVersionToken(value="A")]
+    assert store.current is replacement
+
+
+@pytest.mark.asyncio
+async def test_unsupported_schema_cleanup_failure_is_miss_and_cancellation_propagates() -> None:
+    """Known cleanup failure closes to miss while cancellation remains caller-owned."""
+    from async_model_gateway.response_cache.cache import ResponseCache
+    from async_model_gateway.response_cache.errors import CacheStoreOperationalError
+    from async_model_gateway.response_cache.outcomes import CacheMiss
+    from async_model_gateway.response_cache.record import (
+        CacheVersionToken,
+        UnsupportedSchemaRecord,
+    )
+
+    unsupported = UnsupportedSchemaRecord(
+        schema_version=2,
+        version_token=CacheVersionToken(value="observed"),
+    )
+    cancellation = asyncio.CancelledError("unsupported cleanup cancelled")
+
+    class Store:
+        def __init__(self, failure: BaseException) -> None:
+            self._failure = failure
+
+        async def get(self, *, key: object) -> object:
+            return unsupported
+
+        async def set(self, *, key: object, record: object) -> None:
+            raise AssertionError("lookup must not write")
+
+        async def delete(self, *, key: object) -> bool:
+            raise AssertionError("unsupported cleanup must compare-delete")
+
+        async def delete_if_version(self, *, key: object, version_token: object) -> bool:
+            raise self._failure
+
+    class Codec:
+        codec_id = "utf-8"
+
+        def encode(self, *, value: str) -> bytes:
+            return value.encode()
+
+        def decode(self, *, payload: bytes) -> str:
+            raise AssertionError("unsupported records must not be decoded")
+
+    def cache_for(failure: BaseException) -> ResponseCache:
+        return ResponseCache(
+            store=Store(failure),
+            codec=Codec(),
+            version_token_factory=object(),
+            freshness_policy=object(),
+            clock=lambda: (_ for _ in ()).throw(
+                AssertionError("unsupported records need no clock")
+            ),
+        )
+
+    cache = cache_for(CacheStoreOperationalError())
+    assert await cache.lookup(key=_key(), context=object()) == CacheMiss()
+    with pytest.raises(asyncio.CancelledError) as raised:
+        await cache_for(cancellation).lookup(key=_key(), context=object())
+    assert raised.value is cancellation
+
+
+@pytest.mark.asyncio
 async def test_lookup_maps_known_failure_to_miss_and_propagates_cancellation() -> None:
     """The facade catches only its operational family; cancellation remains caller-owned."""
     from async_model_gateway.response_cache.cache import ResponseCache

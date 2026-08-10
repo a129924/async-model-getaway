@@ -35,18 +35,22 @@ def test_package_root_exports_only_target_facade_identity_and_outcomes() -> None
     )
 
 
-def test_ports_root_exports_only_the_target_ports() -> None:
-    """Target ports remain submodule-public without recreating a root facade."""
+def test_ports_root_does_not_reexport_the_internal_cache_store() -> None:
+    """CacheStore remains public only through its dedicated port submodule."""
     assert ports.__all__ == [
         "CacheCodec",
         "CacheInvalidator",
-        "CacheStore",
         "VersionTokenFactory",
     ]
     assert all(hasattr(ports, name) for name in ports.__all__)
     assert all(
         not hasattr(ports, name)
-        for name in ("FeatureHasher", "ResponseCacheStore", "ResponseCacheKey")
+        for name in (
+            "CacheStore",
+            "FeatureHasher",
+            "ResponseCacheStore",
+            "ResponseCacheKey",
+        )
     )
 
 
@@ -90,3 +94,15 @@ def test_compatibility_submodule_has_the_exact_temporary_direct_import_surface()
         "ResponseCacheKeyFactory",
     ]
     assert all(hasattr(compat, name) for name in compat.__all__)
+    assert all(
+        not hasattr(compat, name)
+        for name in (
+            "CacheHit",
+            "CacheInvalidator",
+            "CacheKey",
+            "Invalidated",
+            "Remembered",
+            "ResponseCache",
+            "Skipped",
+        )
+    )
