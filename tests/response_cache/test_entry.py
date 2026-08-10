@@ -16,15 +16,13 @@ def test_legacy_entry_wrapper_exists_only_in_compat_and_is_immutable() -> None:
     assert is_dataclass(entry)
     assert entry.response == "legacy response"
     with pytest.raises((AttributeError, TypeError)):
-        entry.response = "mutated"  # type: ignore[misc]
+        entry.response = "mutated"  # type: ignore[misc]  # Intentional frozen-dataclass mutation.
 
 
 def test_direct_legacy_entry_module_is_removed() -> None:
     """A normal direct import of the deleted legacy module must fail."""
     with pytest.raises(ModuleNotFoundError):
-        import async_model_gateway.response_cache.entry as legacy_entry
-
-        assert legacy_entry is None
+        import async_model_gateway.response_cache.entry as legacy_entry  # noqa: F401
 
 
 @pytest.mark.asyncio
@@ -54,7 +52,7 @@ async def test_legacy_adapter_get_maps_target_hit_and_miss_without_context_reten
     async def missing(*, key: object, context: object) -> object:
         return CacheMiss()
 
-    facade.lookup = missing  # type: ignore[method-assign]
+    facade.lookup = missing  # type: ignore[method-assign]  # Intentional test-double method replacement.
     assert await adapter.get(key=object()) is None
     assert len(facade.contexts) == 1
     assert all(context is not None for context in facade.contexts)

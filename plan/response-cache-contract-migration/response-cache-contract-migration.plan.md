@@ -13,12 +13,18 @@ topic plan、Python spec 與 fresh plan review 都只從 feature worktree 的已
   feature-authoritative target paths、fresh independent plan review 重新定址，以及後續
   fresh human check、forward preflight、step tracker 與 implementation review 的 gate
   重建順序；以及不改寫 immutable historical `human-check.json` 下的 Draft PR
-  pre-commit 相容 gate。目標 response-cache contract 的行為仍由 strict analysis 與 Python
-  spec 凍結。
-- **Out of scope**：此 planning rework 不搬移檔案、不修改 source、tests、README、
-  architecture docs 或既有 feature evidence；不執行 RED、實作、validation、PR、merge 或
-  release；不新建 orchestrator、persistence、settings、backend selection、timeout、retry、
-  background task、queue、worker、batching 或 fan-out。
+  pre-commit 相容 gate；以及本 PR 全部五個已列明 review threads 的唯一修正集合：
+  `tests/response_cache/test_entry.py`、`tests/response_cache/test_key_factory.py`、
+  `tests/response_cache/test_canonical_feature_hasher.py`、
+  `tests/response_cache/test_in_memory_store.py` 的 expected-failure import hygiene，及
+  `.github/workflows/ci.yml` 的唯一 Run pre-commit selector。目標 response-cache contract 的
+  行為仍由 strict analysis 與 Python spec 凍結。
+- **Out of scope**：此 planning rework 不搬移檔案、不修改 source、README、architecture docs
+  或既有 feature evidence；除上述四個精確測試檔的五個 PR-comment hygiene 修正與已登錄的
+  `.github/workflows/ci.yml` Run pre-commit invocation 外，不修改其他 tests、CI workflow、
+  hook configuration 或 validation 設定；不執行 RED、其他實作、PR、merge 或 release；不新建
+  orchestrator、persistence、settings、backend selection、timeout、retry、background task、queue、
+  worker、batching 或 fan-out。
 - **Analysis routing**：strict mode。`analysis/response-cache-contract-migration/technical-spec.md`
   是 execution-facing source of truth；`analysis/response-cache-contract-migration/requirements.md`
   是 business guardrail；`analysis/response-cache-contract-migration/canonical-reconciliation.md`
@@ -81,6 +87,26 @@ topic plan、Python spec 與 fresh plan review 都只從 feature worktree 的已
   regex、`skip_used: false`、`hook_overrides_used: false`、每個 hook 的 pass result，以及
   historical path 的 pre/post digest、terminal byte 與 working-tree-diff result。任何更寬的
   檔案選取排除、`SKIP`、hook/config 改寫、或對 historical file 補 LF 都是 scope drift。
+- **CI workflow contract**：在 fresh plan review 完成後，`.github/workflows/ci.yml` 的
+  唯一允許變更是 Run pre-commit 的 `run:` 值，且必須逐字為上段 exact supported selector；
+  不得使用 `SKIP`、任何 hook override、`--exclude`、更寬的檔案排除、hook/config 改寫，
+  或改寫／修復／補 LF 至 historical `human-check.json`。CI 執行後仍必須證明該 historical
+  path 的 SHA-256 為 `f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b`、
+  末位元組為 `0x7d`，且無 working-tree diff。
+- **PR-comment test-hygiene contract**：在 fresh plan review 完成後，Implementer 可處理全部且
+  僅限下列五個已授權 threads。`test_entry.py` 的 expected `ModuleNotFoundError` import
+  刪除不可能執行的 assertion、保留 ordinary import 並以 `# noqa: F401` 局部抑制，且為兩個
+  test-only `type: ignore` 各補一句精確 inline reason；`test_key_factory.py` 與
+  `test_in_memory_store.py` 各刪除一個 expected-failure import 後不可達的 assertion，並在
+  保留 import 加上 `# noqa: F401`；`test_canonical_feature_hasher.py` 對兩個 expected-failure
+  imports 刪除不可達 assertions，並各以 `# noqa: F401` 局部抑制。這五個 imports 仍必須是
+  ordinary imports：不得加入 dynamic module loading、`importlib`、loader、`exec`、`eval`、
+  `runpy` 或 `__import__`，不得改變測試的 expected exception、assertion 語意或 production code。
+- 本次 plan bytes 已改變，現有 `plan-review.json`、Draft PR human check、code review 與
+  Draft PR preflight 僅是前一 plan revision 的歷史 evidence，不能核准或發佈此 revision。
+  Reviewer 必須先在 declared `plan-review.json` path 產生 fresh independent verdict；其 approved
+  verdict 後，後續 Human / Reviewer / Main Agent gates 必須依既有順序為本 revision 重建，且
+  Planning actor 不得改寫任何 evidence。
 - 此 post-implementation governance rework 不改變已核准的 source/test/doc contract，亦不
   重開已完成的 implementation。它只要求 fresh Plan-Reviewer 核准此 Draft PR gate contract；
   existing code-review conclusion 必須由 Reviewer 寫入 declared `code-review.yaml` 後才能作為
@@ -108,12 +134,19 @@ topic plan、Python spec 與 fresh plan review 都只從 feature worktree 的已
   `spec-and-plan-finalization`，不能由任一 actor 自行擴張。
 - Main Agent 只在 independent code-review 已核准後建立 Draft PR preflight evidence；不得改寫
   historical file、不得以 `SKIP` 略過 hook，也不得把 side-effect 後再還原當作通過。
+- Implementer 在 fresh plan review 與既有後續 gate 均符合後，只可依 Artifact Paths 的 CI
+  workflow contract 修改 `.github/workflows/ci.yml` 的單一 Run pre-commit invocation；不得
+  觸及任何 historical evidence、其他 workflow step、hook configuration 或 source/test/doc。
+- Implementer 在同一 fresh-gate 順序後，只可依 PR-comment test-hygiene contract 修改四個
+  精確 tests；不得把已授權的 ordinary imports 換成 dynamic loading，不得修改其他測試、production
+  source、historical evidence 或已完成 implementation evidence。
 
 ## Status / Allowed Transitions
 
-- **Current**：`review-ready`，僅等待此 Draft PR EOF compatibility rework 的 fresh
-  Plan-Reviewer verdict。已完成的 implementation 不會由此 planning-only rework 重做；fresh
-  plan review 後，Human 必須清除 declared Draft PR human check，topic 才回到
+- **Current**：`review-ready`，僅等待本 revision（Draft PR EOF compatibility、全部五個已列明
+  PR-comment test-hygiene threads、及 CI selector）的 fresh Plan-Reviewer verdict。已完成的
+  implementation 不會由此 planning-only rework 重做；fresh plan review 後，Human 必須清除
+  declared Draft PR human check，topic 才回到
   `publish-in-progress`；接著仍必須有 declared `code-review.yaml` 的 Reviewer `approved`
   verdict，再由 Draft PR preflight 決定是否可進入 `pr-open`。既有 dev review、已搬遷的舊
   review、Reviewer 的 needs-rework 覆寫前身，以及任何 feature historical evidence 都不能使
@@ -169,7 +202,7 @@ path 表達，不以本機絕對路徑表達。
 | Business baseline | `analysis/response-cache-contract-migration/requirements.md` | Worktree-manager migration lane | Dev source -> feature-authoritative target；strict business guardrail。 |
 | Technical baseline | `analysis/response-cache-contract-migration/technical-spec.md` | Worktree-manager migration lane | Dev source -> feature-authoritative target；strict execution contract。 |
 | Reconciliation baseline | `analysis/response-cache-contract-migration/canonical-reconciliation.md` | Worktree-manager migration lane | Dev source -> feature-authoritative target；mandatory mapping authority。 |
-| Topic plan | `plan/response-cache-contract-migration/response-cache-contract-migration.plan.md` | Worktree-manager migration lane, then Planning actor | Dev source -> feature-authoritative target；repo-visible execution contract；本次 planning rework 僅修訂此 plan 及下列 ledger。 |
+| Topic plan | `plan/response-cache-contract-migration/response-cache-contract-migration.plan.md` | Worktree-manager migration lane, then Planning actor | Dev source -> feature-authoritative target；repo-visible execution contract；本次 planning rework 僅修訂此 plan，既有 ledger 與所有 evidence 保持不變。 |
 | Python specification | `plan/response-cache-contract-migration/response-cache-contract-migration.spec.md` | Worktree-manager migration lane | Dev source -> feature-authoritative target；non-trivial behavior contract。 |
 | Plan review | `plan/response-cache-contract-migration/response-cache-contract-migration.plan-review.json` | Worktree-manager migration lane, then Reviewer | Dev source -> feature target with digest preservation; transferred verdict is superseded, then Reviewer replaces it with the fresh independent feature-authoritative JSON verdict. |
 | Transfer handoff ledger | `plan/response-cache-contract-migration/response-cache-contract-migration.transfer-handoff.yaml` | Worktree-manager migration lane evidence, recorded by Planning actor | Completed six-file source/target digest and removal ledger, plus historical before/after digest record and explicitly classified post-transfer events; it is the only migration-preservation authority. |
@@ -184,6 +217,8 @@ path 表達，不以本機絕對路徑表達。
 | Draft PR human check | `plan/response-cache-contract-migration/response-cache-contract-migration.draft-pr-human-check.json` | Human | Create only after this revision's fresh approved plan review; binds the reviewed current plan SHA-256 and explicitly clears `publish-in-progress` before code-review/preflight can authorize `pr-open`. |
 | Draft PR preflight | `plan/response-cache-contract-migration/response-cache-contract-migration.draft-pr-preflight.yaml` | Main Agent | Create only after approved code review; records the exact supported no-SKIP `pre-commit --files` command, its `git ls-files` / `rg -v` selection contract, per-hook result, and historical human-check pre/post byte proof that authorizes `publish-in-progress` -> `pr-open`. |
 | Human merge | `plan/response-cache-contract-migration/response-cache-contract-migration.human-merge.json` | Human | Feature-authoritative explicit merge gate after PR comments are clear. |
+| CI workflow | `.github/workflows/ci.yml` | Implementer | The sole CI artifact authorized by this revision: after fresh plan review, replace only Run pre-commit's `run:` value with the exact supported no-SKIP selector; no other workflow, hook/config, source, test, documentation, or historical-evidence change is allowed. |
+| PR-comment test hygiene | `tests/response_cache/test_entry.py`, `tests/response_cache/test_key_factory.py`, `tests/response_cache/test_canonical_feature_hasher.py`, `tests/response_cache/test_in_memory_store.py` | Implementer | The sole test artifacts authorized by this revision: resolve all five listed PR threads through unreachable-assertion removal, local `# noqa: F401` on the retained expected-failure ordinary imports, and the two stated inline reasons; no behavioral, import-mechanism, or other-test change. |
 | Response-cache sources | `src/async_model_gateway/response_cache/__init__.py`, `src/async_model_gateway/response_cache/cache.py`, `src/async_model_gateway/response_cache/key.py`, `src/async_model_gateway/response_cache/entry.py`, `src/async_model_gateway/response_cache/key_factory.py`, `src/async_model_gateway/response_cache/_canonical_feature_hasher.py`, `src/async_model_gateway/response_cache/freshness_policy.py`, `src/async_model_gateway/response_cache/ttl_freshness_policy.py`, `src/async_model_gateway/response_cache/_in_memory_store.py`, `src/async_model_gateway/response_cache/outcomes.py`, `src/async_model_gateway/response_cache/record.py`, `src/async_model_gateway/response_cache/errors.py`, `src/async_model_gateway/response_cache/invalidation.py`, `src/async_model_gateway/response_cache/compat.py` | Implementer | Future implementation scope only; responsibilities and dispositions are frozen in technical spec and reconciliation. |
 | Response-cache ports | `src/async_model_gateway/response_cache/ports/__init__.py`, `src/async_model_gateway/response_cache/ports/feature_hasher.py`, `src/async_model_gateway/response_cache/ports/store.py`, `src/async_model_gateway/response_cache/ports/codec.py`, `src/async_model_gateway/response_cache/ports/version_token_factory.py`, `src/async_model_gateway/response_cache/ports/invalidator.py` | Implementer | Future implementation scope only; normal target port boundary. |
 | Response-cache tests | `tests/response_cache/test_cache.py`, `tests/response_cache/test_canonical_feature_hasher.py`, `tests/response_cache/test_entry.py`, `tests/response_cache/test_in_memory_store.py`, `tests/response_cache/test_key.py`, `tests/response_cache/test_key_factory.py`, `tests/response_cache/test_response_cache_freshness_policy.py`, `tests/response_cache/test_response_cache_package_surface.py`, `tests/response_cache/test_ttl_freshness_policy.py`, `tests/response_cache/test_response_cache_contract_migration.py` | Implementer | Future direct-import behavior, race, cancellation, migration, and absence coverage; no dynamic module loading. |
@@ -252,6 +287,15 @@ instructions to perform work in this planning rework.
 8. Update exactly `README.md`, `docs/architecture.md`, and `docs/specs/response-cache-boundary.md`
    after GREEN behavior validation; then complete the feature tracker and request independent
    implementation review.
+9. After this revision receives a fresh independent plan-review approval and the existing later
+   gate order has been re-established for this revision, update only the four registered tests:
+   remove the five unreachable assertions from expected-failure imports, place `# noqa: F401`
+   only on those five retained ordinary imports, and add the two locked inline reasons in
+   `test_entry.py`; preserve exception assertions, direct-import semantics, and all test behavior.
+10. After the same fresh gates, change only the Run pre-commit `run:` value in
+    `.github/workflows/ci.yml` to the exact supported selector declared in **Locked Decisions**;
+    do not add `SKIP`, a hook override, `--exclude`, another exclusion, or any other workflow
+    change, and do not mutate the historical file.
 
 ## Validation / Acceptance Checks
 
@@ -290,6 +334,18 @@ instructions to perform work in this planning rework.
   `decision: approved`, `status: cleared`, `cleared_for: publish-in-progress`, and the SHA-256 of
   this reviewed plan; it is a separate revision gate and does not modify or reuse either existing
   human-check artifact.
+- Confirm `.github/workflows/ci.yml` contains the exact same selector only in its Run pre-commit
+  `run:` value and has no other CI workflow alteration. The CI result must retain historical
+  `human-check.json` SHA-256
+  `f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b`, terminal byte `0x7d`,
+  and no working-tree diff; a `SKIP`, hook override, `--exclude`, mutation, or
+  mutate-and-restore sequence fails this check.
+- Confirm the diff for the five PR-comment threads is limited exactly to the four registered test
+  paths: five unreachable assertions are absent; exactly five retained expected-failure ordinary
+  imports carry local `# noqa: F401`; `test_entry.py` has exactly the two declared concise inline
+  reasons; the expected exception classes and all remaining assertions retain their prior behavior.
+  Confirm no test in this revision uses dynamic module loading (`importlib`, loader, `exec`, `eval`,
+  `runpy`, or `__import__`) and no historical evidence bytes change.
 
 ```text
 uv run pre-commit run --files $(git ls-files -co --exclude-standard | rg -v '^plan/response-cache-contract-migration/response-cache-contract-migration\.human-check\.json$')
@@ -298,6 +354,7 @@ uv run pre-commit run --files $(git ls-files -co --exclude-standard | rg -v '^pl
 
 ```text
 uv run pytest tests/response_cache -v --no-cov
+uv run pytest tests/response_cache/test_entry.py tests/response_cache/test_key_factory.py tests/response_cache/test_canonical_feature_hasher.py tests/response_cache/test_in_memory_store.py -v --no-cov
 uv run pytest
 uv run ruff check src tests docs README.md analysis/response-cache-contract-migration plan/response-cache-contract-migration
 uv run pyright
@@ -342,8 +399,8 @@ one identity authority, safe complete-record storage, and one temporary legacy a
 
 ### Non-goals
 
-- This rework will not move files itself or modify source, tests, documentation, or historical
-  feature evidence.
+- This rework will not move files itself or modify source, documentation, historical feature
+  evidence, or tests other than the four exact PR-comment test-hygiene paths.
 - The implementation will not add a third facade method, synchronous mirror, public lifecycle,
   root-public port, root legacy export, timeout, retry, or background owner.
 - The implementation will not add persistence infrastructure, settings, backend selection,
@@ -376,8 +433,11 @@ re-decide them.
 5. Later implementation satisfies every technical-spec and reconciliation mapping, including
    direct-import-only tests and no dynamic module loading.
 6. After fresh Plan-Reviewer approval of this post-implementation rework, require a separately
-   Human-owned, current-plan-bound Draft PR human check before code-review evidence and Draft PR
-   preflight can authorize `pr-open`.
+  Human-owned, current-plan-bound Draft PR human check before code-review evidence and Draft PR
+  preflight can authorize `pr-open`.
+7. Resolve all five listed PR-comment threads only in the four registered test files: expected-
+   failure imports remain ordinary imports with local `# noqa: F401`, unreachable assertions are
+   removed, and only `test_entry.py` receives the two precise type-ignore reasons.
 
 ### Decisions
 
@@ -459,16 +519,22 @@ exist only through deprecated `compat.py`. This authority migration creates no a
 ### Affected Files / Modules
 
 Likely affected future implementation files are every source/test/doc path listed in the canonical
-Artifact Paths register. The only files modified by this planning rework are this topic plan and
-the declared transfer-handoff ledger; the other five dev planning sources were migration inputs,
-not planning-actor edits. Candidate files to inspect before later implementation are the three
-feature analysis artifacts and the feature `response-cache-contract-migration.spec.md`.
+Artifact Paths register plus the sole CI artifact `.github/workflows/ci.yml` and the four exact
+PR-comment test-hygiene artifacts. The only file modified by this planning rework is this topic
+plan. After fresh plan review, the CI fix may modify only that workflow's Run pre-commit `run:`
+value and the test cleanup may modify only the four registered test files; the other five dev
+planning sources were migration inputs, not planning-actor edits. Candidate files to inspect before
+later implementation are the three feature analysis artifacts and the feature
+`response-cache-contract-migration.spec.md`.
 
 ### Implementation Steps
 
 The eight canonical implementation steps above are mirrored by the future feature step tracker.
 The Implementer must not create that tracker until fresh review, fresh human check, and passed
-forward preflight are present in their feature-authoritative paths.
+forward preflight are present in their feature-authoritative paths. The separately authorized CI
+fix is the tenth canonical step and remains limited to the exact selector and historical-byte
+proof declared above; the ninth canonical step is the locked five-thread test cleanup and cannot
+expand beyond the four registered test paths.
 
 ### Test Plan
 
@@ -480,6 +546,9 @@ forward preflight are present in their feature-authoritative paths.
 - Regression: coherent replacement and compare-delete race preserve a concurrent fresh record.
 - Backward compatibility: direct `compat` imports provide only the reconciled deprecated bridge;
   root and old direct paths remain absent without dynamic module loading.
+- PR-comment regression: the four registered tests preserve their expected-failure and direct-import
+  behavior while removing only unreachable assertions, applying the five local F401 suppressions,
+  and adding the two precise reasons.
 
 ### Validation Commands
 

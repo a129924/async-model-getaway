@@ -27,6 +27,4 @@ def test_direct_legacy_factory_module_and_normal_key_factory_name_are_absent() -
 
     assert not hasattr(key, "ResponseCacheKeyFactory")
     with pytest.raises(ModuleNotFoundError):
-        import async_model_gateway.response_cache.key_factory as legacy_factory
-
-        assert legacy_factory is None
+        import async_model_gateway.response_cache.key_factory as legacy_factory  # noqa: F401

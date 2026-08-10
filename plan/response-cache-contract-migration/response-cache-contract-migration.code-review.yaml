@@ -1,110 +1,105 @@
-review: python-code-review
+review: independent-implementation-conformance-and-python-code-review
 topic: response-cache-contract-migration
 reviewer: independent-reviewer
 verdict: approved
 review_status: COMPLETE
 
-reviewed_implementation:
-  merge_base: bfc2ba0c3f878af4b46cbea5d956926738326579
-  scope: "git diff --binary <merge-base> -- README.md docs src tests"
-  diff_sha256: eb45b69c669ee1de5436cb95b52e0cf4a5e7014e80f834297a3a74c45308a459
-  plan_sha256: e6f7a7ec1644f12a72bf9a9bbaca481eff888087545e01a864aa89b4280fd4df
+reviewed_change:
+  scope: >-
+    git diff --binary -- .github/workflows/ci.yml
+    tests/response_cache/test_entry.py
+    tests/response_cache/test_key_factory.py
+    tests/response_cache/test_canonical_feature_hasher.py
+    tests/response_cache/test_in_memory_store.py
+  diff_sha256: af949bcd0b0e8a4f59f288e93823efd2615b35d424f84087f8bbe3ca6141ce68
+  reviewed_plan_sha256: 6e98524d1db223633d4f06105f36d2ca365e79c6b1024ab819a5a4ad6b119f14
 
-preconditions:
-  implementation_review:
-    verdict: approved
-    artifact: plan/response-cache-contract-migration/response-cache-contract-migration.implementation-review.yaml
-    implementation_diff_sha256: eb45b69c669ee1de5436cb95b52e0cf4a5e7014e80f834297a3a74c45308a459
+gate_preconditions:
   draft_pr_human_check:
     decision: approved
     status: cleared
     cleared_for: publish-in-progress
-    reviewed_plan_sha256: e6f7a7ec1644f12a72bf9a9bbaca481eff888087545e01a864aa89b4280fd4df
+    reviewed_plan_sha256: 6e98524d1db223633d4f06105f36d2ca365e79c6b1024ab819a5a4ad6b119f14
+    terminal_byte: "0a"
+  historical_human_check:
+    path: plan/response-cache-contract-migration/response-cache-contract-migration.human-check.json
+    sha256: f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b
+    terminal_byte: "7d"
+    working_tree_diff: false
 
-review_scope:
-  - README.md
-  - docs/architecture.md
-  - docs/specs/response-cache-boundary.md
-  - src/async_model_gateway/response_cache
-  - tests/response_cache
+implementation_conformance:
+  verdict: approved
+  traceability:
+    - plan_step: >-
+        PR-comment hygiene: only the four registered tests may remove the five
+        unreachable expected-failure assertions, retain ordinary imports with local F401
+        suppressions, and add the two declared type-ignore reasons.
+      status: done
+      evidence:
+        - tests/response_cache/test_entry.py:19
+        - tests/response_cache/test_entry.py:25
+        - tests/response_cache/test_entry.py:55
+        - tests/response_cache/test_key_factory.py:30
+        - tests/response_cache/test_canonical_feature_hasher.py:29
+        - tests/response_cache/test_canonical_feature_hasher.py:31
+        - tests/response_cache/test_in_memory_store.py:109
+    - plan_step: >-
+        CI Run pre-commit changes only to the exact supported selector with one
+        historical-path exclusion and no SKIP, hook override, or --exclude option.
+      status: done
+      evidence: .github/workflows/ci.yml:37
+  scope_creep_check:
+    production_source_changed: false
+    test_paths_changed: exactly-four-registered-paths
+    workflow_change: only-run-pre-commit-selector
+    dynamic_module_loading: absent
+    extra_exclusion_or_hook_override: absent
+    historical_human_check_changed: false
+  contract_check:
+    expected_exception_types: unchanged
+    remaining_assertion_behavior: unchanged
+    ordinary_import_contract: preserved
+    response_cache_public_contract: unchanged
+  test_plan_check:
+    expected_failure_import_regressions: present
+    direct_import_behavior: present
+    response_cache_regression_suite: present
 
-tooling_detected:
-  - "Ruff: E, W, F, N, D, UP, B, A, C4, ARG, RUF; line-length 100"
-  - "Pyright: strict; Python 3.10"
-  - "pytest: asyncio_mode=strict; coverage threshold 90%"
-
-findings:
-  typing:
-    - severity: warning
-      location: tests/response_cache/test_entry.py:19
-      issue: >-
-        The scoped suppression permits the intentional frozen-dataclass mutation,
-        but does not state that rationale inline.
-      fix: >-
-        Add a brief inline reason if the test continues to require this deliberate
-        type-rule violation.
-    - severity: warning
-      location: tests/response_cache/test_entry.py:57
-      issue: >-
-        The scoped suppression permits replacement of a fixture method, but does
-        not state that rationale inline.
-      fix: >-
-        Add a brief inline reason if the test continues to require this deliberate
-        type-rule violation.
-  lint: []
-  readability: []
-  error_handling: []
-  anti_patterns: []
-  test_quality: []
-  observability: []
-
-review_notes:
-  - >-
-    ResponseCache retains only the two keyword-only async facade operations.
-    ContextT is preserved on both invocation-only context parameters and context
-    is explicitly discarded before collaborator use.
-  - >-
-    Stale cleanup catches only CacheOperationalError. The focused tests prove
-    that both CancelledError and an unexpected RuntimeError from compare-delete
-    propagate by identity, while an operational cleanup failure remains CacheMiss.
-  - >-
-    Production record metadata and compatibility feature normalization use
-    TypeGuard-based narrowing without Any, cast, broad suppression, mutable
-    defaults, dynamic execution, broad exception catches, task ownership, retry,
-    or timeout logic. The two test-only scoped suppressions are reported above.
-  - >-
-    Response-cache tests use ordinary imports. The reviewed topic has no
-    importlib, loader, exec, eval, runpy, or __import__ test path; the repository's
-    grandfathered model-payload exception is outside this topic and was not used as precedent.
-  - >-
-    The public root, submodule-only ports, separate invalidator, compatibility-only
-    legacy surface, whole-record replacement, and documentation all remain within
-    the approved response-cache migration boundary.
+python_code_quality:
+  verdict: approved
+  tooling_detected:
+    - "Ruff: E, W, F, N, D, UP, B, A, C4, ARG, RUF; line-length 100"
+    - "Pyright: strict; Python 3.10"
+    - "pytest: asyncio_mode=strict; coverage threshold 90%"
+  findings:
+    typing: []
+    lint: []
+    readability: []
+    error_handling: []
+    anti_patterns: []
+    test_quality: []
+    observability: []
 
 validation_evidence:
-  execution: >-
-    Not run by this reviewer; python-code-review is a static seven-dimension
-    review. The implementation-review artifact records the following results for
-    the identical implementation diff digest.
-  implementation_review_recorded:
-    focused_response_cache_pytest: "47 passed"
-    full_pytest: "206 passed; total coverage 94.73%"
-    ruff: passed
-    pyright: "0 errors, 0 warnings, 0 informations"
-  reviewer_static_check:
-    git_diff_check: passed
+  focused_modified_tests: "12 passed"
+  response_cache_suite: "47 passed"
+  ruff_modified_python_tests: passed
+  pyright: "0 errors, 0 warnings, 0 informations"
+  ci_workflow_yaml_hook: passed
+  git_diff_check: passed
+  historical_anchor_rechecked_after_yaml_validation:
+    sha256: f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b
+    terminal_byte: "7d"
+    working_tree_diff: false
 
 governance:
-  current_plan_human_gate: >-
-    draft-pr-human-check.json is approved and cleared for publish-in-progress
-    with the current reviewed plan SHA-256 above.
-  artifact_separation: >-
-    This is the sole code-quality artifact for this current implementation digest;
-    code review is not nested or duplicated in the implementation-review artifact.
+  test_dynamic_loading_exception: none
+  grandfathered_model_payload_exception_used_as_precedent: false
+  reviewer_owned_artifact: true
+  terminal_lf_required: true
 
 gate_status: code-review-complete
 next_role: Main Agent
 next_action: >-
-  The implementation and code-review gates are approved. The Main Agent may now run
-  the plan-declared exact-exclude Draft PR preflight; publish readiness remains
-  conditional on that preflight's hook, digest, terminal-byte, and no-modification evidence.
+  The exact-path-excluded Draft PR preflight may run only after preserving the
+  recorded historical anchor and all remaining publication gates.

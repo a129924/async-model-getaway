@@ -6,8 +6,8 @@
     "DISCUSS": [],
     "SKIP": [
       {
-        "comment": "Current-SHA-bound fresh independent reviewer evidence: plan SHA-256 e6f7a7ec1644f12a72bf9a9bbaca481eff888087545e01a864aa89b4280fd4df.",
-        "why": "Independent review of these exact plan bytes found no blocking issue: the Draft PR pre-commit gate uses the exact supported --files selector with one anchored historical-path exclusion, prohibits SKIP and hook overrides, requires pre/post digest and EOF-byte proof, and requires separate human, code-review, and preflight publication gates. This approval applies only to the stated SHA-256."
+        "comment": "Prior reviewer, human, code-review, and preflight evidence bound to earlier plan revisions.",
+        "why": "Those artifacts are explicitly superseded for this review. This fresh approval applies only to plan SHA-256 6e98524d1db223633d4f06105f36d2ca365e79c6b1024ab819a5a4ad6b119f14; it authorizes exactly the four named test paths and five thread fixes plus the single CI Run pre-commit selector, while preserving ordinary imports, prohibiting dynamic loading, retaining the historical human-check bytes, and requiring new Human, code-review, and preflight gates."
       }
     ]
   }

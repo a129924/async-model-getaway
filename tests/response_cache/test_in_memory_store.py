@@ -106,7 +106,5 @@ def test_old_in_memory_store_class_name_is_absent() -> None:
     assert not hasattr(_in_memory_store, "InMemoryResponseCacheStore")
     with pytest.raises(ImportError):
         from async_model_gateway.response_cache._in_memory_store import (
-            InMemoryResponseCacheStore as LegacyInMemoryResponseCacheStore,
+            InMemoryResponseCacheStore as LegacyInMemoryResponseCacheStore,  # noqa: F401
         )
-
-        assert LegacyInMemoryResponseCacheStore is None

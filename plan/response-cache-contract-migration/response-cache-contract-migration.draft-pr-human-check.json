@@ -5,6 +5,6 @@
   "status": "cleared",
   "cleared_for": "publish-in-progress",
   "authorization": "User requested Draft PR publish preparation",
-  "reviewed_plan_sha256": "e6f7a7ec1644f12a72bf9a9bbaca481eff888087545e01a864aa89b4280fd4df",
+  "reviewed_plan_sha256": "6e98524d1db223633d4f06105f36d2ca365e79c6b1024ab819a5a4ad6b119f14",
   "notes": "Authorized to run the exact-path-excluded Draft PR preflight, commit, push, and open a Draft PR after all required gates pass."
 }

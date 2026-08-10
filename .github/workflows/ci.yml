@@ -34,4 +34,4 @@ jobs:
         run: uv run pytest
 
       - name: Run pre-commit
-        run: uv run pre-commit run --all-files
+        run: uv run pre-commit run --files $(git ls-files -co --exclude-standard | rg -v '^plan/response-cache-contract-migration/response-cache-contract-migration\.human-check\.json$')

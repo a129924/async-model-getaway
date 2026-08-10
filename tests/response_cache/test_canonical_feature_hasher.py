@@ -26,10 +26,6 @@ def test_legacy_feature_hashers_live_only_in_compat_and_factory_warns() -> None:
 def test_direct_legacy_feature_hasher_routes_are_removed() -> None:
     """Only the documented compatibility module may expose this old helper family."""
     with pytest.raises(ModuleNotFoundError):
-        import async_model_gateway.response_cache._canonical_feature_hasher as legacy_hasher
-
-        assert legacy_hasher is None
+        import async_model_gateway.response_cache._canonical_feature_hasher as legacy_hasher  # noqa: F401
     with pytest.raises(ModuleNotFoundError):
-        import async_model_gateway.response_cache.ports.feature_hasher as legacy_port
-
-        assert legacy_port is None
+        import async_model_gateway.response_cache.ports.feature_hasher as legacy_port  # noqa: F401
