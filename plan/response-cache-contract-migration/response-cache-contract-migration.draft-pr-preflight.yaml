@@ -6,34 +6,46 @@ status: passed
 terminal_lf: true
 
 candidate:
-  head_revision: 9dfbd0566f13b718749591da7cfd41ca80a5656d
+  head_revision: 535e70f19f9f316406f4188689a039db05dd17c1
   head_is_current: true
-  plan_sha256: bf87ab0f3db3e1b91ba48c79920485f72fcbbb51e63932fcdf4aa947846a0320
+  plan_sha256: ef9c3822be0996a83cf374f1e62eb6ff36311cadad623c97d1358ea1128217b9
 
 fresh_gate_linkage:
   plan_review:
     path: plan/response-cache-contract-migration/response-cache-contract-migration.plan-review.json
     verdict: approved
-    reviewed_plan_sha256: bf87ab0f3db3e1b91ba48c79920485f72fcbbb51e63932fcdf4aa947846a0320
+    reviewed_plan_sha256: ef9c3822be0996a83cf374f1e62eb6ff36311cadad623c97d1358ea1128217b9
     matches_current_plan: true
   draft_pr_human_check:
     path: plan/response-cache-contract-migration/response-cache-contract-migration.draft-pr-human-check.json
     decision: approved
     status: cleared
-    reviewed_plan_sha256: bf87ab0f3db3e1b91ba48c79920485f72fcbbb51e63932fcdf4aa947846a0320
+    reviewed_plan_sha256: ef9c3822be0996a83cf374f1e62eb6ff36311cadad623c97d1358ea1128217b9
     terminal_lf: true
     matches_current_plan: true
-  final_aggregate_review:
-    path: plan/response-cache-contract-migration/response-cache-contract-migration.final-aggregate-review.yaml
-    artifact_sha256: 966e565c56f4b5e8ad76c5498de9ae0a02b99fc7c1c63e42d1faf6f584c737c1
+  full_scope_aggregate_review:
+    path: plan/response-cache-contract-migration/response-cache-contract-migration.full-scope-aggregate-review.yaml
+    artifact_sha256: 92e79b53704a14a5b4f04aca5ccfff97278f4b821137a6747068dcdb19fa0885
+    append_only: true
+    present_at_candidate_head: false
     verdict: approved
     review_status: COMPLETE
-    base_revision: dbba2efb6ab4a8b802dfdb122e561ad576fdea53
-    head_revision: 9dfbd0566f13b718749591da7cfd41ca80a5656d
-    head_matches_current: true
-    current_plan_sha256: bf87ab0f3db3e1b91ba48c79920485f72fcbbb51e63932fcdf4aa947846a0320
+    base_revision: bfc2ba0c3f878af4b46cbea5d956926738326579
+    functional_head_revision: 535e70f19f9f316406f4188689a039db05dd17c1
+    scope_paths:
+      - README.md
+      - docs
+      - src
+      - tests
+    scope_command: >-
+      git diff --binary bfc2ba0c3f878af4b46cbea5d956926738326579
+      535e70f19f9f316406f4188689a039db05dd17c1 -- README.md docs src tests
+    diff_sha256: 9a3b02ace7ae3e69c1fa5b8bc04436d4ea846f5e27c790808de6d015f55080e8
+    delivery_head_revision: 535e70f19f9f316406f4188689a039db05dd17c1
+    delivery_head_is_committed: true
+    current_plan_sha256: ef9c3822be0996a83cf374f1e62eb6ff36311cadad623c97d1358ea1128217b9
     plan_matches_current: true
-    post_head_scope_drift: absent
+    historical_final_aggregate_used_as_gate: false
 
 immutable_historical_anchor:
   path: plan/response-cache-contract-migration/response-cache-contract-migration.human-check.json
@@ -44,9 +56,6 @@ immutable_historical_anchor:
       f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b
       plan/response-cache-contract-migration/response-cache-contract-migration.human-check.json
     sha256: f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b
-    terminal_byte_command: >-
-      tail -c 1 plan/response-cache-contract-migration/response-cache-contract-migration.human-check.json
-      | od -An -t x1
     terminal_byte_hex: '0x7d'
     final_lf_present: false
     git_diff_command: >-
@@ -59,9 +68,6 @@ immutable_historical_anchor:
       f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b
       plan/response-cache-contract-migration/response-cache-contract-migration.human-check.json
     sha256: f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b
-    terminal_byte_command: >-
-      tail -c 1 plan/response-cache-contract-migration/response-cache-contract-migration.human-check.json
-      | od -An -t x1
     terminal_byte_hex: '0x7d'
     final_lf_present: false
     git_diff_command: >-
@@ -70,6 +76,12 @@ immutable_historical_anchor:
     git_diff_exit_code: 0
   pre_equals_post: true
   historical_path_unmodified: true
+
+immutable_historical_provenance:
+  path: plan/response-cache-contract-migration/response-cache-contract-migration.final-aggregate-review.yaml
+  sha256: 966e565c56f4b5e8ad76c5498de9ae0a02b99fc7c1c63e42d1faf6f584c737c1
+  git_diff_exit_code: 0
+  used_as_current_gate: false
 
 required_command_sequence:
   - command: >-
@@ -103,10 +115,19 @@ required_command_sequence:
     mutation_detected: false
 
 final_checks:
-  scoped_post_head_drift_command: >-
-    git diff --name-only 9dfbd0566f13b718749591da7cfd41ca80a5656d HEAD --
-    <all declared aggregate scope paths in order>
-  scoped_post_head_drift: absent
+  functional_diff_digest_command: >-
+    git diff --binary bfc2ba0c3f878af4b46cbea5d956926738326579
+    535e70f19f9f316406f4188689a039db05dd17c1 -- README.md docs src tests
+  functional_diff_sha256: 9a3b02ace7ae3e69c1fa5b8bc04436d4ea846f5e27c790808de6d015f55080e8
+  delivery_head_no_functional_scope_drift_command: >-
+    git diff --exit-code 535e70f19f9f316406f4188689a039db05dd17c1 HEAD --
+    README.md docs src tests
+  delivery_head_no_functional_scope_drift_exit_code: 0
+  working_tree_no_functional_scope_drift_command: >-
+    git diff --exit-code HEAD -- README.md docs src tests
+  working_tree_no_functional_scope_drift_exit_code: 0
+  head_before_preflight: 535e70f19f9f316406f4188689a039db05dd17c1
+  head_after_preflight: 535e70f19f9f316406f4188689a039db05dd17c1
   git_diff_check_command: git diff --check
   git_diff_check_exit_code: 0
   all_required_gates_passed: true

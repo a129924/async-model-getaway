@@ -102,13 +102,12 @@ evidence for those rows and authorizes one later CI-only change after the fresh 
    writes. It is never a Git blob, tree, or commit SHA. The fresh review and Human check must
    record the same recomputed value in `reviewed_plan_sha256`; a plan-byte change invalidates both
    gates and requires that sequence again.
-4. The final code-review gate is a new reviewer-owned aggregate artifact at
-   `plan/response-cache-contract-migration/response-cache-contract-migration.final-aggregate-review.yaml`.
-   It must bind one reviewed candidate with base revision
+4. The existing reviewer-owned aggregate artifact at
+   `plan/response-cache-contract-migration/response-cache-contract-migration.final-aggregate-review.yaml`
+   is immutable historical provenance. It recorded one reviewed candidate with base revision
    `dbba2efb6ab4a8b802dfdb122e561ad576fdea53`, the exact reviewed committed head revision,
    the closed scope below, and the SHA-256 of the exact `git diff --binary <base> <head> --
-   <scope>` byte stream. The reviewer records the actual head and digest only after all scoped
-   changes are final; later scoped changes invalidate the evidence.
+   <scope>` byte stream. It must not be rewritten, replaced, or used to authorize preflight.
    It also records both immutable-anchor command-result sets (`pre` and `post`): SHA-256,
    `terminal_byte_hex: "0x7d"`, `final_lf_present: false`, and successful no-diff result, plus
    an equality assertion. A formatter or any other mutation command is not an anchor check.
@@ -117,8 +116,41 @@ evidence for those rows and authorizes one later CI-only change after the fresh 
    and the six already-locked response-cache test paths declared in the topic plan. Gate
    artifacts, including the aggregate artifact itself, are deliberately outside this digest so
    the evidence is reproducible and non-self-referential.
-6. A pre-PR aggregate `needs-rework` is an `implement-plan` gate failure, not a transition to
+6. A pre-PR full-scope aggregate `needs-rework` is an `implement-plan` gate failure, not a transition to
    `pr-open` or a PR-comment workflow. The bounded CI-only repair returns to `implement-plan`,
-   then a fresh aggregate review, then a fresh preflight while status remains
+   then a fresh full-scope aggregate review, then a fresh preflight while status remains
    `publish-in-progress`. Any repair that changes scope or contract returns through
    `spec-and-plan-finalization` and the canonical planning rework route.
+
+## PR #26 full-scope delivery-evidence appendendum
+
+This appendendum does not amend any Cache BC mapping or historical verdict. It declares one new,
+reviewer-owned, append-only artifact at
+`plan/response-cache-contract-migration/response-cache-contract-migration.full-scope-aggregate-review.yaml`.
+The existing `final-aggregate-review.yaml` remains immutable historical final-aggregate evidence;
+it is neither replaced nor supplemented in place.
+
+The new artifact is the sole active final reviewer gate. It binds exactly these functional-review values: base
+`bfc2ba0c3f878af4b46cbea5d956926738326579`; functional head
+`535e70f19f9f316406f4188689a039db05dd17c1`; ordered scope paths `README.md`, `docs`, `src`,
+`tests`; literal command
+`git diff --binary bfc2ba0c3f878af4b46cbea5d956926738326579 535e70f19f9f316406f4188689a039db05dd17c1 -- README.md docs src tests`;
+and byte-stream digest
+`9a3b02ace7ae3e69c1fa5b8bc04436d4ea846f5e27c790808de6d015f55080e8`.
+
+`diff_sha256` is the SHA-256 of the raw stdout output bytes emitted by the literal
+`scope_command`, including every emitted byte and any final newline if Git emits one. It is not
+the SHA-256 of the command text. The calculation must consume those output bytes directly: no
+text decoding or re-encoding, capture trimming, shell substitution, newline normalization, or
+other transformation is permitted.
+
+Fresh independent plan review, then fresh Human Draft-PR clearance bound to the same current
+topic-plan SHA-256, precede this reviewer artifact. It records the exact committed
+`delivery_head_revision` and a passing
+`git diff --exit-code 535e70f19f9f316406f4188689a039db05dd17c1 <delivery_head_revision> -- README.md docs src tests`
+result. The same no-functional-scope-drift check must pass at preflight. Preflight may follow
+only an approved new artifact; it must not consume the historical final-aggregate artifact as a
+gate. Drift invalidates the new artifact and returns a scope or contract repair through
+`spec-and-plan-finalization`; it cannot be cured by rewriting historical, implementation, or
+final-aggregate evidence. The new artifact lies outside the four-path functional scope, so it is
+non-self-referential.

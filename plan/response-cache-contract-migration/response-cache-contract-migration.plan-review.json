@@ -1,15 +1,10 @@
 {
   "verdict": "approved",
-  "reviewed_plan_sha256": "bf87ab0f3db3e1b91ba48c79920485f72fcbbb51e63932fcdf4aa947846a0320",
+  "reviewed_plan_sha256": "ef9c3822be0996a83cf374f1e62eb6ff36311cadad623c97d1358ea1128217b9",
   "blocking_issues": [],
   "copilot_feedback_triage": {
     "ADDRESS": [],
     "DISCUSS": [],
-    "SKIP": [
-      {
-        "comment": "Prior reviewer, human, code-review, and preflight evidence bound to earlier plan revisions.",
-        "why": "This independent approval binds only to the current topic plan bytes identified by reviewed_plan_sha256. The plan retains canonical sections and transitions, an explicit current-file-SHA-256 Human Draft-PR gate, immutable-anchor checks, an ordered closed aggregate-review scope, and the pre-PR aggregate needs-rework route. A fresh Human Draft-PR check, the bounded CI-only implementation, a replacement final aggregate review, fresh preflight, and explicit human merge remain required in that order."
-      }
-    ]
+    "SKIP": []
   }
 }

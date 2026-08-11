@@ -46,9 +46,9 @@
 13. The immutable historical human-check remains byte-identical with SHA-256
     `f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b`, final byte `0x7d`, and
     no final LF. Before and after validation, the topic plan's non-writing SHA-256, terminal-byte,
-    no-final-LF, and no-Git-diff checks all pass; the final aggregate evidence records both result
+    no-final-LF, and no-Git-diff checks all pass; the full-scope aggregate evidence records both result
     sets. CI scans that exact file first with the local-path guard, then uses the existing
-    exact-selector pre-commit command for every other file. Final reviewer evidence binds the
+    exact-selector pre-commit command for every other file. Full-scope reviewer evidence binds the
     fixed base revision, exact reviewed head, closed scope, and reproducible binary-diff digest.
 14. Fresh plan review and the Human Draft-PR check bind only the SHA-256 recomputed from the topic
     plan file bytes immediately before each artifact is written; Git blob, tree, and commit SHAs
@@ -150,17 +150,20 @@
 - **Then**: it first invokes only the local-path guard on that exact file, then invokes the
   pre-existing exact-selector pre-commit command for all other files; no hook receives or changes
   the historical file, and the reviewer records matching pre/post SHA-256, `0x7d`, no-final-LF,
-  and clean-Git-diff results in final aggregate evidence.
+  and clean-Git-diff results in full-scope aggregate evidence.
 
-### Scenario 13: Final aggregate review is reproducible and non-self-referential
+### Scenario 13: Full-scope aggregate review is reproducible and non-self-referential
 
 - **Given**: the CI-only change and this revision's planning artifacts are final at one committed
   candidate head.
-- **When**: the reviewer creates final aggregate evidence.
-- **Then**: it records base `dbba2efb6ab4a8b802dfdb122e561ad576fdea53`, that exact head, the
-  closed ordered scope, and the SHA-256 of the scoped binary diff; the evidence file and every
+- **When**: the reviewer creates the append-only full-scope aggregate evidence.
+- **Then**: it records base `bfc2ba0c3f878af4b46cbea5d956926738326579`, functional head
+  `535e70f19f9f316406f4188689a039db05dd17c1`, the ordered scope `README.md`, `docs`, `src`, `tests`,
+  and SHA-256 of the literal binary-diff command's raw stdout output bytes, including any emitted
+  final newline and excluding command text or transformed captures. The evidence file and every
   other gate artifact remain outside that digest, and later scoped drift requires a fresh review.
-  A pre-PR `needs-rework` returns to the bounded `implement-plan` repair, replacement aggregate
+  The existing `final-aggregate-review.yaml` remains immutable historical provenance. A pre-PR
+  `needs-rework` returns to the bounded `implement-plan` repair, replacement full-scope aggregate
   review, and fresh preflight loop without entering a PR-comment phase.
 
 ## Error / Edge Cases
@@ -181,3 +184,42 @@
   A local-path finding, anchor mismatch, final-LF/nonzero-diff result, selector change, or
   post-review scoped change blocks preflight and requires the declared fresh-gate route rather
   than a historical-file rewrite.
+
+## PR #26 full-scope delivery-evidence appendendum
+
+### Acceptance Criteria
+
+1. Only Reviewer creates the new append-only
+   `plan/response-cache-contract-migration/response-cache-contract-migration.full-scope-aggregate-review.yaml`.
+   It must not rewrite the existing immutable `response-cache-contract-migration.final-aggregate-review.yaml`.
+2. It records base `bfc2ba0c3f878af4b46cbea5d956926738326579`, functional head
+   `535e70f19f9f316406f4188689a039db05dd17c1`, ordered scope `[README.md, docs, src, tests]`,
+   literal command
+   `git diff --binary bfc2ba0c3f878af4b46cbea5d956926738326579 535e70f19f9f316406f4188689a039db05dd17c1 -- README.md docs src tests`,
+   and byte-stream digest
+   `9a3b02ace7ae3e69c1fa5b8bc04436d4ea846f5e27c790808de6d015f55080e8`.
+   `diff_sha256` is the SHA-256 of raw stdout output bytes emitted by the literal command,
+   including any final newline Git emits; it is not the command text and permits no decoding,
+   re-encoding, trimming, shell substitution, newline normalization, or other transformation.
+3. A fresh current-plan-SHA-256 plan review and fresh Human Draft-PR clearance precede the new
+   reviewer artifact; preflight follows only an approved new artifact.
+4. The artifact records a committed `delivery_head_revision` and a passing
+   `git diff --exit-code 535e70f19f9f316406f4188689a039db05dd17c1 <delivery_head_revision> -- README.md docs src tests`
+   result. That check repeats successfully against the then-current delivery head before preflight;
+   preflight follows only this approved artifact, never the historical final aggregate.
+
+### Behavioral Scenario: Delivery evidence preserves the reviewed functional scope
+
+- **Given**: the fresh plan-review and Human Draft-PR gates bind the current topic-plan SHA-256.
+- **When**: Reviewer records the new full-scope verdict for a committed delivery head.
+- **Then**: it preserves the locked base/head/four-path command/digest, proves no functional drift
+  from the functional head through delivery, and leaves existing historical, implementation,
+  code-review, and final-aggregate evidence unchanged.
+
+### Error / Edge Cases
+
+- A changed or reordered scope path, a non-literal command, or a digest mismatch is blocking.
+- A nonzero delivery-head no-functional-scope-drift result blocks preflight and returns scope or
+  contract repair to `spec-and-plan-finalization`.
+- Including the new artifact, an existing final aggregate, or another gate artifact in the
+  four-path digest is self-referential scope creep and must be rejected.

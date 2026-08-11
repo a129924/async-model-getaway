@@ -7,7 +7,7 @@ reconcile 到 strict analysis、Python specification 與可執行 plan：depreca
 可驗證的 predecessor 形狀；unsupported schema 可安全回收而不破壞 record invariant；target
 submodule 的 import surface 不外洩。完成後，本 revision 必須重新取得 fresh plan-review 與
 current-file-SHA-256 Human clearance，才可進行唯一的 CI-only implementation。最後必須由新的完整
-aggregate reviewer evidence 綁定 base/head/scope/digest，再進入 fresh preflight；既有
+  full-scope aggregate reviewer evidence 綁定 base/head/scope/digest，再進入 fresh preflight；既有
 historical human check 不得變更。
 
 ## Scope
@@ -22,8 +22,9 @@ historical human check 不得變更。
      `CacheMiss`，而 `StoredCacheRecord.schema_version == 1` 維持 invariant；
   3. `CacheStore` 不由 `response_cache.ports` root re-export，且 `compat` 不會把匯入的
      target collaborators 變成 accidental attributes。
-- **In scope（delivery governance）**：freeze immutable historical human-check anchor、final
-  aggregate reviewer evidence 的 base/head/scope/digest contract，並在 fresh gates 後僅授權
+- **In scope（delivery governance）**：freeze immutable historical human-check anchor、historical
+  final-aggregate provenance，以及唯一 active full-scope aggregate reviewer evidence 的
+  base/head/scope/digest contract，並在 fresh gates 後僅授權
   `.github/workflows/ci.yml` 加入先掃 historical path、再對其餘檔案套用既有 exact selector
   的兩段 CI sequence。
 - **Out of scope**：Planning actor 不修改 Python source、tests、CI、documentation、reviewer、
@@ -77,12 +78,20 @@ historical human check 不得變更。
 - 本 plan 檔案內容改變後，現有 `plan-review.json`、`draft-pr-human-check.json`、`code-review.yaml`
   與 `draft-pr-preflight.yaml` 都不能核准本 revision。順序固定為：fresh independent
   plan-review → Human 建立 current-file-SHA-256-bound Draft-PR human check → bounded CI-only
-  implementation → fresh final aggregate code review → Main Agent fresh Draft-PR preflight →
+  implementation → fresh full-scope aggregate code review → Main Agent fresh Draft-PR preflight →
   `pr-open`。Planning actor 不得預填任何 evidence。
-- 最終 aggregate reviewer artifact 必須固定 base revision
+- 既有 `final-aggregate-review.yaml` 固定為 immutable historical provenance，不能改寫、取代或作為
+  本 revision 的 final gate。唯一 active final reviewer artifact 是 append-only
+  `full-scope-aggregate-review.yaml`；它固定 functional base revision
+  `bfc2ba0c3f878af4b46cbea5d956926738326579`、functional head revision
+  `535e70f19f9f316406f4188689a039db05dd17c1`、ordered scope `README.md docs src tests`，以及
+  literal binary-diff command stdout 的 SHA-256。該 SHA-256 使用 raw stdout bytes（包含 Git
+  實際輸出的 final newline，如有）直接計算，不是 command text，且不得經 decode/re-encode、trim、
+  command substitution、newline normalization 或任何 transform。
+- 歷史 final aggregate reviewer artifact 曾固定 base revision
   `dbba2efb6ab4a8b802dfdb122e561ad576fdea53`，在 reviewer 寫入時固定 exact committed head、
   ordered closed scope 與 `git diff --binary <base> <head> -- <scope>` 的 SHA-256。其自身與所有
-  gate artifacts 不得位於 scope，避免 self-reference；任何 scoped drift 均使 evidence 失效。
+  gate artifacts 不得位於 scope，避免 self-reference；此歷史資訊不建立現行 gate。
 
 ## Boundaries / Exclusions
 
@@ -91,8 +100,8 @@ historical human check 不得變更。
 - Implementer 僅在 fresh plan review 與 Human Draft-PR check 已通過後修改
   `.github/workflows/ci.yml`；不得回寫 planning、source、tests、historical human check 或任何
   existing evidence。
-- Reviewer 只產生 fresh `plan-review.json` 與 final aggregate code-review verdict；Human 只產生 explicit
-  Draft-PR human check 與 human merge；Main Agent 只在 fresh code review approved 後建立
+- Reviewer 只產生 fresh `plan-review.json` 與 append-only full-scope aggregate code-review verdict；Human 只產生 explicit
+  Draft-PR human check 與 human merge；Main Agent 只在 fresh full-scope aggregate review approved 後建立
   preflight。
 - 不得以新 public export、dynamic module loading、unconditional stale delete、schema-1
   `UnsupportedSchemaRecord`、context observation 或 namespace-retaining factory 解決 comment。
@@ -110,16 +119,16 @@ historical human check 不得變更。
   `plan/response-cache-contract-migration/response-cache-contract-migration.draft-pr-human-check.json`
   建立 current-file-SHA-256-bound Draft-PR human check；兩個 fresh gates 都成立後，才可
   `reviewer-in-progress` → `approved` → `publish-in-progress`。完成 bounded CI-only implementation
-  後，Reviewer 的 fresh `final-aggregate-review.yaml` 必須為 approved，Main Agent 才能建立 preflight；
+  後，Reviewer 的 fresh `full-scope-aggregate-review.yaml` 必須為 approved，Main Agent 才能建立 preflight；
   preflight passed 才可 `publish-in-progress` → `pr-open`。
 - **Rework route**：plan review 的 `needs-rework` 依 canonical status route
-  `reviewer-in-progress` → `needs-rework` → `creator-in-progress` 處理。pre-PR final aggregate
+  `reviewer-in-progress` → `needs-rework` → `creator-in-progress` 處理。pre-PR full-scope aggregate
   review 的 `needs-rework` 是 `implement-plan` 的未通過 gate verdict，不是 topic status：在
   `publish-in-progress` 保持未完成、不得轉為 `pr-open`、不得進入 `pr-comment` 或
   `pr-comment-review-pr-comments-and-fix`。Main Agent 將 closed CI-only repair 交回
   `implement-plan`，Implementer 只修復 `.github/workflows/ci.yml`，重新執行所有 validation
   及 immutable-anchor pre/post checks，並交付新的 committed candidate；Reviewer 必須對新 head
-  取代式地重做 final aggregate review。只有新的 aggregate `approved` 才能由 Main Agent 建立
+  取代式地重做 full-scope aggregate review。只有新的 full-scope aggregate `approved` 才能由 Main Agent 建立
   新的 Draft-PR preflight；preflight 不通過同樣回到這個 `implement-plan` → aggregate →
   preflight loop。此 loop 在 PR 開啟前不使用 PR-comment phase。若 repair 需要 scope、artifact
   paths、public contract、async baseline 或 historical human-check bytes 改變，停止 loop 並回到
@@ -143,8 +152,9 @@ historical human check 不得變更。
 | Draft-PR human check | `plan/response-cache-contract-migration/response-cache-contract-migration.draft-pr-human-check.json` | Human | Fresh gate created only after plan review approval and bound to the then-recomputed SHA-256 of this plan file's bytes. |
 | Human merge | `plan/response-cache-contract-migration/response-cache-contract-migration.human-merge.json` | Human | Explicit pre-merge gate required before `pr-open` may become `merged`. |
 | Historical code review | `plan/response-cache-contract-migration/response-cache-contract-migration.code-review.yaml` | Reviewer (historical) | Stale prior evidence; preserve without editing and do not use as this revision's final gate. |
-| Final aggregate code review | `plan/response-cache-contract-migration/response-cache-contract-migration.final-aggregate-review.yaml` | Reviewer | New final evidence with fixed base/head/scope/digest after CI-only implementation. |
-| Draft-PR preflight | `plan/response-cache-contract-migration/response-cache-contract-migration.draft-pr-preflight.yaml` | Main Agent | Fresh preflight only after approved final aggregate review; must preserve historical human-check bytes. |
+| Historical final aggregate review | `plan/response-cache-contract-migration/response-cache-contract-migration.final-aggregate-review.yaml` | Reviewer (historical) | Immutable historical provenance only; never rewrite, replace, or use as this revision's final gate. |
+| Full-scope aggregate code review | `plan/response-cache-contract-migration/response-cache-contract-migration.full-scope-aggregate-review.yaml` | Reviewer | Sole active append-only final reviewer gate. It binds the locked functional base/head/ordered scope and SHA-256 of the literal binary-diff command's raw stdout bytes. |
+| Draft-PR preflight | `plan/response-cache-contract-migration/response-cache-contract-migration.draft-pr-preflight.yaml` | Main Agent | Fresh preflight only after the approved full-scope aggregate review; it repeats the delivery-head no-functional-scope-drift check and must preserve historical human-check bytes. |
 | CI workflow | `.github/workflows/ci.yml` | Implementer | Add the read-only local-path-guard invocation for the exact historical path before the existing byte-identical exact-selector pre-commit command. |
 | Historical Cache BC source | `src/async_model_gateway/response_cache/compat.py`, `src/async_model_gateway/response_cache/record.py`, `src/async_model_gateway/response_cache/cache.py`, `src/async_model_gateway/response_cache/_in_memory_store.py`, `src/async_model_gateway/response_cache/ports/store.py`, `src/async_model_gateway/response_cache/ports/__init__.py` | Existing implementation | Locked aggregate-review scope only; no further change is authorized. |
 | Historical Cache BC tests | `tests/response_cache/test_key_factory.py`, `tests/response_cache/test_canonical_feature_hasher.py`, `tests/response_cache/test_response_cache_contract_migration.py`, `tests/response_cache/test_cache.py`, `tests/response_cache/test_in_memory_store.py`, `tests/response_cache/test_response_cache_package_surface.py` | Existing implementation | Locked aggregate-review scope only; no further change is authorized. |
@@ -154,7 +164,8 @@ reviewer/human/preflight artifact, and every unlisted path are explicit no-chang
 revision. `.github/workflows/ci.yml` is the sole later implementation exception. Any drift outside
 this table returns to planning rework.
 
-The final aggregate review must use this ordered closed scope in its literal diff command:
+The historical final aggregate review recorded this ordered closed scope in its literal diff
+command. It remains historical provenance only and is not a current gate:
 
 1. `.github/workflows/ci.yml`
 2. `analysis/response-cache-contract-migration/canonical-reconciliation.md`
@@ -203,15 +214,19 @@ Implementer performs only these bounded steps:
   `f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b`, terminal byte `0x7d`, and
   without a final LF both before and after the CI sequence, using the exact non-writing commands
   below. `git diff --exit-code -- <historical-path>` must also succeed in both result sets. Its
-  status cannot satisfy the fresh plan review, current-file-SHA-256 Human check, final aggregate
+  status cannot satisfy the fresh plan review, current-file-SHA-256 Human check, full-scope aggregate
   review, preflight, or merge gate.
 - Confirm every locked source/test contract remains unchanged by this revision, including direct
   imports only, no dynamic loading, schema-1 invariant, token-guarded cleanup, and narrow
   compatibility/export surfaces.
-- Confirm the final aggregate reviewer artifact has base
-  `dbba2efb6ab4a8b802dfdb122e561ad576fdea53`, one exact committed head, all 17 ordered scope paths,
-  the literal scoped binary-diff command, its SHA-256 digest, and proof of no post-head scoped
-  drift. It must not treat itself or any gate artifact as part of that digest.
+- Confirm the immutable historical `final-aggregate-review.yaml` remains unchanged and is not used
+  for routing. Confirm the sole active `full-scope-aggregate-review.yaml` has base
+  `bfc2ba0c3f878af4b46cbea5d956926738326579`, functional head
+  `535e70f19f9f316406f4188689a039db05dd17c1`, ordered scope `README.md`, `docs`, `src`, `tests`,
+  the literal scoped binary-diff command, and SHA-256 calculated from that command's untransformed
+  raw stdout output bytes (including any emitted final newline), never from command text. It must
+  record a committed delivery head and passing no-functional-scope-drift evidence; neither
+  aggregate artifact nor any other gate artifact is in that digest.
 - Required commands after implementation. Run the first three commands as an immutable-anchor
   **pre** set before CI validation and again as an immutable-anchor **post** set after it. They
   are read-only checks; do not substitute a formatter, restore, stage, or any mutating command for
@@ -228,32 +243,37 @@ uv run ruff check src tests docs README.md analysis/response-cache-contract-migr
 uv run pyright
 ```
 
-### Final aggregate reviewer evidence contract
+### Full-scope aggregate reviewer evidence contract
 
 Only Reviewer creates
-`plan/response-cache-contract-migration/response-cache-contract-migration.final-aggregate-review.yaml`,
-and only after the CI-only change is committed. The artifact must be a complete aggregate verdict,
-not a pointer to prior review artifacts, and must contain all of the following:
+`plan/response-cache-contract-migration/response-cache-contract-migration.full-scope-aggregate-review.yaml`,
+and only after the CI-only change is committed. It is append-only. The existing
+`final-aggregate-review.yaml` remains immutable historical provenance and cannot satisfy this
+gate. The new artifact must be a complete aggregate verdict, not a pointer to prior review
+artifacts, and must contain all of the following:
 
-- `review: final-aggregate-implementation-conformance-and-python-code-review`, `topic`,
+- `review: full-scope-aggregate-implementation-conformance-and-python-code-review`, `topic`,
   `reviewer`, `verdict`, and `review_status`;
-- `reviewed_change.base_revision` exactly
-  `dbba2efb6ab4a8b802dfdb122e561ad576fdea53`;
-- `reviewed_change.head_revision` equal to the exact committed candidate reviewed, together with
-  `head_is_immutable_for_review: true`;
-- `reviewed_change.scope_paths` equal, in the declared order, to all 17 paths in Artifact Paths;
-- `reviewed_change.scope_command`, the literal `git diff --binary <base> <head> -- <scope>`
-  command using those concrete revisions and paths, and `reviewed_change.diff_sha256` calculated
-  from its byte stream;
-- `reviewed_change.changed_scope_paths`, a checked subset of `scope_paths`, plus a proof that
-  `git diff --name-only <head> HEAD -- <scope>` is empty when preflight begins;
+- `reviewed_change.base_revision` exactly `bfc2ba0c3f878af4b46cbea5d956926738326579` and
+  `reviewed_change.functional_head_revision` exactly
+  `535e70f19f9f316406f4188689a039db05dd17c1`;
+- `reviewed_change.scope_paths` equal, in this order, to `README.md`, `docs`, `src`, `tests`;
+- `reviewed_change.scope_command` exactly
+  `git diff --binary bfc2ba0c3f878af4b46cbea5d956926738326579 535e70f19f9f316406f4188689a039db05dd17c1 -- README.md docs src tests`;
+- `reviewed_change.diff_sha256` exactly
+  `9a3b02ace7ae3e69c1fa5b8bc04436d4ea846f5e27c790808de6d015f55080e8`, calculated only from the
+  literal command's raw stdout output bytes, with no decoding, re-encoding, trimming, shell
+  substitution, newline normalization, or other transformation;
+- `reviewed_change.delivery_head_revision` equal to the exact committed candidate reviewed and a
+  passing `git diff --exit-code 535e70f19f9f316406f4188689a039db05dd17c1 <delivery_head_revision> -- README.md docs src tests` result;
 - `immutable_historical_anchor.pre` and `immutable_historical_anchor.post`, each recording the
   `shasum -a 256` output/digest, `terminal_byte_hex: "0x7d"`,
   `final_lf_present: false`, and `git_diff_exit_code: 0` from the exact non-writing commands
   above, together with `pre_equals_post: true`; and
 - full implementation conformance, Cache BC boundary, test/validation, CI-sequence, scope-creep,
-  and governance verdicts. Existing review artifacts may be cited only as historical provenance,
-  never as a substitute for this aggregate verdict.
+  and governance verdicts. Main Agent's preflight repeats the exact delivery-head no-functional-
+  scope-drift check and may route to `pr-open` only after this artifact is approved. Existing review
+  artifacts may be cited only as historical provenance, never as a substitute for this verdict.
 
 ## Reviewer Handoff
 
@@ -284,7 +304,7 @@ order are frozen.
 ### Goal
 
 Preserve the locked Cache BC implementation and add only the two-stage CI verification plus
-reproducible final aggregate review contract, without changing runtime behavior or historical
+reproducible full-scope aggregate review contract, without changing runtime behavior or historical
 evidence.
 
 ### Non-goals
@@ -310,7 +330,7 @@ EOF, so CI must check it read-only before the existing selector runs hooks on ev
    exact-selector pre-commit command checks every other file.
 3. Keep the historical anchor SHA-256, terminal byte, no-final-LF state, and clean Git diff
    unchanged in non-writing pre/post checks.
-4. Obtain fresh plan review, current-file-SHA-256 Human Draft-PR clearance, final aggregate review,
+4. Obtain fresh plan review, current-file-SHA-256 Human Draft-PR clearance, full-scope aggregate review,
    and fresh preflight in order.
 
 ### Decisions
@@ -352,7 +372,7 @@ authorized for this governance revision.
 
 Test file: `tests/test_local_path_guard.py` is existing read-only regression coverage; this revision
 adds no test file because the CI command order, immutable anchor, and selector are validated by the
-declared workflow commands and final aggregate review.
+declared workflow commands and full-scope aggregate review.
 
 - Happy path: CI local-path guard accepts the anchored historical file, then the unchanged selector
   runs hooks on all other selected files.
@@ -360,19 +380,19 @@ declared workflow commands and final aggregate review.
 - Edge case: the historical no-final-LF file is never supplied to a hook that would normalize it.
 - Regression: full pytest and pyright preserve all Cache BC behavior and strict types without source
   or test edits.
-- Backward compatibility: the final aggregate review confirms the locked factory, schema, race,
+- Backward compatibility: the full-scope aggregate review confirms the locked factory, schema, race,
   and ordinary-import contracts are unchanged.
 
 ### Validation Commands
 
 Use the commands in **Validation / Acceptance Checks** after fresh plan review and current-file-SHA-256
-Human Draft-PR clearance, and before final aggregate code review.
+Human Draft-PR clearance, and before full-scope aggregate code review.
 
 ### Risks
 
 - Modifying the selector while adding the separate guard could leave paths unchecked or hand the
   historical file to a mutating hook.
-- A self-referential or partial review digest could claim coverage without binding the final change.
+- A self-referential or transformed-output review digest could claim coverage without binding the final change.
 - Reusing stale review/human evidence, or running a formatter against historical human-check, would
   invalidate required gate provenance.
 
@@ -385,3 +405,47 @@ reviewer/human/preflight evidence to make a gate pass.
 ### Open Questions
 
 None.
+
+## PR #26 full-scope delivery-evidence appendendum
+
+### Artifact-path supplement
+
+The only new artifact contract is
+`plan/response-cache-contract-migration/response-cache-contract-migration.full-scope-aggregate-review.yaml`.
+Its owner is Reviewer; its role is a new append-only full-scope aggregate verdict. Planning actor
+does not create it. It does not replace or modify the existing immutable
+`response-cache-contract-migration.final-aggregate-review.yaml`.
+
+### Locked functional-review binding
+
+| Field | Locked value |
+| --- | --- |
+| `base_revision` | `bfc2ba0c3f878af4b46cbea5d956926738326579` |
+| `functional_head_revision` | `535e70f19f9f316406f4188689a039db05dd17c1` |
+| `scope_paths` | `[README.md, docs, src, tests]` in exactly this order |
+| `scope_command` | `git diff --binary bfc2ba0c3f878af4b46cbea5d956926738326579 535e70f19f9f316406f4188689a039db05dd17c1 -- README.md docs src tests` |
+| `diff_sha256` | `9a3b02ace7ae3e69c1fa5b8bc04436d4ea846f5e27c790808de6d015f55080e8` |
+
+The digest is SHA-256 of the raw stdout output bytes emitted by the literal `scope_command`,
+including every emitted byte and any final newline Git emits. It is not the command text, and the
+output must not be decoded, re-encoded, trimmed, captured with shell substitution, newline-
+normalized, or otherwise transformed. No expanded list, reordered pathspec, or gate/evidence path
+is an equivalent contract.
+
+### Fresh gate sequence
+
+1. Reviewer produces fresh `plan-review.json` bound to the SHA-256 recomputed from the current
+   topic-plan bytes immediately before the reviewer write.
+2. Human produces fresh Draft-PR clearance bound to that same current topic-plan SHA-256.
+3. Only Reviewer writes the new artifact, recording an exact committed `delivery_head_revision`
+   and a passing
+   `git diff --exit-code 535e70f19f9f316406f4188689a039db05dd17c1 <delivery_head_revision> -- README.md docs src tests`
+   result as its no-functional-scope-drift evidence.
+4. Preflight follows only this approved full-scope artifact and repeats that no-functional-scope-
+   drift check for the then-current delivery head; the historical final aggregate cannot satisfy
+   the preflight gate.
+
+Functional-scope drift invalidates the new artifact. Scope or contract work returns to
+`spec-and-plan-finalization`; it must not modify existing historical, implementation, code-review,
+or final-aggregate evidence. The new artifact is outside `README.md`, `docs`, `src`, and `tests`,
+so the contract is non-self-referential.
