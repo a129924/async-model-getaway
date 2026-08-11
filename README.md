@@ -24,14 +24,15 @@
 - 最小 CLI entrypoint
 
 目前 package version baseline 為 `0.7.0`。repo 目前已落地最小
-`ModelRegistry` boundary，並補齊最小 operational `ResponseCache`
-boundary：`async_model_gateway.response_cache` 公開
-`ResponseCache`、`ResponseCacheEntry`、`ResponseCacheKey` 與
-`ResponseCacheKeyFactory`，而 `async_model_gateway.response_cache.ports`
-提供 `FeatureHasher` port；`ResponseCacheStore` 仍維持為 submodule-only
-surface。repo 另有 internal、developer-injected 的正 TTL freshness policy 與
-process-local `ResponseCacheStore` 實作：成功寫入才記錄 aware-UTC 時間、讀取不續期，
-到期時 lookup 會移除已確認 stale 的 process-local record 並回傳 miss；這些都不是新增的 public surface。repo 也已把最小 `ModelArtifact` + `LoaderFamily` shared read
+`ModelRegistry` boundary，並補齊受限的 `ResponseCache` boundary：
+`async_model_gateway.response_cache` 只公開 `ResponseCache`、`CacheKey` 與封閉的
+lookup/write outcomes。facade 只提供 async `lookup` / `remember`；context 僅為單次
+呼叫輸入，不會進入 identity 或 stored record。internal TTL policy 在 write 時衍生
+aware-UTC expiry，process-local store 只保存完整 versioned record；過期 cleanup 使用
+token-guarded compare-delete。`CacheInvalidator`、store、codec 與 token factory 都維持
+submodule-only，temporary deprecated adapter 只存在於 `response_cache.compat`，不屬於
+正常 public surface。這些都不代表 persistence、settings、eviction 或 orchestration 已落地。
+repo 也已把最小 `ModelArtifact` + `LoaderFamily` shared read
 contract 納入 baseline：
 `async_model_gateway.model_runtime.model_artifact` 公開 `ModelArtifact` 與
 `LoaderFamily`，並由 `model_runtime` 作為後續 model-runtime family layout 的
@@ -88,18 +89,16 @@ semantics、response cache architecture、`orchestrator` 與完整 `runtime-mode
 - scalar 不做 normalization
 - unsupported type 會 fail closed 並 raise `TypeError`
 
-目前已落地的最小 operational response-cache boundary 包含：
+目前已落地的受限 response-cache boundary 包含：
 
 - `async_model_gateway.response_cache.ResponseCache`
-- `async_model_gateway.response_cache.ResponseCacheEntry`
-- `async_model_gateway.response_cache.ResponseCacheKey`
-- `async_model_gateway.response_cache.ResponseCacheKeyFactory`
-- `async_model_gateway.response_cache.ports.FeatureHasher`
+- `async_model_gateway.response_cache.CacheKey`
+- `CacheHit` / `CacheMiss` 與 `Remembered` / `Skipped` / `Failed` outcomes
 
-其中 `ResponseCacheStore` 仍維持為 submodule-only surface。
-內部 process-local store 接受 developer-injected 的正 TTL freshness policy；它不會
-把 policy 或 concrete store 加入 package root 或 `ports` surface，也不代表 persistence、
-settings、eviction 或 orchestration 已落地。
+其中 `CacheStore`、`CacheCodec`、`VersionTokenFactory` 與 `CacheInvalidator` 都是
+submodule-only surface。`ResponseCache` 單獨建立完整 record，internal process-local store
+只做 whole-record replacement 與 token-guarded cleanup；它們不代表 persistence、settings、
+eviction 或 orchestration 已落地。
 
 目前已落地的最小 model-artifact shared read contract 包含：
 

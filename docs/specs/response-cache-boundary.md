@@ -2,84 +2,34 @@
 
 ## 摘要
 
-`ResponseCache` 是 response reuse boundary。
+`ResponseCache` 是受限的 async response reuse boundary。package root 只公開
+`ResponseCache`、`CacheKey` 與封閉的 lookup/write outcomes；它不提供 orchestration、
+backend selection、store lifecycle、persistence、settings、eviction 或 metrics。
 
-它的角色是讓相同條件下的 response 可以被重用。repo 目前已落地既有 keyed boundary、
-最小 operational boundary，以及 internal process-local storage 的有限 freshness slice；
-它仍不處理 persistence backend、schema 或 broader cache architecture。
+## Identity 與 context
 
-## Identity Dependency
+`CacheKey(namespace, model_payload_hash, feature_hash)` 是唯一 cache identity authority。
+所有三個值都必須在 cache 之外導出；cache 不重新計算 payload 或 feature hash。
+`lookup` 與 `remember` 接收 context 作為單次呼叫輸入，但不讀取、保存或序列化它；context
+不影響 identity、record、metadata、expiry 或 version token。
 
-`ResponseCache` 在這一輪固定依賴：
+## Facade 與 record ownership
 
-- `ResponseCacheKey.namespace`
-- `ResponseCacheKey.model_payload_hash`
-- `ResponseCacheKey.feature_hash`
+`ResponseCache` 只提供 keyword-only async `lookup` 與 `remember`。它持有 store、codec、
+version-token factory、write-time expiry policy 與 injected aware-UTC clock。remember 成功路徑
+建立一個 immutable complete record：schema version、codec id、encoded payload、written/expiry
+timestamps、new opaque version token 和空 metadata。已知 operational failure 轉為封閉 outcomes；
+cancellation 和其他 defects 原樣傳播。
 
-也就是說，目前的 cache identity 會先被準備成 `ResponseCacheKey`，而不是讓未來 cache runtime owner 直接自行組合 `payload-hash + features`。
+`CacheStore`、`CacheCodec`、`VersionTokenFactory` 與 `CacheInvalidator` 是 submodule-public
+ports。store 只做 whole-record replacement、key-local delete 和 token-guarded atomic
+compare-delete。lookup 的過期或不支援 record cleanup 絕不使用 unconditional delete，因此不會
+刪除 concurrent replacement。invalidation 由獨立 `CacheInvalidator` 擁有，不是 facade method。
 
-`features` 參與 response reuse，但不參與 model identity。
+## Freshness 與 compatibility
 
-`model_name` 與 `model_source_kind` 不直接成為 cache identity owner。
-
-`features` 在這裡被視為 bounded capability vocabulary 的一部分，而不是任意 producer label。
-
-在這個最小 boundary 中：
-
-- `ResponseCacheKeyFactory` 顯式接收 `namespace`
-- `ResponseCacheKeyFactory` 顯式接收 `model_payload_hash`
-- payload hashing 仍由既有 `ModelPayloadHasher` 擁有，但發生在 factory 外部
-- feature hashing 仍由 `response_cache.ports.FeatureHasher` 擁有
-- factory 只負責協調上述 inputs 並回傳 `ResponseCacheKey`
-
-## Operational Boundary
-
-目前新增的最小 operational boundary 只包含：
-
-- package root re-export `ResponseCache`、`ResponseCacheEntry`、`ResponseCacheKey` 與 `ResponseCacheKeyFactory`
-- `ResponseCacheEntry` 只保留 `response: str`
-- `ResponseCache` 只透過 async `get(...)` / `set(...)` / explicit-key `invalidate(...)`
-  消費既有 `ResponseCacheKey`
-- `ResponseCacheStore` 只維持在 `response_cache.ports.store` 的 submodule-public path
-- internal `InMemoryResponseCacheStore` 接受 developer-injected 的正 TTL freshness policy，
-  在成功寫入記錄 aware-UTC 時間，讀取不續期，並在 policy 確認到期後於 lookup 移除該既有
-  record，並回傳 `None` miss
-
-在這個 boundary 中：
-
-- `ResponseCache` 只持有 caller 提供的 `ResponseCacheStore`
-- `ResponseCache.get(...)` / `set(...)` / `invalidate(...)` 只做 direct await delegation
-- store miss 以 `None` 表達
-- explicit-key invalidation 只移除 fresh 的指定 record 並回傳 `True`；absent 或 policy
-  確認 stale 後移除的 record 回傳 `False`
-- store failures 原樣向外傳播
-- `ResponseCache` 不建立、關閉或重置 store resources
-- internal policy 與 concrete store 不會 re-export 至 package root 或 `ports`
-
-## Owner Responsibility
-
-`ResponseCache` 負責：
-
-- 定義 response reuse 的責任歸屬
-- 對 `orchestrator` 提供 hit / miss 概念邊界
-- 與 canonical input 及 model side identity 維持清楚依賴方向
-- 透過既有 `ResponseCacheKey` 與最小 `ResponseCacheStore` port 協調 operational read/write owner
-
-未來任何 operational `ResponseCache` surface 都應消費 `ResponseCacheKey`，而不是在自身內部重新計算 payload 或 feature hashes。
-
-## 明確不做
-
-這一輪不定義：
-
-- public concrete-store 或 policy API
-- settings/env TTL surface、TTL renewal、capacity、admission、eviction、clear、prefix/namespace/
-  batch invalidation、broader deletion
-- persistence schema
-- database / Redis / `SQLAlchemy`
-- provider adapter
-
-## Boundary Position
-
-`ResponseCache` 不是 `ModelRegistry` 的附屬，也不是 `ModelPool` 的附屬。
-
-它是由 `orchestrator` 消費、並依賴 `ResponseCacheKey` 的獨立業務邊界。
+internal `FreshnessPolicy` 只在 write 時從 aware-UTC `written_at` 衍生 `expires_at`；讀取不會
+renew expiry。`TtlFreshnessPolicy` 保持 strict positive TTL。temporary deprecated legacy bridge
+僅在 `async_model_gateway.response_cache.compat`；它提供舊 caller 的過渡 map 與 warning，且不會
+由 package root re-export。後續經核准的 removal change 才能連同 adapter、legacy aliases、warnings
+與 migration tests 一起移除。

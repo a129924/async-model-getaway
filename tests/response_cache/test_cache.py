@@ -1,212 +1,555 @@
-"""RED coverage for the minimal operational ResponseCache owner."""
+"""RED coverage for the target two-method response-cache facade."""
 
 from __future__ import annotations
 
 import asyncio
 import inspect
+from datetime import datetime, timedelta, timezone
 from typing import get_type_hints
 
 import pytest
-import async_model_gateway.response_cache.cache as response_cache_cache_module
-from async_model_gateway.response_cache import ResponseCache, ResponseCacheEntry, ResponseCacheKey
-from async_model_gateway.response_cache.ports.store import ResponseCacheStore
 
 
-class RecordingStore(ResponseCacheStore):
-    """Store test double that records delegated keys and entries."""
+def _key() -> object:
+    from async_model_gateway.response_cache.key import CacheKey
 
-    def __init__(
-        self,
-        *,
-        stored_entry: ResponseCacheEntry | None = None,
-        get_error: BaseException | None = None,
-        set_error: BaseException | None = None,
-        invalidation_result: bool = False,
-        invalidation_error: BaseException | None = None,
-    ) -> None:
-        self.get_calls: list[ResponseCacheKey] = []
-        self.set_calls: list[tuple[ResponseCacheKey, ResponseCacheEntry]] = []
-        self.invalidation_calls: list[ResponseCacheKey] = []
-        self._stored_entry = stored_entry
-        self._get_error = get_error
-        self._set_error = set_error
-        self._invalidation_result = invalidation_result
-        self._invalidation_error = invalidation_error
-
-    async def get(self, *, key: ResponseCacheKey) -> ResponseCacheEntry | None:
-        self.get_calls.append(key)
-        if self._get_error is not None:
-            raise self._get_error
-        return self._stored_entry
-
-    async def set(self, *, key: ResponseCacheKey, entry: ResponseCacheEntry) -> None:
-        self.set_calls.append((key, entry))
-        if self._set_error is not None:
-            raise self._set_error
-
-    async def invalidate(self, *, key: ResponseCacheKey) -> bool:
-        self.invalidation_calls.append(key)
-        if self._invalidation_error is not None:
-            raise self._invalidation_error
-        return self._invalidation_result
+    return CacheKey("response-cache", "payload", "feature")
 
 
-def test_response_cache_public_contract_is_async_only() -> None:
-    """The operational cache owner should stay minimal and async-only."""
-    init_signature = inspect.signature(ResponseCache.__init__)
-    get_signature = inspect.signature(ResponseCache.get)
-    set_signature = inspect.signature(ResponseCache.set)
-    invalidate_signature = inspect.signature(ResponseCache.invalidate)
+def _record(*, value: str, token: str, expires_at: datetime | None = None) -> object:
+    from async_model_gateway.response_cache.record import CacheVersionToken, StoredCacheRecord
 
-    assert tuple(init_signature.parameters) == ("self", "store")
-    assert inspect.iscoroutinefunction(ResponseCache.get)
-    assert inspect.iscoroutinefunction(ResponseCache.set)
-    assert inspect.iscoroutinefunction(ResponseCache.invalidate)
-    assert tuple(get_signature.parameters) == ("self", "key")
-    assert get_signature.parameters["key"].kind is inspect.Parameter.KEYWORD_ONLY
-    assert tuple(set_signature.parameters) == ("self", "key", "entry")
-    assert set_signature.parameters["key"].kind is inspect.Parameter.KEYWORD_ONLY
-    assert set_signature.parameters["entry"].kind is inspect.Parameter.KEYWORD_ONLY
-    assert tuple(invalidate_signature.parameters) == ("self", "key")
-    assert invalidate_signature.parameters["key"].kind is inspect.Parameter.KEYWORD_ONLY
-    assert get_type_hints(ResponseCache.invalidate) == {
-        "key": ResponseCacheKey,
-        "return": bool,
-    }
-
-
-def test_response_cache_init_type_hints_resolve_store_port_without_public_reexport() -> None:
-    """The constructor annotation must stay runtime-resolvable without a public leak."""
-    init_type_hints = get_type_hints(ResponseCache.__init__)
-
-    assert init_type_hints["store"] is ResponseCacheStore
-    assert "ResponseCacheStore" not in vars(response_cache_cache_module)
-
-
-@pytest.mark.asyncio
-async def test_response_cache_get_delegates_key_and_returns_store_entry() -> None:
-    """A cache hit should return the same entry object from the store."""
-    key = ResponseCacheKey(
-        namespace="response-cache",
-        model_payload_hash="payload-hash",
-        feature_hash="feature-hash",
+    written_at = datetime(2026, 8, 6, 12, 0, tzinfo=timezone.utc)
+    return StoredCacheRecord(
+        schema_version=1,
+        codec_id="utf-8",
+        payload=value.encode(),
+        written_at=written_at,
+        expires_at=expires_at or written_at + timedelta(seconds=30),
+        version_token=CacheVersionToken(value=token),
+        metadata=(),
     )
-    entry = ResponseCacheEntry(response="cached response")
-    store = RecordingStore(stored_entry=entry)
-    cache = ResponseCache(store)
-
-    result = await cache.get(key=key)
-
-    assert result is entry
-    assert store.get_calls == [key]
 
 
-@pytest.mark.asyncio
-async def test_response_cache_get_returns_none_for_cache_miss() -> None:
-    """A store miss should remain the public None miss surface."""
-    key = ResponseCacheKey(
-        namespace="response-cache",
-        model_payload_hash="payload-hash",
-        feature_hash="feature-hash",
+def test_response_cache_has_exactly_five_keyword_only_collaborators_and_two_methods() -> None:
+    """The root facade must not retain any old synchronous or invalidation surface."""
+    from async_model_gateway.response_cache.cache import ResponseCache
+
+    constructor = inspect.signature(ResponseCache.__init__)
+
+    assert tuple(constructor.parameters) == (
+        "self",
+        "store",
+        "codec",
+        "version_token_factory",
+        "freshness_policy",
+        "clock",
     )
-    cache = ResponseCache(RecordingStore(stored_entry=None))
-
-    result = await cache.get(key=key)
-
-    assert result is None
-
-
-@pytest.mark.asyncio
-async def test_response_cache_set_delegates_same_key_and_entry() -> None:
-    """The cache owner should pass through key and entry without reshaping them."""
-    key = ResponseCacheKey(
-        namespace="response-cache",
-        model_payload_hash="payload-hash",
-        feature_hash="feature-hash",
+    assert all(
+        parameter.kind is inspect.Parameter.KEYWORD_ONLY
+        for name, parameter in constructor.parameters.items()
+        if name != "self"
     )
-    entry = ResponseCacheEntry(response="generated response")
-    store = RecordingStore()
-    cache = ResponseCache(store)
+    assert inspect.iscoroutinefunction(ResponseCache.lookup)
+    assert inspect.iscoroutinefunction(ResponseCache.remember)
+    assert not any(hasattr(ResponseCache, name) for name in ("get", "set", "invalidate"))
 
-    result = await cache.set(key=key, entry=entry)
 
-    assert result is None
-    assert store.set_calls == [(key, entry)]
+def test_response_cache_context_annotations_preserve_the_invocation_type_variable() -> None:
+    """Both facade operations retain the technical-spec context annotation."""
+    import async_model_gateway.response_cache.cache as cache_module
+
+    assert get_type_hints(cache_module.ResponseCache.lookup)["context"] is cache_module.ContextT
+    assert get_type_hints(cache_module.ResponseCache.remember)["context"] is cache_module.ContextT
 
 
 @pytest.mark.asyncio
-async def test_response_cache_get_propagates_store_failure_unchanged() -> None:
-    """Store lookup failures should escape without translation."""
-    key = ResponseCacheKey(
-        namespace="response-cache",
-        model_payload_hash="payload-hash",
-        feature_hash="feature-hash",
+async def test_lookup_returns_hit_for_fresh_supported_record_without_observing_context() -> None:
+    """A context is invocation-only and neither changes reads nor reaches persistence."""
+    from async_model_gateway.response_cache.cache import ResponseCache
+    from async_model_gateway.response_cache.outcomes import CacheHit
+
+    class Store:
+        async def get(self, *, key: object) -> object:
+            return _record(value="cached", token="A")
+
+        async def set(self, *, key: object, record: object) -> None:
+            raise AssertionError("lookup must not write")
+
+        async def delete(self, *, key: object) -> bool:
+            raise AssertionError("lookup must use compare-delete only")
+
+        async def delete_if_version(self, *, key: object, version_token: object) -> bool:
+            raise AssertionError("fresh lookup must not clean up")
+
+    class Codec:
+        codec_id = "utf-8"
+
+        def encode(self, *, value: str) -> bytes:
+            return value.encode()
+
+        def decode(self, *, payload: bytes) -> str:
+            return payload.decode()
+
+    class Tokens:
+        def new(self) -> object:
+            raise AssertionError("lookup must not create a token")
+
+    class Policy:
+        def expires_at(self, *, written_at: datetime) -> datetime:
+            return written_at + timedelta(seconds=30)
+
+    class ExplodingContext:
+        def __getattribute__(self, name: str) -> object:
+            raise AssertionError(f"context was observed through {name}")
+
+    cache = ResponseCache(
+        store=Store(),
+        codec=Codec(),
+        version_token_factory=Tokens(),
+        freshness_policy=Policy(),
+        clock=lambda: datetime(2026, 8, 6, tzinfo=timezone.utc),
     )
-    cache = ResponseCache(RecordingStore(get_error=RuntimeError("lookup failed")))
 
-    with pytest.raises(RuntimeError, match="lookup failed"):
-        await cache.get(key=key)
+    result = await cache.lookup(key=_key(), context=ExplodingContext())
+
+    assert result == CacheHit(value="cached")
 
 
 @pytest.mark.asyncio
-async def test_response_cache_set_propagates_cancelled_error_unchanged() -> None:
-    """Cancellation must remain owned by the underlying store awaitable."""
-    key = ResponseCacheKey(
-        namespace="response-cache",
-        model_payload_hash="payload-hash",
-        feature_hash="feature-hash",
+async def test_remember_writes_one_complete_facade_owned_record_and_returns_remembered() -> None:
+    """The facade owns timestamps, codec id, expiry, token request, and empty metadata."""
+    from async_model_gateway.response_cache.cache import ResponseCache
+    from async_model_gateway.response_cache.outcomes import Remembered
+    from async_model_gateway.response_cache.record import CacheVersionToken
+
+    written_at = datetime(2026, 8, 6, 12, 0, tzinfo=timezone.utc)
+
+    class Store:
+        def __init__(self) -> None:
+            self.records: list[tuple[object, object]] = []
+
+        async def get(self, *, key: object) -> None:
+            return None
+
+        async def set(self, *, key: object, record: object) -> None:
+            self.records.append((key, record))
+
+        async def delete(self, *, key: object) -> bool:
+            return False
+
+        async def delete_if_version(self, *, key: object, version_token: object) -> bool:
+            return False
+
+    class Codec:
+        codec_id = "test-codec"
+
+        def encode(self, *, value: str) -> bytes:
+            assert value == "generated"
+            return b"encoded"
+
+        def decode(self, *, payload: bytes) -> str:
+            return payload.decode()
+
+    class Tokens:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def new(self) -> CacheVersionToken:
+            self.calls += 1
+            return CacheVersionToken(value="new-token")
+
+    class Policy:
+        def __init__(self) -> None:
+            self.calls: list[datetime] = []
+
+        def expires_at(self, *, written_at: datetime) -> datetime:
+            self.calls.append(written_at)
+            return written_at + timedelta(seconds=30)
+
+    class ExplodingContext:
+        def __getattribute__(self, name: str) -> object:
+            raise AssertionError(f"context was observed through {name}")
+
+    store = Store()
+    tokens = Tokens()
+    policy = Policy()
+    clock_calls: list[None] = []
+    cache = ResponseCache(
+        store=store,
+        codec=Codec(),
+        version_token_factory=tokens,
+        freshness_policy=policy,
+        clock=lambda: (clock_calls.append(None), written_at)[1],
     )
-    entry = ResponseCacheEntry(response="generated response")
-    cache = ResponseCache(RecordingStore(set_error=asyncio.CancelledError()))
 
-    with pytest.raises(asyncio.CancelledError):
-        await cache.set(key=key, entry=entry)
+    result = await cache.remember(key=_key(), value="generated", context=ExplodingContext())
+
+    assert result == Remembered()
+    assert len(clock_calls) == 1
+    assert tokens.calls == 1
+    assert policy.calls == [written_at]
+    assert len(store.records) == 1
+    stored_key, record = store.records[0]
+    assert stored_key == _key()
+    assert record.schema_version == 1
+    assert record.codec_id == "test-codec"
+    assert record.payload == b"encoded"
+    assert record.written_at == written_at
+    assert record.expires_at == written_at + timedelta(seconds=30)
+    assert record.version_token == CacheVersionToken(value="new-token")
+    assert record.metadata == ()
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("store_result", [True, False])
-async def test_response_cache_invalidate_delegates_the_original_key_and_boolean(
-    store_result: bool,
+@pytest.mark.parametrize("schema_version, expires_offset, lookup_offset", [(1, 1, 2)])
+async def test_lookup_misses_and_compare_deletes_expired_records(
+    schema_version: int, expires_offset: int, lookup_offset: int
 ) -> None:
-    """Explicit invalidation must return the store result without reshaping it."""
-    key = ResponseCacheKey(
-        namespace="response-cache",
-        model_payload_hash="payload-hash",
-        feature_hash="feature-hash",
-    )
-    store = RecordingStore(invalidation_result=store_result)
-    cache = ResponseCache(store)
+    """Expired records cannot leak a value and cleanup uses the observed token."""
+    from async_model_gateway.response_cache.cache import ResponseCache
+    from async_model_gateway.response_cache.outcomes import CacheMiss
+    from async_model_gateway.response_cache.record import CacheVersionToken, StoredCacheRecord
 
-    assert await cache.invalidate(key=key) is store_result
-    assert store.invalidation_calls == [key]
+    written_at = datetime(2026, 8, 6, 12, 0, tzinfo=timezone.utc)
+    record = StoredCacheRecord(
+        schema_version=schema_version,
+        codec_id="utf-8",
+        payload=b"value",
+        written_at=written_at,
+        expires_at=written_at + timedelta(seconds=expires_offset),
+        version_token=CacheVersionToken(value="observed"),
+        metadata=(),
+    )
+
+    class Store:
+        def __init__(self) -> None:
+            self.deleted: list[tuple[object, object]] = []
+
+        async def get(self, *, key: object) -> object:
+            return record
+
+        async def set(self, *, key: object, record: object) -> None:
+            raise AssertionError("lookup must not write")
+
+        async def delete(self, *, key: object) -> bool:
+            raise AssertionError("unconditional stale delete is forbidden")
+
+        async def delete_if_version(self, *, key: object, version_token: object) -> bool:
+            self.deleted.append((key, version_token))
+            return True
+
+    class Codec:
+        codec_id = "utf-8"
+
+        def encode(self, *, value: str) -> bytes:
+            return value.encode()
+
+        def decode(self, *, payload: bytes) -> str:
+            return payload.decode()
+
+    store = Store()
+    cache = ResponseCache(
+        store=store,
+        codec=Codec(),
+        version_token_factory=object(),
+        freshness_policy=object(),
+        clock=lambda: written_at + timedelta(seconds=lookup_offset),
+    )
+
+    assert await cache.lookup(key=_key(), context=object()) == CacheMiss()
+    assert store.deleted == [(_key(), CacheVersionToken(value="observed"))]
 
 
 @pytest.mark.asyncio
-async def test_response_cache_invalidate_propagates_store_error_unchanged() -> None:
-    """Facade invalidation must not translate a store failure into a miss."""
-    key = ResponseCacheKey(
-        namespace="response-cache",
-        model_payload_hash="payload-hash",
-        feature_hash="feature-hash",
+async def test_lookup_misses_unsupported_schema_without_decode_or_clock_and_keeps_replacement() -> (
+    None
+):
+    """Unsupported records retain only their observed token for race-safe cleanup."""
+    from async_model_gateway.response_cache.cache import ResponseCache
+    from async_model_gateway.response_cache.outcomes import CacheMiss
+    from async_model_gateway.response_cache.record import (
+        CacheVersionToken,
+        UnsupportedSchemaRecord,
     )
-    store_error = RuntimeError("invalidation failed")
-    cache = ResponseCache(RecordingStore(invalidation_error=store_error))
 
-    with pytest.raises(RuntimeError, match="invalidation failed") as raised:
-        await cache.invalidate(key=key)
+    observed = UnsupportedSchemaRecord(
+        schema_version=2,
+        version_token=CacheVersionToken(value="A"),
+    )
+    replacement = _record(value="replacement", token="B")
 
-    assert raised.value is store_error
+    class Store:
+        def __init__(self) -> None:
+            self.current: object = observed
+            self.cleanup_tokens: list[CacheVersionToken] = []
+
+        async def get(self, *, key: object) -> object:
+            return self.current
+
+        async def set(self, *, key: object, record: object) -> None:
+            self.current = record
+
+        async def delete(self, *, key: object) -> bool:
+            raise AssertionError("unsupported cleanup must not use unconditional delete")
+
+        async def delete_if_version(self, *, key: object, version_token: object) -> bool:
+            assert isinstance(version_token, CacheVersionToken)
+            self.cleanup_tokens.append(version_token)
+            self.current = replacement
+            return False
+
+    class Codec:
+        codec_id = "utf-8"
+
+        def encode(self, *, value: str) -> bytes:
+            return value.encode()
+
+        def decode(self, *, payload: bytes) -> str:
+            raise AssertionError("unsupported records must not be decoded")
+
+    store = Store()
+    cache = ResponseCache(
+        store=store,
+        codec=Codec(),
+        version_token_factory=object(),
+        freshness_policy=object(),
+        clock=lambda: (_ for _ in ()).throw(AssertionError("unsupported records need no clock")),
+    )
+
+    assert await cache.lookup(key=_key(), context=object()) == CacheMiss()
+    assert store.cleanup_tokens == [CacheVersionToken(value="A")]
+    assert store.current is replacement
 
 
 @pytest.mark.asyncio
-async def test_response_cache_invalidate_propagates_cancelled_error_unchanged() -> None:
-    """Facade invalidation must leave cancellation owned by its store awaitable."""
-    key = ResponseCacheKey(
-        namespace="response-cache",
-        model_payload_hash="payload-hash",
-        feature_hash="feature-hash",
+async def test_unsupported_schema_cleanup_failure_is_miss_and_cancellation_propagates() -> None:
+    """Known cleanup failure closes to miss while cancellation remains caller-owned."""
+    from async_model_gateway.response_cache.cache import ResponseCache
+    from async_model_gateway.response_cache.errors import CacheStoreOperationalError
+    from async_model_gateway.response_cache.outcomes import CacheMiss
+    from async_model_gateway.response_cache.record import (
+        CacheVersionToken,
+        UnsupportedSchemaRecord,
     )
-    cache = ResponseCache(RecordingStore(invalidation_error=asyncio.CancelledError()))
 
+    unsupported = UnsupportedSchemaRecord(
+        schema_version=2,
+        version_token=CacheVersionToken(value="observed"),
+    )
+    cancellation = asyncio.CancelledError("unsupported cleanup cancelled")
+
+    class Store:
+        def __init__(self, failure: BaseException) -> None:
+            self._failure = failure
+
+        async def get(self, *, key: object) -> object:
+            return unsupported
+
+        async def set(self, *, key: object, record: object) -> None:
+            raise AssertionError("lookup must not write")
+
+        async def delete(self, *, key: object) -> bool:
+            raise AssertionError("unsupported cleanup must compare-delete")
+
+        async def delete_if_version(self, *, key: object, version_token: object) -> bool:
+            raise self._failure
+
+    class Codec:
+        codec_id = "utf-8"
+
+        def encode(self, *, value: str) -> bytes:
+            return value.encode()
+
+        def decode(self, *, payload: bytes) -> str:
+            raise AssertionError("unsupported records must not be decoded")
+
+    def cache_for(failure: BaseException) -> ResponseCache:
+        return ResponseCache(
+            store=Store(failure),
+            codec=Codec(),
+            version_token_factory=object(),
+            freshness_policy=object(),
+            clock=lambda: (_ for _ in ()).throw(
+                AssertionError("unsupported records need no clock")
+            ),
+        )
+
+    cache = cache_for(CacheStoreOperationalError())
+    assert await cache.lookup(key=_key(), context=object()) == CacheMiss()
+    with pytest.raises(asyncio.CancelledError) as raised:
+        await cache_for(cancellation).lookup(key=_key(), context=object())
+    assert raised.value is cancellation
+
+
+@pytest.mark.asyncio
+async def test_lookup_maps_known_failure_to_miss_and_propagates_cancellation() -> None:
+    """The facade catches only its operational family; cancellation remains caller-owned."""
+    from async_model_gateway.response_cache.cache import ResponseCache
+    from async_model_gateway.response_cache.errors import CacheStoreOperationalError
+    from async_model_gateway.response_cache.outcomes import CacheMiss
+
+    class Store:
+        async def get(self, *, key: object) -> object:
+            raise CacheStoreOperationalError()
+
+        async def set(self, *, key: object, record: object) -> None:
+            return None
+
+        async def delete(self, *, key: object) -> bool:
+            return False
+
+        async def delete_if_version(self, *, key: object, version_token: object) -> bool:
+            return False
+
+    cache = ResponseCache(
+        store=Store(),
+        codec=object(),
+        version_token_factory=object(),
+        freshness_policy=object(),
+        clock=lambda: datetime.now(timezone.utc),
+    )
+
+    assert await cache.lookup(key=_key(), context=object()) == CacheMiss()
+
+    class CancelledStore(Store):
+        async def get(self, *, key: object) -> object:
+            raise asyncio.CancelledError()
+
+    cancelled_cache = ResponseCache(
+        store=CancelledStore(),
+        codec=object(),
+        version_token_factory=object(),
+        freshness_policy=object(),
+        clock=lambda: datetime.now(timezone.utc),
+    )
     with pytest.raises(asyncio.CancelledError):
-        await cache.invalidate(key=key)
+        await cancelled_cache.lookup(key=_key(), context=object())
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "error_name, expected_kind, closed",
+    [
+        ("CacheStoreOperationalError", "STORE", False),
+        ("CacheClosedStoreError", "CLOSED", True),
+        ("CacheCodecOperationalError", "CODEC", False),
+        ("CacheVersionTokenOperationalError", "VERSION_TOKEN", False),
+    ],
+)
+async def test_remember_maps_every_known_operational_failure_to_the_closed_outcome(
+    error_name: str, expected_kind: str, closed: bool
+) -> None:
+    """Closed stores skip; all other known collaborator failures become matching Failed values."""
+    from async_model_gateway.response_cache.cache import ResponseCache
+    from async_model_gateway.response_cache import errors, outcomes
+
+    error_type = getattr(errors, error_name)
+
+    class Store:
+        async def get(self, *, key: object) -> None:
+            return None
+
+        async def set(self, *, key: object, record: object) -> None:
+            if expected_kind == "STORE" or closed:
+                raise error_type()
+
+        async def delete(self, *, key: object) -> bool:
+            return False
+
+        async def delete_if_version(self, *, key: object, version_token: object) -> bool:
+            return False
+
+    class Codec:
+        codec_id = "utf-8"
+
+        def encode(self, *, value: str) -> bytes:
+            if expected_kind == "CODEC":
+                raise error_type()
+            return value.encode()
+
+        def decode(self, *, payload: bytes) -> str:
+            return payload.decode()
+
+    class Tokens:
+        def new(self) -> object:
+            if expected_kind == "VERSION_TOKEN":
+                raise error_type()
+            from async_model_gateway.response_cache.record import CacheVersionToken
+
+            return CacheVersionToken(value="token")
+
+    class Policy:
+        def expires_at(self, *, written_at: datetime) -> datetime:
+            return written_at + timedelta(seconds=1)
+
+    result = await ResponseCache(
+        store=Store(),
+        codec=Codec(),
+        version_token_factory=Tokens(),
+        freshness_policy=Policy(),
+        clock=lambda: datetime(2026, 8, 6, tzinfo=timezone.utc),
+    ).remember(key=_key(), value="value", context=object())
+
+    if closed:
+        assert result == outcomes.Skipped(reason=outcomes.CacheSkipReason.CLOSED)
+    else:
+        assert result == outcomes.Failed(kind=getattr(outcomes.CacheFailureKind, expected_kind))
+
+
+@pytest.mark.asyncio
+async def test_remember_propagates_awaited_store_cancellation_unchanged_without_outcome() -> None:
+    """A store cancellation is caller-owned, not a remember result."""
+    from async_model_gateway.response_cache.cache import ResponseCache
+    from async_model_gateway.response_cache.record import CacheVersionToken
+
+    cancellation = asyncio.CancelledError("store write cancelled")
+
+    class Store:
+        def __init__(self) -> None:
+            self.records: list[tuple[object, object]] = []
+
+        async def get(self, *, key: object) -> None:
+            return None
+
+        async def set(self, *, key: object, record: object) -> None:
+            self.records.append((key, record))
+            raise cancellation
+
+        async def delete(self, *, key: object) -> bool:
+            return False
+
+        async def delete_if_version(self, *, key: object, version_token: object) -> bool:
+            return False
+
+    class Codec:
+        codec_id = "utf-8"
+
+        def encode(self, *, value: str) -> bytes:
+            return value.encode()
+
+        def decode(self, *, payload: bytes) -> str:
+            return payload.decode()
+
+    class Tokens:
+        def new(self) -> CacheVersionToken:
+            return CacheVersionToken(value="token")
+
+    class Policy:
+        def expires_at(self, *, written_at: datetime) -> datetime:
+            return written_at + timedelta(seconds=1)
+
+    store = Store()
+    cache = ResponseCache(
+        store=store,
+        codec=Codec(),
+        version_token_factory=Tokens(),
+        freshness_policy=Policy(),
+        clock=lambda: datetime(2026, 8, 6, tzinfo=timezone.utc),
+    )
+
+    with pytest.raises(asyncio.CancelledError) as raised:
+        await cache.remember(key=_key(), value="value", context=object())
+
+    assert raised.value is cancellation
+    assert store.records[0][0] == _key()

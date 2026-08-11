@@ -1,13 +1,17 @@
-"""Minimal response-cache package boundary."""
+"""Target response-cache package boundary."""
+
+# ruff: noqa: RUF022
 
 from .cache import ResponseCache
-from .entry import ResponseCacheEntry
-from .key import ResponseCacheKey
-from .key_factory import ResponseCacheKeyFactory
+from .key import CacheKey
+from .outcomes import CacheHit, CacheMiss, Failed, Remembered, Skipped
 
 __all__ = [
     "ResponseCache",
-    "ResponseCacheEntry",
-    "ResponseCacheKey",
-    "ResponseCacheKeyFactory",
+    "CacheKey",
+    "CacheHit",
+    "CacheMiss",
+    "Remembered",
+    "Skipped",
+    "Failed",
 ]

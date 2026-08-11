@@ -7,8 +7,8 @@ from typing import Protocol
 
 
 class FreshnessPolicy(Protocol):
-    """Decide whether a stored response-cache record remains fresh."""
+    """Derive a stored record's write-time expiry."""
 
-    def is_fresh(self, *, written_at: datetime, now: datetime) -> bool:
-        """Return whether the record written at ``written_at`` is still fresh."""
+    def expires_at(self, *, written_at: datetime) -> datetime:
+        """Return the expiry timestamp derived from ``written_at``."""
         ...

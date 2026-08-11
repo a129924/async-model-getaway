@@ -1,0 +1,62 @@
+schema_version: 1
+topic: response-cache-contract-migration
+gate: forward-preflight
+status: passed
+created_by: Worktree-manager lane
+artifact_location:
+  worktree_branch: feat/andrew/response-cache-contract-migration
+  repo_relative_path: plan/response-cache-contract-migration/response-cache-contract-migration.forward-preflight.yaml
+preconditions:
+  feature_plan_review:
+    worktree_branch: feat/andrew/response-cache-contract-migration
+    repo_relative_path: plan/response-cache-contract-migration/response-cache-contract-migration.plan-review.json
+    access: feature-authoritative
+    verdict: approved
+  fresh_human_check:
+    worktree_branch: feat/andrew/response-cache-contract-migration
+    repo_relative_path: plan/response-cache-contract-migration/response-cache-contract-migration.fresh-human-check.json
+    decision: approved
+    status: cleared
+    terminal_lf: true
+    cleared_for: forward-preflight
+  moved_plan:
+    worktree_branch: feat/andrew/response-cache-contract-migration
+    repo_relative_path: plan/response-cache-contract-migration/response-cache-contract-migration.plan.md
+    sha256: 9a31c3f6f208927a4e242a51afce263956dd26422ccd443075eb5fa375877259
+    matches_fresh_human_check: true
+feature_worktree:
+  state: established
+  branch: feat/andrew/response-cache-contract-migration
+  managed_path_policy_verified: true
+  attached_branch_verified: true
+  collision_disposition: not-applicable
+historical_candidate_verification:
+  access: read-only
+  authority: non-gating provenance only
+  immutable_candidates:
+    historical_preflight:
+      repo_relative_path: plan/response-cache-contract-migration/response-cache-contract-migration.worktree-preflight.yaml
+      migration_snapshot_sha256: ad2d6060f0df50469491a4a1b32c04b32f0f7985d727df38b444b57b47a30a5d
+      observed_sha256: ad2d6060f0df50469491a4a1b32c04b32f0f7985d727df38b444b57b47a30a5d
+      matches_migration_snapshot: true
+      does_not_satisfy: fresh-review-or-human-or-forward gate
+    historical_red_evidence:
+      repo_relative_path: plan/response-cache-contract-migration/response-cache-contract-migration.red-tests.yaml
+      migration_snapshot_sha256: 193e4a6d36d54adb82ee67dbe07973f1dbb7924654404ff1cb8348404dcc514b
+      observed_sha256: 193e4a6d36d54adb82ee67dbe07973f1dbb7924654404ff1cb8348404dcc514b
+      matches_migration_snapshot: true
+      does_not_satisfy: fresh-review-or-human-or-forward gate
+recovery_candidate_observation:
+  completion_tracker:
+    repo_relative_path: plan/response-cache-contract-migration/response-cache-contract-migration.step.md
+    observed: absent
+    ownership: Implementer
+    creation_gate: passed-forward-preflight
+  production_edits:
+    observed: present
+    classification: existing-recovery-candidate
+    gate_authority: none
+    does_not_substitute_for: completion-tracker-or-implementation-review
+next_step:
+  owner: Implementer
+  action: create the absent completion tracker with the eight unchecked approved implementation entries before claiming tracked implementation progress

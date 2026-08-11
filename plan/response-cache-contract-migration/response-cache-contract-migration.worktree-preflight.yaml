@@ -1,0 +1,36 @@
+schema_version: 1
+topic: response-cache-contract-migration
+gate: worktree-preflight
+status: passed
+created_by: Main Agent / Worktree-manager lane
+artifact_location:
+  worktree_branch: feat/andrew/response-cache-contract-migration
+  repo_relative_path: plan/response-cache-contract-migration/response-cache-contract-migration.worktree-preflight.yaml
+preconditions:
+  plan_review:
+    worktree_branch: dev
+    repo_relative_path: plan/response-cache-contract-migration/response-cache-contract-migration.plan-review.json
+    access: read-only
+    verdict: approved
+    fresh: true
+  human_check:
+    worktree_branch: feat/andrew/response-cache-contract-migration
+    repo_relative_path: plan/response-cache-contract-migration/response-cache-contract-migration.human-check.json
+    decision: approved
+    status: cleared
+    terminal_lf: true
+    reissued: true
+feature_worktree:
+  state: established
+  branch: feat/andrew/response-cache-contract-migration
+  managed_path: ../async-model-getaway.worktrees/agent-20260806-response-cache-contract-migration
+  managed_path_policy_verified: true
+  attached_branch_verified: true
+  collision_disposition: not-applicable
+verification:
+  red_authoring_started: false
+  production_edits_started: false
+shared_artifact_coordination:
+  plan_review: read-only from the development worktree; no feature-worktree copy
+  human_check: feature-worktree authority; no synchronization to the development worktree
+  preflight: feature-worktree authority; no synchronization to the development worktree

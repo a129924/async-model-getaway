@@ -1,32 +1,58 @@
-"""RED coverage for the ResponseCacheEntry value surface."""
+"""RED coverage for the temporary legacy value and adapter route."""
 
 from __future__ import annotations
 
-from dataclasses import FrozenInstanceError, fields, is_dataclass
-from typing import get_type_hints
+from dataclasses import is_dataclass
 
 import pytest
-from async_model_gateway.response_cache import ResponseCacheEntry
 
 
-def test_response_cache_entry_is_a_frozen_dataclass_with_one_string_field() -> None:
-    """The entry surface should stay immutable and metadata-free."""
-    assert is_dataclass(ResponseCacheEntry)
-    assert ResponseCacheEntry.__dataclass_params__.frozen is True
-    assert [field.name for field in fields(ResponseCacheEntry)] == ["response"]
-    assert get_type_hints(ResponseCacheEntry) == {"response": str}
+def test_legacy_entry_wrapper_exists_only_in_compat_and_is_immutable() -> None:
+    """The target facade uses strings, while old callers retain one frozen wrapper."""
+    import async_model_gateway.response_cache.compat as compat
+
+    entry = compat.ResponseCacheEntry(response="legacy response")
+
+    assert is_dataclass(entry)
+    assert entry.response == "legacy response"
+    with pytest.raises((AttributeError, TypeError)):
+        entry.response = "mutated"  # type: ignore[misc]  # Intentional frozen-dataclass mutation.
 
 
-def test_response_cache_entry_preserves_literal_response_without_normalization() -> None:
-    """The entry should store the caller-provided response as-is."""
-    entry = ResponseCacheEntry(response="  cached response  ")
+def test_direct_legacy_entry_module_is_removed() -> None:
+    """A normal direct import of the deleted legacy module must fail."""
+    with pytest.raises(ModuleNotFoundError):
+        import async_model_gateway.response_cache.entry as legacy_entry  # noqa: F401
 
-    assert entry.response == "  cached response  "
 
+@pytest.mark.asyncio
+async def test_legacy_adapter_get_maps_target_hit_and_miss_without_context_retention() -> None:
+    """Legacy get supplies only its private sentinel to the target facade."""
+    import async_model_gateway.response_cache.compat as compat
+    from async_model_gateway.response_cache.outcomes import CacheHit, CacheMiss
 
-def test_response_cache_entry_rejects_mutation_after_construction() -> None:
-    """The entry contract should stay immutable after creation."""
-    entry = ResponseCacheEntry(response="cached response")
+    class Facade:
+        def __init__(self) -> None:
+            self.contexts: list[object] = []
 
-    with pytest.raises(FrozenInstanceError):
-        entry.response = "new response"
+        async def lookup(self, *, key: object, context: object) -> object:
+            self.contexts.append(context)
+            return CacheHit(value="target response")
+
+    class Invalidator:
+        async def invalidate(self, *, key: object) -> object:
+            return object()
+
+    facade = Facade()
+    with pytest.warns(DeprecationWarning):
+        adapter = compat.LegacyResponseCacheAdapter(facade=facade, invalidator=Invalidator())
+
+    assert await adapter.get(key=object()) == compat.ResponseCacheEntry("target response")
+
+    async def missing(*, key: object, context: object) -> object:
+        return CacheMiss()
+
+    facade.lookup = missing  # type: ignore[method-assign]  # Intentional test-double method replacement.
+    assert await adapter.get(key=object()) is None
+    assert len(facade.contexts) == 1
+    assert all(context is not None for context in facade.contexts)

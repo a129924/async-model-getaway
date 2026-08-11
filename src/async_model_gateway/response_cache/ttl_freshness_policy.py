@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from typing_extensions import override
 
@@ -10,9 +10,9 @@ from .freshness_policy import FreshnessPolicy
 
 
 class TtlFreshnessPolicy(FreshnessPolicy):
-    """Treat records as fresh strictly before an injected TTL boundary."""
+    """Derive strict positive-TTL expiry timestamps."""
 
-    def __init__(self, ttl: timedelta) -> None:
+    def __init__(self, *, ttl: timedelta) -> None:
         """Create a policy with one strictly positive time-to-live duration."""
         if ttl <= timedelta(0):
             msg = "ttl must be strictly positive"
@@ -20,6 +20,11 @@ class TtlFreshnessPolicy(FreshnessPolicy):
         self._ttl = ttl
 
     @override
-    def is_fresh(self, *, written_at: datetime, now: datetime) -> bool:
-        """Return whether ``now`` remains strictly before the expiry boundary."""
-        return now - written_at < self._ttl
+    def expires_at(self, *, written_at: datetime) -> datetime:
+        """Return the strictly later UTC expiry for ``written_at``."""
+        if written_at.tzinfo is None or written_at.utcoffset() != timedelta(0):
+            msg = "written_at must be an aware UTC timestamp"
+            raise ValueError(msg)
+        if written_at.tzinfo is not timezone.utc:
+            written_at = written_at.astimezone(timezone.utc)
+        return written_at + self._ttl

@@ -1,0 +1,202 @@
+review: independent-implementation-conformance-and-python-code-review
+topic: response-cache-contract-migration
+reviewer: independent-reviewer
+verdict: approved
+review_status: COMPLETE
+
+reviewed_change:
+  base_revision: dbba2efb6ab4a8b802dfdb122e561ad576fdea53
+  scope: >-
+    git diff --binary dbba2efb6ab4a8b802dfdb122e561ad576fdea53
+    ee064ce8b1c9f0159475250f426ac7b9b79378aa --
+    src/async_model_gateway/response_cache/compat.py
+    src/async_model_gateway/response_cache/record.py
+    src/async_model_gateway/response_cache/cache.py
+    src/async_model_gateway/response_cache/_in_memory_store.py
+    src/async_model_gateway/response_cache/ports/store.py
+    src/async_model_gateway/response_cache/ports/__init__.py
+    tests/response_cache/test_key_factory.py
+    tests/response_cache/test_canonical_feature_hasher.py
+    tests/response_cache/test_response_cache_contract_migration.py
+    tests/response_cache/test_cache.py
+    tests/response_cache/test_in_memory_store.py
+    tests/response_cache/test_response_cache_package_surface.py
+  diff_sha256: dea90171bf7b4797cc1db88634171f98de08be1eebfa8c93897e2e61d570c852
+  changed_source_test_paths:
+    - src/async_model_gateway/response_cache/_in_memory_store.py
+    - src/async_model_gateway/response_cache/cache.py
+    - src/async_model_gateway/response_cache/compat.py
+    - src/async_model_gateway/response_cache/ports/__init__.py
+    - src/async_model_gateway/response_cache/ports/store.py
+    - src/async_model_gateway/response_cache/record.py
+    - tests/response_cache/test_cache.py
+    - tests/response_cache/test_canonical_feature_hasher.py
+    - tests/response_cache/test_key_factory.py
+    - tests/response_cache/test_response_cache_contract_migration.py
+    - tests/response_cache/test_response_cache_package_surface.py
+  scoped_diff_check:
+    source_and_test_changes_within_closed_artifact_paths: true
+    no_unregistered_source_test_change: true
+    whitespace_errors: absent
+
+reviewed_plan:
+  sha256: 5ff88377a69cc2032274cc77b440441b29957266c6110ea142e4d633880a5c76
+  matches_required_binding: true
+
+current_gate_preconditions:
+  plan_review:
+    verdict: approved
+    reviewed_plan_sha256: 5ff88377a69cc2032274cc77b440441b29957266c6110ea142e4d633880a5c76
+  draft_pr_human_check:
+    decision: approved
+    status: cleared
+    cleared_for: publish-in-progress
+    reviewed_plan_sha256: 5ff88377a69cc2032274cc77b440441b29957266c6110ea142e4d633880a5c76
+  implementation_step_tracker:
+    status: complete
+    pending_implementation_steps: 0
+  historical_human_check:
+    sha256: f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b
+    terminal_byte: "7d"
+    working_tree_diff: false
+    current_gate_authority: none
+
+implementation_conformance:
+  verdict: approved
+  traceability_matrix:
+    - step: >-
+        Remove the deprecated factory create shortcut, retain only the predecessor
+        hasher constructor and explicit-namespace build, and prevent compat target leaks.
+      status: done
+      evidence:
+        - src/async_model_gateway/response_cache/compat.py:83
+        - tests/response_cache/test_key_factory.py:8
+        - tests/response_cache/test_response_cache_package_surface.py:82
+    - step: >-
+        Preserve predecessor pair-list feature-hash goldens, fail closed for non-string
+        pairs, and chain strict UTF-8 encoding failures.
+      status: done
+      evidence:
+        - src/async_model_gateway/response_cache/compat.py:49
+        - tests/response_cache/test_canonical_feature_hasher.py:28
+        - tests/response_cache/test_canonical_feature_hasher.py:48
+        - tests/response_cache/test_canonical_feature_hasher.py:58
+    - step: >-
+        Add the non-exported UnsupportedSchemaRecord and widen only CacheStore.get while
+        retaining StoredCacheRecord schema version 1.
+      status: done
+      evidence:
+        - src/async_model_gateway/response_cache/record.py:36
+        - src/async_model_gateway/response_cache/ports/store.py:16
+        - tests/response_cache/test_response_cache_contract_migration.py:65
+    - step: >-
+        Classify an unsupported-schema read before codec access, compare-delete with the
+        observed token, and return CacheMiss for expected cleanup outcomes.
+      status: done
+      evidence:
+        - src/async_model_gateway/response_cache/cache.py:59
+        - src/async_model_gateway/response_cache/cache.py:109
+        - src/async_model_gateway/response_cache/_in_memory_store.py:15
+        - tests/response_cache/test_cache.py:265
+        - tests/response_cache/test_cache.py:326
+    - step: >-
+        Keep atomic key-local replacement behavior and prove the token mismatch cannot
+        remove a concurrent replacement.
+      status: done
+      evidence:
+        - src/async_model_gateway/response_cache/_in_memory_store.py:27
+        - tests/response_cache/test_in_memory_store.py:50
+        - tests/response_cache/test_cache.py:265
+    - step: >-
+        Remove the ports-root CacheStore re-export and retain ordinary-import-only
+        negative-surface coverage without dynamic loading.
+      status: done
+      evidence:
+        - src/async_model_gateway/response_cache/ports/__init__.py:7
+        - tests/response_cache/test_response_cache_package_surface.py:38
+        - tests/response_cache/test_key_factory.py:25
+
+  scope_creep_check:
+    - non_goal: no public ResponseCache API, CacheKey identity/hash, invalidator, context, or legacy-adapter placement change
+      violated: no
+      evidence: facade remains two-method and target imports are private aliases in compat
+    - non_goal: no persistence, migration format, TTL-policy, timeout, retry, task, queue, or lifecycle feature
+      violated: no
+      evidence: diff is confined to the declared compatibility, record-read, store, and test contract changes
+    - non_goal: no source/test/CI/documentation change outside the exact Artifact Paths list, and no dynamic test import mechanism
+      violated: no
+      evidence: scoped diff check passed; tests/response_cache has no importlib, loader, exec, eval, runpy, or __import__ use
+
+  contract_check:
+    - item: deprecated factory accepts only hasher, has no create or namespace state, and build requires explicit namespace
+      status: matches
+      detail: compat.py exposes the locked constructor/build shape and tests verify both removed attributes.
+    - item: UnsupportedSchemaRecord is a narrow non-exported internal read marker and StoredCacheRecord accepts only schema 1
+      status: matches
+      detail: record.py keeps the marker out of __all__, enforces non-boolean non-1 schema values, and leaves StoredCacheRecord validation intact.
+    - item: CacheStore.get is the only widened port, and CacheStore is absent from ports root
+      status: matches
+      detail: ports.store declares the three-member read union while ports.__all__ excludes CacheStore.
+    - item: unsupported-schema lookup skips codec and clock use, token-guarded cleanup maps known operational failure to miss, and cancellation propagates
+      status: matches
+      detail: lookup branches before clock/codec access; _cleanup_stale catches only CacheOperationalError.
+    - item: compat does not leak imported target collaborators as module attributes
+      status: matches
+      detail: target imports use private aliases and ordinary-import surface tests assert all forbidden names are absent.
+
+  test_plan_check:
+    - case_type: explicit-namespace factory build and predecessor pair-list golden digests
+      status: present
+      location: tests/response_cache/test_key_factory.py:8
+    - case_type: invalid feature pairs, invalid schema marker use, and chained UTF-8 encoding failure
+      status: present
+      location: tests/response_cache/test_canonical_feature_hasher.py:48
+    - case_type: unsupported-schema no-decode cleanup and replacement race
+      status: present
+      location: tests/response_cache/test_cache.py:265
+    - case_type: cleanup operational failure maps to miss and cancellation remains caller-owned
+      status: present
+      location: tests/response_cache/test_cache.py:326
+    - case_type: ports-root and compat negative import surfaces using ordinary imports only
+      status: present
+      location: tests/response_cache/test_response_cache_package_surface.py:38
+
+python_code_quality:
+  verdict: approved
+  tooling_detected:
+    - "Ruff: E, W, F, N, D, UP, B, A, C4, ARG, RUF; line-length 100"
+    - "Pyright: strict; Python 3.10"
+    - "pytest: asyncio_mode=strict; coverage threshold 90%"
+  findings:
+    typing: []
+    lint: []
+    readability: []
+    error_handling: []
+    anti_patterns: []
+    test_quality: []
+    observability: []
+
+validation_evidence:
+  focused_declared_tests: "43 passed"
+  response_cache_suite: "55 passed"
+  full_pytest: "214 passed; 95.07% coverage"
+  ruff: passed
+  pyright_strict: "0 errors, 0 warnings, 0 informations"
+  pre_commit_exact_historical_path_excluded_selector: passed
+  git_diff_check: passed
+  historical_anchor_rechecked_after_validation:
+    sha256: f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b
+    terminal_byte: "7d"
+    working_tree_diff: false
+
+governance:
+  test_dynamic_loading_exception: none
+  grandfathered_model_payload_exception_used_as_precedent: false
+  reviewer_owned_artifact: true
+  terminal_lf_required: true
+
+gate_status: code-review-complete
+next_role: Main Agent
+next_action: >-
+  Run the current-plan-bound Draft-PR preflight, preserving the immutable historical
+  human-check and this approved review artifact.
