@@ -33,5 +33,8 @@ jobs:
       - name: Run pytest
         run: uv run pytest
 
+      - name: Guard historical human-check local paths
+        run: uv run python -m async_model_gateway._repo_hooks.local_path_guard plan/response-cache-contract-migration/response-cache-contract-migration.human-check.json
+
       - name: Run pre-commit
         run: uv run pre-commit run --files $(git ls-files -co --exclude-standard | rg -v '^plan/response-cache-contract-migration/response-cache-contract-migration\.human-check\.json$')
