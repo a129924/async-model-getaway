@@ -77,3 +77,48 @@ an invitation to widen the response-cache migration.
    `response_cache.ports.store`, not re-exported by `response_cache.ports`; `compat` must not
    expose imported target collaborators as accidental attributes. Package-surface tests prove
    both negative contracts with ordinary imports.
+
+## Delivery-governance reconciliation
+
+This narrow governance revision does not alter any Cache BC row above. It freezes the delivery
+evidence for those rows and authorizes one later CI-only change after the fresh planning gates.
+
+1. `plan/response-cache-contract-migration/response-cache-contract-migration.human-check.json`
+   is immutable historical provenance. Its required SHA-256 is
+   `f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b`, its final byte is
+   `0x7d`, and it has no final LF. Before and after CI validation, the Implementer must run the
+   exact non-writing commands declared by the topic plan: `shasum -a 256` for this path, a
+   last-byte check that asserts `0x7d` (and thus no final LF), and
+   `git diff --exit-code -- <historical-path>`. The CI workflow must first run the local-path
+   guard directly against that exact path; this read-only invocation must not normalize, stage,
+   format, restore, or otherwise write the file. It must then run the existing exact pre-commit
+   selector unchanged for every other repository file, excluding only that exact historical path.
+2. The only later implementation path added by this revision is `.github/workflows/ci.yml`.
+   It adds the separate local-path-guard step before the already-existing exact-selector
+   pre-commit step. No source, test, human, reviewer, preflight, or historical artifact is a
+   CI implementation target.
+3. The SHA authority for plan review and Human Draft-PR clearance is the SHA-256 of the topic
+   plan file's current bytes, as recomputed with `shasum -a 256` immediately before each actor
+   writes. It is never a Git blob, tree, or commit SHA. The fresh review and Human check must
+   record the same recomputed value in `reviewed_plan_sha256`; a plan-byte change invalidates both
+   gates and requires that sequence again.
+4. The final code-review gate is a new reviewer-owned aggregate artifact at
+   `plan/response-cache-contract-migration/response-cache-contract-migration.final-aggregate-review.yaml`.
+   It must bind one reviewed candidate with base revision
+   `dbba2efb6ab4a8b802dfdb122e561ad576fdea53`, the exact reviewed committed head revision,
+   the closed scope below, and the SHA-256 of the exact `git diff --binary <base> <head> --
+   <scope>` byte stream. The reviewer records the actual head and digest only after all scoped
+   changes are final; later scoped changes invalidate the evidence.
+   It also records both immutable-anchor command-result sets (`pre` and `post`): SHA-256,
+   `terminal_byte_hex: "0x7d"`, `final_lf_present: false`, and successful no-diff result, plus
+   an equality assertion. A formatter or any other mutation command is not an anchor check.
+5. The aggregate scope is exactly `.github/workflows/ci.yml`, the two revised analysis files,
+   the topic plan and Python specification, the six already-locked response-cache source paths,
+   and the six already-locked response-cache test paths declared in the topic plan. Gate
+   artifacts, including the aggregate artifact itself, are deliberately outside this digest so
+   the evidence is reproducible and non-self-referential.
+6. A pre-PR aggregate `needs-rework` is an `implement-plan` gate failure, not a transition to
+   `pr-open` or a PR-comment workflow. The bounded CI-only repair returns to `implement-plan`,
+   then a fresh aggregate review, then a fresh preflight while status remains
+   `publish-in-progress`. Any repair that changes scope or contract returns through
+   `spec-and-plan-finalization` and the canonical planning rework route.

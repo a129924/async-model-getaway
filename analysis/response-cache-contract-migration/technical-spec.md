@@ -254,3 +254,58 @@ with its replacement paths and must have no package-root re-export.
 | `src/async_model_gateway/response_cache/ttl_freshness_policy.py` | retained internal positive-TTL expiry implementation |
 
 No source, test, or documentation path above is modified by this planning task.
+
+## Delivery governance and final evidence
+
+This section is delivery governance, not a change to the runtime cache contract. The planning
+actor modifies no CI or evidence artifact in this revision. After fresh plan review and a
+current-file-SHA-256 Human clearance, the Implementer may change only `.github/workflows/ci.yml` as
+follows:
+
+1. Before the existing pre-commit step, run
+   `uv run python -m async_model_gateway._repo_hooks.local_path_guard plan/response-cache-contract-migration/response-cache-contract-migration.human-check.json`.
+   This is a read-only scan of the immutable historical file.
+2. Retain the existing pre-commit command byte-for-byte as the second step:
+   `uv run pre-commit run --files $(git ls-files -co --exclude-standard | rg -v '^plan/response-cache-contract-migration/response-cache-contract-migration\.human-check\.json$')`.
+   It runs all configured hooks on every other selected path and never supplies the historical
+   path to a potentially mutating hook.
+
+The immutable historical anchor is SHA-256
+`f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b`, terminal byte `0x7d`, and
+no final LF. Run the topic plan's exact non-writing anchor commands before and after validation:
+`shasum -a 256` for the historical path, the asserted last-byte `0x7d` / no-final-LF check, and
+`git diff --exit-code -- <historical-path>`. A formatter, restore, stage, or any mutation command
+is prohibited. Any anchor mismatch, nonzero no-diff check, local-path finding, changed selector,
+or historical-byte write fails the delivery gate; none can be repaired by rewriting the historical
+file.
+
+The SHA authority for both the fresh plan review and Human Draft-PR clearance is SHA-256 of the
+current bytes of `response-cache-contract-migration.plan.md`, recomputed with `shasum -a 256`
+immediately before each artifact is written. It is not a Git blob, tree, or commit SHA. Both
+artifacts record the matching recomputed value as `reviewed_plan_sha256`; any plan-byte drift
+invalidates both gates.
+
+After that CI-only implementation, a fresh reviewer creates
+`plan/response-cache-contract-migration/response-cache-contract-migration.final-aggregate-review.yaml`.
+It is the only final code-review evidence for this revision and records:
+
+- fixed `base_revision: dbba2efb6ab4a8b802dfdb122e561ad576fdea53`;
+- the exact immutable `head_revision` reviewed by the reviewer;
+- the ordered, closed `scope_paths` list from the topic plan;
+- the literal scoped `git diff --binary <base_revision> <head_revision> -- <scope_paths>` command;
+- `diff_sha256`, computed from that command's byte stream; and
+- an assertion that no scoped file changes after `head_revision` before preflight; and
+- immutable historical-anchor `pre` and `post` result objects, each containing its SHA-256,
+  `terminal_byte_hex: "0x7d"`, `final_lf_present: false`, and `git_diff_exit_code: 0`, with an
+  explicit equality assertion.
+
+The aggregate evidence excludes all gate artifacts, including itself, to avoid a self-referential
+digest. Existing `code-review.yaml`, all human artifacts, and all preflight artifacts are
+historical or stale for this revision and must not be edited by the Implementer.
+
+If final aggregate review reports `needs-rework` before a PR exists, it remains an
+`implement-plan` gate failure while the topic remains `publish-in-progress`: the Main Agent routes
+the closed CI-only repair through `implement-plan`, then requires a replacement aggregate review
+and fresh preflight. It must not enter `pr-comment` or
+`pr-comment-review-pr-comments-and-fix` before `pr-open`. A scope or contract change instead
+returns through `spec-and-plan-finalization` and canonical planning rework.

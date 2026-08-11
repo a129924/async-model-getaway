@@ -43,6 +43,16 @@
     and pair-list ordering, rejects non-`Mapping[str, str]` pairs with `TypeError`, and verifies
     that strict UTF-8 encoding failure is `TypeError` chained from `UnicodeEncodeError`; dynamic
     loading is prohibited.
+13. The immutable historical human-check remains byte-identical with SHA-256
+    `f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b`, final byte `0x7d`, and
+    no final LF. Before and after validation, the topic plan's non-writing SHA-256, terminal-byte,
+    no-final-LF, and no-Git-diff checks all pass; the final aggregate evidence records both result
+    sets. CI scans that exact file first with the local-path guard, then uses the existing
+    exact-selector pre-commit command for every other file. Final reviewer evidence binds the
+    fixed base revision, exact reviewed head, closed scope, and reproducible binary-diff digest.
+14. Fresh plan review and the Human Draft-PR check bind only the SHA-256 recomputed from the topic
+    plan file bytes immediately before each artifact is written; Git blob, tree, and commit SHAs
+    are not plan-SHA authority. Any plan-byte drift invalidates both gates.
 
 ## Behavioral Scenarios
 
@@ -133,6 +143,26 @@
   key/value input fails closed with `TypeError`, and the Unicode failure is `TypeError` chained
   from `UnicodeEncodeError`; no dynamic loading is used.
 
+### Scenario 12: CI preserves the historical anchor while checking every path
+
+- **Given**: the historical human-check has the locked digest, terminal byte, and no final LF.
+- **When**: CI reaches repository validation.
+- **Then**: it first invokes only the local-path guard on that exact file, then invokes the
+  pre-existing exact-selector pre-commit command for all other files; no hook receives or changes
+  the historical file, and the reviewer records matching pre/post SHA-256, `0x7d`, no-final-LF,
+  and clean-Git-diff results in final aggregate evidence.
+
+### Scenario 13: Final aggregate review is reproducible and non-self-referential
+
+- **Given**: the CI-only change and this revision's planning artifacts are final at one committed
+  candidate head.
+- **When**: the reviewer creates final aggregate evidence.
+- **Then**: it records base `dbba2efb6ab4a8b802dfdb122e561ad576fdea53`, that exact head, the
+  closed ordered scope, and the SHA-256 of the scoped binary diff; the evidence file and every
+  other gate artifact remain outside that digest, and later scoped drift requires a fresh review.
+  A pre-PR `needs-rework` returns to the bounded `implement-plan` repair, replacement aggregate
+  review, and fresh preflight loop without entering a PR-comment phase.
+
 ## Error / Edge Cases
 
 - `UnsupportedSchemaRecord`, expired record, decode failure, read failure, and cleanup failure are
@@ -147,3 +177,7 @@
 - Direct imports are required in tests; dynamic module loading is prohibited.
 - Direct old module routes are removed by the declared file deletions. Tests verify root and
   `compat` surfaces with ordinary imports and source/path disposition, never dynamic imports.
+- The historical human-check is neither formatted, normalized, staged, nor passed to pre-commit.
+  A local-path finding, anchor mismatch, final-LF/nonzero-diff result, selector change, or
+  post-review scoped change blocks preflight and requires the declared fresh-gate route rather
+  than a historical-file rewrite.
