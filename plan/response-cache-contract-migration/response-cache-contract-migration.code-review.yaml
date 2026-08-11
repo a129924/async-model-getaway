@@ -7,7 +7,8 @@ review_status: COMPLETE
 reviewed_change:
   base_revision: dbba2efb6ab4a8b802dfdb122e561ad576fdea53
   scope: >-
-    git diff --binary HEAD --
+    git diff --binary dbba2efb6ab4a8b802dfdb122e561ad576fdea53
+    ee064ce8b1c9f0159475250f426ac7b9b79378aa --
     src/async_model_gateway/response_cache/compat.py
     src/async_model_gateway/response_cache/record.py
     src/async_model_gateway/response_cache/cache.py
