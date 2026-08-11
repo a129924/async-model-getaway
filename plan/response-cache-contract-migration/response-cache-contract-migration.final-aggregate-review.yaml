@@ -1,0 +1,144 @@
+review: final-aggregate-implementation-conformance-and-python-code-review
+topic: response-cache-contract-migration
+reviewer: independent-aggregate-reviewer
+verdict: approved
+review_status: COMPLETE
+
+reviewed_change:
+  base_revision: dbba2efb6ab4a8b802dfdb122e561ad576fdea53
+  head_revision: 9dfbd0566f13b718749591da7cfd41ca80a5656d
+  head_is_immutable_for_review: true
+  scope_paths:
+    - .github/workflows/ci.yml
+    - analysis/response-cache-contract-migration/canonical-reconciliation.md
+    - analysis/response-cache-contract-migration/technical-spec.md
+    - plan/response-cache-contract-migration/response-cache-contract-migration.plan.md
+    - plan/response-cache-contract-migration/response-cache-contract-migration.spec.md
+    - src/async_model_gateway/response_cache/compat.py
+    - src/async_model_gateway/response_cache/record.py
+    - src/async_model_gateway/response_cache/cache.py
+    - src/async_model_gateway/response_cache/_in_memory_store.py
+    - src/async_model_gateway/response_cache/ports/store.py
+    - src/async_model_gateway/response_cache/ports/__init__.py
+    - tests/response_cache/test_key_factory.py
+    - tests/response_cache/test_canonical_feature_hasher.py
+    - tests/response_cache/test_response_cache_contract_migration.py
+    - tests/response_cache/test_cache.py
+    - tests/response_cache/test_in_memory_store.py
+    - tests/response_cache/test_response_cache_package_surface.py
+  scope_command: >-
+    git diff --binary dbba2efb6ab4a8b802dfdb122e561ad576fdea53
+    9dfbd0566f13b718749591da7cfd41ca80a5656d -- .github/workflows/ci.yml
+    analysis/response-cache-contract-migration/canonical-reconciliation.md
+    analysis/response-cache-contract-migration/technical-spec.md
+    plan/response-cache-contract-migration/response-cache-contract-migration.plan.md
+    plan/response-cache-contract-migration/response-cache-contract-migration.spec.md
+    src/async_model_gateway/response_cache/compat.py
+    src/async_model_gateway/response_cache/record.py
+    src/async_model_gateway/response_cache/cache.py
+    src/async_model_gateway/response_cache/_in_memory_store.py
+    src/async_model_gateway/response_cache/ports/store.py
+    src/async_model_gateway/response_cache/ports/__init__.py
+    tests/response_cache/test_key_factory.py
+    tests/response_cache/test_canonical_feature_hasher.py
+    tests/response_cache/test_response_cache_contract_migration.py
+    tests/response_cache/test_cache.py
+    tests/response_cache/test_in_memory_store.py
+    tests/response_cache/test_response_cache_package_surface.py
+  diff_sha256: 1a6172e8fc3e7d986b4997a2e5c5dd0dfa977dcf5c4d697444a2755524536cab
+  changed_scope_paths:
+    - .github/workflows/ci.yml
+    - analysis/response-cache-contract-migration/canonical-reconciliation.md
+    - analysis/response-cache-contract-migration/technical-spec.md
+    - plan/response-cache-contract-migration/response-cache-contract-migration.plan.md
+    - plan/response-cache-contract-migration/response-cache-contract-migration.spec.md
+    - src/async_model_gateway/response_cache/compat.py
+    - src/async_model_gateway/response_cache/record.py
+    - src/async_model_gateway/response_cache/cache.py
+    - src/async_model_gateway/response_cache/_in_memory_store.py
+    - src/async_model_gateway/response_cache/ports/store.py
+    - src/async_model_gateway/response_cache/ports/__init__.py
+    - tests/response_cache/test_key_factory.py
+    - tests/response_cache/test_canonical_feature_hasher.py
+    - tests/response_cache/test_response_cache_contract_migration.py
+    - tests/response_cache/test_cache.py
+    - tests/response_cache/test_response_cache_package_surface.py
+  post_head_scope_drift:
+    command: >-
+      git diff --name-only 9dfbd0566f13b718749591da7cfd41ca80a5656d HEAD --
+      <all scope_paths in declared order>
+    result: empty
+    no_scoped_drift: true
+
+immutable_historical_anchor:
+  expected_sha256: f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b
+  pre:
+    shasum_output: >-
+      f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b
+      plan/response-cache-contract-migration/response-cache-contract-migration.human-check.json
+    sha256: f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b
+    terminal_byte_hex: "0x7d"
+    final_lf_present: false
+    git_diff_exit_code: 0
+    local_path_guard_exit_code: 0
+  post:
+    shasum_output: >-
+      f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b
+      plan/response-cache-contract-migration/response-cache-contract-migration.human-check.json
+    sha256: f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b
+    terminal_byte_hex: "0x7d"
+    final_lf_present: false
+    git_diff_exit_code: 0
+    local_path_guard_exit_code: 0
+  pre_equals_post: true
+
+implementation_conformance:
+  verdict: approved
+  ci_only_change:
+    status: matches
+    detail: >-
+      CI invokes the exact historical-path local-path guard immediately before the
+      byte-identical exact-selector pre-commit command; no skip, hook override,
+      broad exclusion, or alternate selector is present.
+  cache_bc_contract:
+    status: matches
+    detail: >-
+      The deprecated factory has only hasher construction and explicit-namespace build;
+      unsupported schema reads use a non-exported token marker and token-guarded cleanup;
+      CacheStore remains submodule-public and compat target imports remain private aliases.
+  traceability:
+    - requirement: strict predecessor feature-pair hashing and removed factory create path
+      status: covered
+    - requirement: schema-1 stored-record invariant with safe unsupported-schema cleanup
+      status: covered
+    - requirement: ordinary-import-only negative package-surface coverage
+      status: covered
+    - requirement: immutable historical human-check CI protection
+      status: covered
+
+validation:
+  git_diff_check: passed
+  full_pytest:
+    result: 214 passed
+    coverage_percent: 95.07
+  ruff: passed
+  pyright_strict: 0 errors, 0 warnings, 0 informations
+  local_path_guard: passed
+  test_dynamic_loading_exception: none
+  grandfathered_model_payload_exception_used_as_precedent: false
+
+scope_creep:
+  verdict: absent
+  evidence: >-
+    The reviewed binary diff is bound to the declared closed 17-path scope; the final
+    aggregate artifact and all reviewer, human, and preflight gate artifacts are excluded
+    from that scope and digest.
+
+governance:
+  current_plan_sha256: bf87ab0f3db3e1b91ba48c79920485f72fcbbb51e63932fcdf4aa947846a0320
+  fresh_plan_review_binding: approved
+  fresh_draft_pr_human_check_binding: approved
+  reviewer_owned_artifact: true
+  self_reference: absent
+  next_role: Main Agent
+  next_action: Run fresh Draft-PR preflight before PR-open routing.

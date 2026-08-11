@@ -1,5 +1,6 @@
 {
   "verdict": "approved",
+  "reviewed_plan_sha256": "bf87ab0f3db3e1b91ba48c79920485f72fcbbb51e63932fcdf4aa947846a0320",
   "blocking_issues": [],
   "copilot_feedback_triage": {
     "ADDRESS": [],
@@ -7,7 +8,7 @@
     "SKIP": [
       {
         "comment": "Prior reviewer, human, code-review, and preflight evidence bound to earlier plan revisions.",
-        "why": "This independent approval binds only to response-cache-contract-migration.plan.md SHA-256 5ff88377a69cc2032274cc77b440441b29957266c6110ea142e4d633880a5c76. Review against plan/agent-handoff-workflow.md and plan/topic-plan-contract.md confirmed all canonical sections, the review-ready to reviewer-in-progress to approved route, current-plan-bound Draft-PR human check, explicit human merge, six exact source paths, no stable-library/release intent, JSON reviewer handoff, distinct actor boundaries, the Mapping[str, str] compatibility-hasher bridge, the non-exported UnsupportedSchemaRecord read union, and ordinary-import-only test governance. A fresh Human Draft-PR check, bounded implementation, code review, preflight, and explicit human merge remain required in the declared order."
+        "why": "This independent approval binds only to the current topic plan bytes identified by reviewed_plan_sha256. The plan retains canonical sections and transitions, an explicit current-file-SHA-256 Human Draft-PR gate, immutable-anchor checks, an ordered closed aggregate-review scope, and the pre-PR aggregate needs-rework route. A fresh Human Draft-PR check, the bounded CI-only implementation, a replacement final aggregate review, fresh preflight, and explicit human merge remain required in that order."
       }
     ]
   }

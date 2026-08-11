@@ -1,25 +1,113 @@
-schema_version: 1
+schema_version: 2
 topic: response-cache-contract-migration
 gate: draft-pr-preflight
-owner: reviewer/preflight
+owner: Main Agent
 status: passed
-plan_sha256: 5ff88377a69cc2032274cc77b440441b29957266c6110ea142e4d633880a5c76
-draft_pr_human_check: approved
-code_review: approved
-code_review_sha256: cd70fb683aadd150c34acd46c81b63b4a96cf4a897cbc00e2413c3a80de7c816
-command: >-
-  uv run pre-commit run --files $(git ls-files -co --exclude-standard | rg -v '^plan/response-cache-contract-migration/response-cache-contract-migration\.human-check\.json$')
-skip_used: false
-hook_override_used: false
-exclude_option_used: false
-exit_code: 0
-all_hooks_passed: true
-git_diff_check: passed
-historical_path: plan/response-cache-contract-migration/response-cache-contract-migration.human-check.json
-historical_pre_sha256: f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b
-historical_post_sha256: f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b
-historical_pre_terminal_byte: '0x7d'
-historical_post_terminal_byte: '0x7d'
-historical_anchor_equal: true
-historical_path_unmodified: true
 terminal_lf: true
+
+candidate:
+  head_revision: 9dfbd0566f13b718749591da7cfd41ca80a5656d
+  head_is_current: true
+  plan_sha256: bf87ab0f3db3e1b91ba48c79920485f72fcbbb51e63932fcdf4aa947846a0320
+
+fresh_gate_linkage:
+  plan_review:
+    path: plan/response-cache-contract-migration/response-cache-contract-migration.plan-review.json
+    verdict: approved
+    reviewed_plan_sha256: bf87ab0f3db3e1b91ba48c79920485f72fcbbb51e63932fcdf4aa947846a0320
+    matches_current_plan: true
+  draft_pr_human_check:
+    path: plan/response-cache-contract-migration/response-cache-contract-migration.draft-pr-human-check.json
+    decision: approved
+    status: cleared
+    reviewed_plan_sha256: bf87ab0f3db3e1b91ba48c79920485f72fcbbb51e63932fcdf4aa947846a0320
+    terminal_lf: true
+    matches_current_plan: true
+  final_aggregate_review:
+    path: plan/response-cache-contract-migration/response-cache-contract-migration.final-aggregate-review.yaml
+    artifact_sha256: 966e565c56f4b5e8ad76c5498de9ae0a02b99fc7c1c63e42d1faf6f584c737c1
+    verdict: approved
+    review_status: COMPLETE
+    base_revision: dbba2efb6ab4a8b802dfdb122e561ad576fdea53
+    head_revision: 9dfbd0566f13b718749591da7cfd41ca80a5656d
+    head_matches_current: true
+    current_plan_sha256: bf87ab0f3db3e1b91ba48c79920485f72fcbbb51e63932fcdf4aa947846a0320
+    plan_matches_current: true
+    post_head_scope_drift: absent
+
+immutable_historical_anchor:
+  path: plan/response-cache-contract-migration/response-cache-contract-migration.human-check.json
+  expected_sha256: f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b
+  pre:
+    shasum_command: shasum -a 256 plan/response-cache-contract-migration/response-cache-contract-migration.human-check.json
+    shasum_output: >-
+      f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b
+      plan/response-cache-contract-migration/response-cache-contract-migration.human-check.json
+    sha256: f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b
+    terminal_byte_command: >-
+      tail -c 1 plan/response-cache-contract-migration/response-cache-contract-migration.human-check.json
+      | od -An -t x1
+    terminal_byte_hex: '0x7d'
+    final_lf_present: false
+    git_diff_command: >-
+      git diff --exit-code --
+      plan/response-cache-contract-migration/response-cache-contract-migration.human-check.json
+    git_diff_exit_code: 0
+  post:
+    shasum_command: shasum -a 256 plan/response-cache-contract-migration/response-cache-contract-migration.human-check.json
+    shasum_output: >-
+      f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b
+      plan/response-cache-contract-migration/response-cache-contract-migration.human-check.json
+    sha256: f6ec59dbf3f5df4ba42359b9978c31bebd4bbf30b1645146ba1a4841508d417b
+    terminal_byte_command: >-
+      tail -c 1 plan/response-cache-contract-migration/response-cache-contract-migration.human-check.json
+      | od -An -t x1
+    terminal_byte_hex: '0x7d'
+    final_lf_present: false
+    git_diff_command: >-
+      git diff --exit-code --
+      plan/response-cache-contract-migration/response-cache-contract-migration.human-check.json
+    git_diff_exit_code: 0
+  pre_equals_post: true
+  historical_path_unmodified: true
+
+required_command_sequence:
+  - command: >-
+      uv run python -m async_model_gateway._repo_hooks.local_path_guard
+      plan/response-cache-contract-migration/response-cache-contract-migration.human-check.json
+    phase: historical-path-only
+    exit_code: 0
+    outcome: passed
+    writes_historical_path: false
+  - command: >-
+      uv run pre-commit run --files $(git ls-files -co --exclude-standard | rg -v
+      '^plan/response-cache-contract-migration/response-cache-contract-migration\.human-check\.json$')
+    phase: historical-path-excluded
+    exit_code: 0
+    outcome: all hooks passed
+    hooks:
+      - trim trailing whitespace
+      - fix end of files
+      - check yaml
+      - check toml
+      - check for merge conflicts
+      - check for added large files
+      - ruff (legacy alias)
+      - ruff format
+      - check local absolute paths
+      - pyright
+      - pytest
+    skip_used: false
+    hook_override_used: false
+    global_exclude_used: false
+    mutation_detected: false
+
+final_checks:
+  scoped_post_head_drift_command: >-
+    git diff --name-only 9dfbd0566f13b718749591da7cfd41ca80a5656d HEAD --
+    <all declared aggregate scope paths in order>
+  scoped_post_head_drift: absent
+  git_diff_check_command: git diff --check
+  git_diff_check_exit_code: 0
+  all_required_gates_passed: true
+  next_authorized_transition: pr-open
