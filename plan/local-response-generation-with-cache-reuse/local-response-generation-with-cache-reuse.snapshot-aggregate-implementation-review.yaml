@@ -1,0 +1,227 @@
+topic: local-response-generation-with-cache-reuse
+review: aggregate-implementation-review
+revision: invocation-snapshot-aggregate-review-reset
+status: COMPLETE
+active_for_gating: true
+verdict: approved
+review_status: COMPLETE
+
+immutable_scope:
+  baseline: d5c5b329fec43f1d46fabdb87e1afb55573eb424
+  head: f615fe42b859bf5da1fd9ac5a5157b05325535dc
+  comparison: cumulative committed range only
+  initial_worktree_state: clean
+  changed_paths:
+    - plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.code-review.yaml
+    - plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.human-check.json
+    - plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.implementation-review.yaml
+    - plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.plan-review.json
+    - plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.plan.md
+    - plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.red-tests.yaml
+    - plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.snapshot.plan-review.json
+    - plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.snapshot.red-tests.yaml
+    - plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.spec.md
+    - plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.step.md
+    - plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.validation-governance.yaml
+    - plan/local-response-generation-with-cache-reuse/pyrightconfig.json
+    - src/async_model_gateway/local_response/__init__.py
+    - src/async_model_gateway/local_response/_local_onnx_executor.py
+    - src/async_model_gateway/local_response/gateway.py
+    - src/async_model_gateway/local_response/request.py
+    - tests/local_response/test_gateway.py
+    - tests/local_response/test_local_response_package_surface.py
+    - tests/typecheck/local_response_generation_with_cache_reuse.py
+  path_authorization: approved
+  path_authorization_detail: >-
+    Every cumulative path is listed in the topic plan's Artifact Paths as a
+    declared topic artifact, implementation/test path, or cumulative local
+    package context. The cumulative diff contains no other path.
+
+historical_baseline_treatment:
+  prior_reviews: >-
+    The addfdb3-baseline implementation and code review artifacts are retained
+    unchanged as historical P1 evidence only. They are non-gating for this
+    aggregate review and were not used as snapshot approval evidence.
+  current_evidence: >-
+    This independent review covers the immutable cumulative range from the
+    actual PR baseline to the exact post-commit head above.
+
+preconditions:
+  snapshot_plan_review:
+    artifact: plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.snapshot.plan-review.json
+    verdict: approved
+  human_check:
+    artifact: plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.human-check.json
+    decision: approved
+    status: cleared
+  snapshot_red_evidence:
+    artifact: plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.snapshot.red-tests.yaml
+    verdict: red-tests-ready
+  implementation_step_gate:
+    command: python .agents/skills/plan-step-tracker/scripts/step_tracker.py check_impl_steps_succeeded local-response-generation-with-cache-reuse
+    result: all 3 implementation steps complete
+
+traceability_matrix:
+  - step: >-
+      Tester adds static-import gateway, package-surface, and strict type-witness
+      coverage for pre-await shallow snapshotting, same-object handoff,
+      materialization failure ordering, and the deterministic registry-suspend
+      mutation race.
+    status: done
+    evidence: >-
+      tests/local_response/test_gateway.py:618;
+      tests/local_response/test_gateway.py:681;
+      tests/local_response/test_local_response_package_surface.py:20;
+      tests/typecheck/local_response_generation_with_cache_reuse.py:63;
+      plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.snapshot.red-tests.yaml:26
+  - step: >-
+      Implementer updates only the gateway flow to make one shallow snapshot
+      after both guards and before registry freshness, then supplies that object
+      unchanged to the existing deriver and executor paths.
+    status: done
+    evidence: >-
+      src/async_model_gateway/local_response/gateway.py:87;
+      src/async_model_gateway/local_response/gateway.py:94;
+      src/async_model_gateway/local_response/gateway.py:100;
+      src/async_model_gateway/local_response/gateway.py:117
+  - step: >-
+      Implementer runs declared validation, verifies written and ReadOnly paths,
+      and updates the tracker truthfully before fresh aggregate review.
+    status: done
+    evidence: >-
+      plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.step.md:28;
+      immutable cumulative path comparison; focused/full tests, Pyright, Ruff,
+      lock, and diff validation rerun by this reviewer.
+
+scope_creep_check:
+  - non_goal: >-
+      No public API, package export, request DTO, cache-key algorithm, registry,
+      cache, model-artifact, default-executor, documentation, or version edit.
+    violated: no
+    evidence: >-
+      No cumulative diff in README.md, docs/architecture.md, pyproject.toml, or
+      declared ReadOnly owners; package/request surface coverage is at
+      tests/local_response/test_local_response_package_surface.py:20.
+  - non_goal: >-
+      No deep copy, recursive freeze, leaf-mutation protection, task, lock,
+      singleflight, retry, timeout, lifecycle, persistence, invalidation,
+      dependency, remote, or non-ONNX execution work.
+    violated: no
+    evidence: >-
+      src/async_model_gateway/local_response/gateway.py:94 materializes one
+      shallow dict and lines 95, 107, 117, and 119 retain direct awaits only;
+      tests/local_response/test_gateway.py:618 verifies leaf identity and
+      independent miss behavior remains covered at line 702.
+  - non_goal: >-
+      Tests use static imports; no dynamic module-loading exception is authorized
+      for this topic.
+    violated: no
+    evidence: >-
+      The fixed-range test diff has no importlib, __import__,
+      spec_from_file_location, or SourceFileLoader match. The repository-wide
+      scan's sole match is an unchanged baseline test outside this topic; it is
+      not claimed as an exception or precedent by this review.
+
+contract_check:
+  - item: >-
+      Guards precede snapshot materialization, which precedes the first registry
+      await.
+    status: matches
+    detail: >-
+      gateway.py:87-95 performs LOCAL and ONNX guards, then exactly one
+      dict(request.invocation) immediately before resolve_freshness.
+  - item: >-
+      The same shallow snapshot reaches deriver and executor, while the deriver's
+      opaque CacheKey reaches lookup and remember unchanged.
+    status: matches
+    detail: >-
+      gateway.py:100-107 and gateway.py:117-123 reuse invocation_snapshot and
+      key; the suspend-point regression asserts the two identities and both key
+      handoffs at tests/local_response/test_gateway.py:658-677.
+  - item: >-
+      Snapshot materialization failure propagates unchanged before every later
+      collaborator observation.
+    status: matches
+    detail: >-
+      gateway.py:94 has no surrounding catch or await; tests/local_response/test_gateway.py:681-698
+      asserts the sentinel identity and zero collaborator calls.
+  - item: >-
+      Existing private protocols and public package/request surfaces remain
+      unchanged, including no public export of private helpers.
+    status: matches
+    detail: >-
+      gateway.py:32-59 preserves private callable shapes; __init__.py:3-6
+      exports only gateway and request; package surface and strict witness pass
+      at tests/local_response/test_local_response_package_surface.py:20 and
+      tests/typecheck/local_response_generation_with_cache_reuse.py:63.
+  - item: >-
+      Cache outcomes, fresh contexts, privacy, direct awaits, exceptions,
+      cancellation, and independent misses retain their behavior.
+    status: matches
+    detail: >-
+      gateway.py:107-129 retains opaque-key cache use, fresh object contexts,
+      exhaustive matching, fail-open remembers, and no catch/task/lock; focused
+      coverage spans tests/local_response/test_gateway.py:316-779.
+
+test_plan_check:
+  - case_type: guarded happy-path cache hit/miss and unchanged opaque-key handoff
+    status: present
+    location: tests/local_response/test_gateway.py:316; tests/local_response/test_gateway.py:347
+  - case_type: deterministic pre-await snapshot mutation race and shallow leaf identity
+    status: present
+    location: tests/local_response/test_gateway.py:618
+  - case_type: materialization failure before all collaborator observation
+    status: present
+    location: tests/local_response/test_gateway.py:681
+  - case_type: guard, outcome, propagation, cancellation, and independent-miss regression
+    status: present
+    location: tests/local_response/test_gateway.py:510; tests/local_response/test_gateway.py:533; tests/local_response/test_gateway.py:596; tests/local_response/test_gateway.py:702
+  - case_type: package/private protocol and strict public typing surface
+    status: present
+    location: tests/local_response/test_local_response_package_surface.py:59; tests/typecheck/local_response_generation_with_cache_reuse.py:63
+
+validation_evidence:
+  focused_pytest:
+    command: uv run --no-sync --locked -- pytest --no-cov tests/local_response -v
+    result: 24 passed
+  full_pytest:
+    command: uv run --no-sync --locked -- pytest --no-cov -q
+    result: 238 passed
+  locked_topic_pyright:
+    command: >-
+      uv run --no-sync --locked -- pyright --project
+      plan/local-response-generation-with-cache-reuse/pyrightconfig.json
+    result: 0 errors, 0 warnings, 0 informations
+  global_pyright:
+    command: uv run --no-sync --locked -- pyright
+    result: 0 errors, 0 warnings, 0 informations
+  ruff:
+    command: >-
+      uv run --no-sync --locked -- ruff check src tests
+      plan/local-response-generation-with-cache-reuse
+    result: passed
+  lock_check:
+    command: uv lock --check
+    result: passed
+  diff_check:
+    command: >-
+      git diff --check d5c5b329fec43f1d46fabdb87e1afb55573eb424
+      f615fe42b859bf5da1fd9ac5a5157b05325535dc
+    result: clean
+  dynamic_module_loading:
+    topic_test_diff: passed
+    detail: >-
+      No topic exception is declared or used. An unrelated standard importlib
+      call exists in an unchanged baseline test outside this range; it is not
+      approved, reused, or treated as precedent by this topic review.
+
+blocking_issues: []
+
+next_gate:
+  status: ready-for-independent-aggregate-code-review
+  required_artifact: plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.snapshot-aggregate-code-review.yaml
+  scope: >-
+    Independently perform python-code-review over the same immutable cumulative
+    range d5c5b329fec43f1d46fabdb87e1afb55573eb424..f615fe42b859bf5da1fd9ac5a5157b05325535dc.
+  constraint: >-
+    The historical addfdb3-baseline code review does not satisfy this gate.

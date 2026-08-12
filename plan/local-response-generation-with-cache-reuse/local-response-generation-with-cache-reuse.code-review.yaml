@@ -1,0 +1,82 @@
+topic: local-response-generation-with-cache-reuse
+review: python-code-review
+revision: p1-cache-key-deriver-identity-fix
+status: COMPLETE
+active_for_gating: true
+verdict: approved
+tooling_detected: "pyproject.toml: pyright strict; ruff; pytest"
+
+precondition:
+  implementation_review:
+    artifact: plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.implementation-review.yaml
+    verdict: approved
+    status: COMPLETE
+
+findings:
+  typing: []
+  lint: []
+  readability: []
+  error_handling: []
+  anti_patterns: []
+  test_quality: []
+  observability: []
+
+review_scope:
+  baseline: addfdb3
+  source:
+    - src/async_model_gateway/local_response/gateway.py
+  tests:
+    - tests/local_response/test_gateway.py
+    - tests/local_response/test_local_response_package_surface.py
+    - tests/typecheck/local_response_generation_with_cache_reuse.py
+  topic_artifacts:
+    - plan/local-response-generation-with-cache-reuse/
+
+boundary_and_contract_checks:
+  cache_key_owner: >-
+    approved: _CacheKeyDeriver is the injected identity-policy owner. The gateway
+    neither constructs nor mutates CacheKey, namespace, digest, canonical form, or
+    collision policy; it forwards all five locked inputs only to that collaborator.
+  unchanged_key_handoff: >-
+    approved: the single key returned by the deriver is passed unchanged to both
+    lookup and remember.
+  public_surface: >-
+    approved: the keyword-only constructor replaces only the unmerged private seam;
+    _CacheKeyDeriver remains module-private and is not package/root exported.
+  async_and_errors: >-
+    approved: registry/cache/executor calls remain direct awaits; no task, lock,
+    retry, timeout, catch, or cancellation suppression was introduced. Deriver
+    failure stops before lookup and propagates unchanged.
+  privacy: >-
+    approved: raw model name, invocation, and artifact are sent only to the
+    deriver; cache receives only its opaque key and fresh object contexts.
+  test_governance: >-
+    approved: topic tests use static imports only. No dynamic-loading exception is
+    declared or used.
+  scope: >-
+    approved: the diff from addfdb3 changes only declared P1 source/test/witness
+    paths and topic artifacts; ReadOnly owners remain untouched.
+
+validation_evidence:
+  focused_pytest: "uv run pytest --no-cov tests/local_response -v: 22 passed"
+  topic_pyright: >-
+    uv run --no-sync --locked -- pyright --project
+    plan/local-response-generation-with-cache-reuse/pyrightconfig.json:
+    0 errors, 0 warnings, 0 informations
+  ruff: >-
+    uv run --no-sync --locked -- ruff check src/async_model_gateway/local_response
+    tests/local_response tests/typecheck/local_response_generation_with_cache_reuse.py:
+    passed
+  diff_check: "git diff --check addfdb3: passed"
+  dynamic_test_import_check: >-
+    No importlib, __import__, spec_from_file_location, or SourceFileLoader match
+    in the topic test paths.
+
+blocking_issues: []
+
+next_gate:
+  status: ready-for-human-merge-gate
+  detail: >-
+    P1 implementation-review and python-code-review are approved. The Implementer
+    may commit and push the reviewed P1 scope. After that push, the thread-aware
+    Reviewer may resolve only P1 review threads; Human merge approval remains required.

@@ -1,0 +1,153 @@
+topic: local-response-generation-with-cache-reuse
+review: implementation-review
+revision: p1-cache-key-deriver-identity-fix
+status: COMPLETE
+active_for_gating: true
+verdict: approved
+review_status: COMPLETE
+
+preconditions:
+  plan_review:
+    status: approved
+    artifact: plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.plan-review.json
+  human_check:
+    status: cleared
+    artifact: plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.human-check.json
+  red_test_evidence:
+    status: red-tests-ready
+    artifact: plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.red-tests.yaml
+  implementation_step_gate: passed
+  validation_governance:
+    status: COMPLETE
+    artifact: plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.validation-governance.yaml
+    independently_verified: true
+
+blocking_issues: []
+
+traceability_matrix:
+  - step: >-
+      1. Tester updates only the declared gateway/package/type-witness tests for
+      _CacheKeyDeriver, records RED/type evidence, and verifies no dynamic module loading.
+    status: done
+    evidence: >-
+      tests/local_response/test_gateway.py:94;
+      tests/local_response/test_gateway.py:330;
+      tests/local_response/test_local_response_package_surface.py:59;
+      tests/typecheck/local_response_generation_with_cache_reuse.py:16;
+      plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.red-tests.yaml
+  - step: >-
+      2. Implementer updates only gateway.py to inject and use the returned cache key
+      unchanged while preserving locked behavior.
+    status: done
+    evidence: >-
+      src/async_model_gateway/local_response/gateway.py:32;
+      src/async_model_gateway/local_response/gateway.py:65;
+      src/async_model_gateway/local_response/gateway.py:94;
+      src/async_model_gateway/local_response/gateway.py:116
+  - step: >-
+      3. Implementer runs declared validation, verifies the path contract, and updates
+      the tracker truthfully.
+    status: done
+    evidence: >-
+      Focused pytest: 22 passed; full pytest: 236 passed; locked topic Pyright,
+      global Pyright, Ruff, uv lock --check, and git diff --check passed. git status
+      and git diff show only declared Written paths; ReadOnly and Modify paths are clean.
+
+scope_creep_check:
+  - non_goal: >-
+      No changes to ModelRegistry, ResponseCache, CacheKey, ModelPayloadHasher,
+      ModelArtifact, local composition, executor, package exports, request DTO, or model-source semantics.
+    violated: no
+    evidence: >-
+      git diff --name-only HEAD; all listed ReadOnly paths have no diff.
+  - non_goal: >-
+      No gateway-owned cache algorithm, feature hashing, canonical serialization,
+      digest selection, collision handling, or namespace construction.
+    violated: no
+    evidence: src/async_model_gateway/local_response/gateway.py:99
+  - non_goal: >-
+      No remote/non-ONNX execution, singleflight, lock, retry, timeout, lifecycle,
+      persistence, invalidation, release work, or dependency.
+    violated: no
+    evidence: src/async_model_gateway/local_response/gateway.py:85
+  - non_goal: Do not expose _CacheKeyDeriver from the package or root package.
+    violated: no
+    evidence: src/async_model_gateway/local_response/gateway.py:29
+  - non_goal: >-
+      Do not place raw prompts, model names, or artifact paths in a cache namespace,
+      cache context, or cache record.
+    violated: no
+    evidence: src/async_model_gateway/local_response/gateway.py:99
+  - non_goal: Tests use static imports; dynamic module loading is not authorized.
+    violated: no
+    evidence: >-
+      No dynamic-loading match in tests/local_response or
+      tests/typecheck/local_response_generation_with_cache_reuse.py. The only
+      repository-wide match is unchanged, unrelated model-artifact package-surface coverage.
+
+contract_check:
+  - item: Exact private _CacheKeyDeriver protocol and keyword-only constructor replacement.
+    status: matches
+    detail: >-
+      gateway.py:32-43 declares all five keyword-only inputs and CacheKey return;
+      gateway.py:65-73 accepts cache_key_deriver and no hash_features.
+  - item: Gateway hands the deriver result unchanged to lookup and remember after guards and freshness.
+    status: matches
+    detail: >-
+      gateway.py:87-121 guards first, awaits freshness, invokes the deriver with every
+      locked input, and reuses the one key variable for both cache calls.
+  - item: Deriver owns identity policy and cache-facing privacy is preserved.
+    status: matches
+    detail: >-
+      gateway.py contains no CacheKey construction or cache-identity algorithm; contexts
+      are fresh object() calls at gateway.py:106 and gateway.py:121.
+  - item: Existing outcomes, propagation, cancellation, and independent-miss behavior remain unchanged.
+    status: matches
+    detail: >-
+      gateway.py:108-128 preserves exhaustive cache-outcome matching and direct awaits
+      without a catch, task, lock, retry, timeout, or background owner.
+  - item: ReadOnly owners, package/root exports, request DTO, and default executor remain unchanged.
+    status: matches
+    detail: >-
+      No diff in the declared ReadOnly paths; package-surface regression coverage passes.
+
+test_plan_check:
+  - case_type: private protocol, constructor, package surface, and strict typed construction
+    status: present
+    location: tests/local_response/test_local_response_package_surface.py:59; tests/typecheck/local_response_generation_with_cache_reuse.py:63
+  - case_type: cache hit, miss order, unchanged-key handoff, and write outcomes
+    status: present
+    location: tests/local_response/test_gateway.py:263; tests/local_response/test_gateway.py:294
+  - case_type: changed invocation and changed model name cannot cross-hit; artifact is supplied
+    status: present
+    location: tests/local_response/test_gateway.py:330; tests/local_response/test_gateway.py:374
+  - case_type: privacy and distinct fresh contexts
+    status: present
+    location: tests/local_response/test_gateway.py:330; tests/local_response/test_gateway.py:421
+  - case_type: local/ONNX guards, closed outcomes, failure, and cancellation propagation
+    status: present
+    location: tests/local_response/test_gateway.py:460; tests/local_response/test_gateway.py:479; tests/local_response/test_gateway.py:533; tests/local_response/test_gateway.py:550
+  - case_type: independent concurrent same-key misses and default executor continuity
+    status: present
+    location: tests/local_response/test_gateway.py:565; tests/local_response/test_gateway.py:609
+
+validation_evidence:
+  focused_pytest: "uv run pytest --no-cov tests/local_response -v: 22 passed"
+  full_pytest: "uv run pytest --no-cov -q: 236 passed"
+  locked_topic_pyright: >-
+    uv run --no-sync --locked -- pyright --project
+    plan/local-response-generation-with-cache-reuse/pyrightconfig.json:
+    0 errors, 0 warnings, 0 informations
+  global_pyright: "uv run --no-sync --locked -- pyright: 0 errors, 0 warnings, 0 informations"
+  ruff: "uv run --no-sync --locked -- ruff check src tests plan/local-response-generation-with-cache-reuse: passed"
+  lock_check: "uv lock --check: passed"
+  diff_check: "git diff --check: passed"
+  dynamic_test_import_check: >-
+    Topic test paths have no importlib, __import__, spec_from_file_location, or
+    SourceFileLoader matches. No topic exception is declared or used.
+
+next_gate:
+  status: ready-for-independent-code-review
+  detail: >-
+    P1 implementation conformance is approved. An independent python-code-review
+    is required next; this verdict neither performs nor replaces that gate.

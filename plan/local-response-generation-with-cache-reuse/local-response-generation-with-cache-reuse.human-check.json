@@ -1,0 +1,13 @@
+{
+    "topic": "local-response-generation-with-cache-reuse",
+    "gate": "human-check",
+    "decision": "approved",
+    "status": "cleared",
+    "plan_review_verdict": "approved",
+    "cleared_for": "implement-plan",
+    "cleared": true,
+    "authorization": "Execution Authorized",
+    "revision": "invocation-snapshot-aggregate-review-reset",
+    "recorded_on": "2026-08-12",
+    "summary": "Human approves the reviewed invocation snapshot revision. LocalResponseGateway must create one top-level shallow invocation snapshot after local/ONNX guards and before registry freshness; the cache-key deriver and executor must receive that same snapshot. Nested or opaque leaf objects are not deep-copied and must not be mutated by the caller while generation is running. Documentation remains deferred to the post-merge 0.8.0 release phase. This clearance authorizes fresh RED tests and implementation, followed by aggregate reviews against the full PR range."
+}

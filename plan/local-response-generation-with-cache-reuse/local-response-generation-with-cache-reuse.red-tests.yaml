@@ -1,0 +1,153 @@
+topic: local-response-generation-with-cache-reuse
+phase: tdd-test-authoring
+status: COMPLETE
+active_for_gating: true
+verdict: red-tests-ready
+supersedes: >-
+  The historical hash_features RED evidence. This replacement covers the
+  Human-cleared P1 private cache-key-deriver identity correction.
+authored_on: "2026-08-12"
+d1_verdict:
+  verdict: non-trivial
+  reason: >-
+    bug_fix and constructor seam change: complete cache identity must prevent
+    invocation and model-name cross-hits while preserving async cache flow.
+d2_evidence: sufficient
+behavior_contract:
+  source: plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.spec.md
+  active_acceptance_criteria:
+    - AC-1
+    - AC-2
+    - AC-3
+    - AC-4
+    - AC-5
+    - AC-6
+    - AC-7
+    - AC-8
+    - AC-9
+test_mapping:
+  - requirement_id: AC-1
+    test_case_name: test_private_callable_protocols_have_the_frozen_annotations_without_becoming_exports
+    coverage_category: public_contract
+  - requirement_id: AC-2
+    test_case_name: test_gateway_constructor_and_generate_signature_are_the_locked_public_contract
+    coverage_category: public_contract
+  - requirement_id: AC-2
+    test_case_name: check_public_gateway_preserves_the_frozen_typed_surface
+    coverage_category: static_typing
+  - requirement_id: AC-3
+    test_case_name: test_cache_miss_uses_locked_order_key_and_fail_open_write_outcomes
+    coverage_category: integration_points
+  - requirement_id: AC-3
+    test_case_name: test_cache_hit_returns_before_execution_conversion_or_write
+    coverage_category: happy_path
+  - requirement_id: AC-4
+    test_case_name: test_changed_invocation_derives_a_distinct_key_without_a_cross_hit
+    coverage_category: regression
+  - requirement_id: AC-4
+    test_case_name: test_changed_model_name_derives_a_distinct_key_without_a_cross_hit
+    coverage_category: regression
+  - requirement_id: AC-5
+    test_case_name: test_changed_invocation_derives_a_distinct_key_without_a_cross_hit
+    coverage_category: privacy
+  - requirement_id: AC-5
+    test_case_name: test_changed_model_name_derives_a_distinct_key_without_a_cross_hit
+    coverage_category: privacy
+  - requirement_id: AC-6
+    test_case_name: test_cache_context_sentinels_are_fresh_distinct_objects_and_not_request_data
+    coverage_category: state_side_effects
+  - requirement_id: AC-7
+    test_case_name: test_unexpected_closed_cache_outcomes_reach_assert_never
+    coverage_category: boundary_edge
+  - requirement_id: AC-7
+    test_case_name: test_concurrent_same_key_misses_direct_await_separate_execution_paths
+    coverage_category: integration_points
+  - requirement_id: AC-8
+    test_case_name: test_deriver_failure_propagates_before_lookup_or_remember
+    coverage_category: error_exception
+  - requirement_id: AC-8
+    test_case_name: test_cancellation_from_executor_propagates_unchanged_without_a_write
+    coverage_category: error_exception
+  - requirement_id: AC-9
+    test_case_name: test_local_response_exports_exactly_the_two_declared_public_types
+    coverage_category: backward_compatibility
+validation_checks:
+  d1_decision: passed
+  behavior_contract_source: plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.spec.md
+  requirements_mapped: true
+  public_contract_coverage: true
+  test_categories_present:
+    happy_path: true
+    error_exception: true
+    boundary_edge: true
+    state_side_effects: true
+    integration_points: true
+  expected_initial_status: red
+  production_code_modified: false
+  approved_plan_review:
+    path: plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.plan-review.json
+    verdict: approved
+    passed: true
+  human_check:
+    path: plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.human-check.json
+    decision: approved
+    status: cleared
+    revision: cache-key-deriver-identity-fix
+    passed: true
+  production_baseline_guard:
+    command: git diff --name-only -- src
+    result: no output
+    passed: true
+    scope: >-
+      No production source changed during this replacement RED subphase; the
+      pre-existing gateway is the Human-cleared old-behavior baseline.
+  source_governance:
+    static_imports_only: true
+    dynamic_module_loading_matches: []
+    command: >-
+      rg -n '(importlib|__import__|spec_from_file_location|SourceFileLoader)'
+      tests/local_response tests/typecheck/local_response_generation_with_cache_reuse.py
+    exit_code: 1
+    passed: true
+  focused_pytest:
+    command: uv run pytest --no-cov tests/local_response -v
+    exit_code: 1
+    expected_nonzero: true
+    collected_tests: 22
+    passed_tests: 2
+    failed_tests: 20
+    primary_failure: >-
+      LocalResponseGateway.__init__ does not accept cache_key_deriver; the old
+      gateway still accepts hash_features. Package-surface coverage also confirms
+      the missing _CacheKeyDeriver protocol.
+    failure_matches_missing_approved_boundary: true
+    passed: true
+  dedicated_pyright:
+    command: >-
+      uv run pyright --project
+      plan/local-response-generation-with-cache-reuse/pyrightconfig.json
+    exit_code: 1
+    expected_nonzero: true
+    analyzed_fixture: tests/typecheck/local_response_generation_with_cache_reuse.py
+    errors: 2
+    warnings: 0
+    primary_diagnostics:
+      - Argument missing for parameter hash_features
+      - No parameter named cache_key_deriver
+    failure_matches_missing_approved_boundary: true
+    passed: true
+  ruff:
+    command: >-
+      uv run ruff check tests/local_response
+      tests/typecheck/local_response_generation_with_cache_reuse.py
+    exit_code: 0
+    passed: true
+  diff_check:
+    command: git diff --check
+    exit_code: 0
+    passed: true
+issues: []
+next_step: >-
+  Implement only src/async_model_gateway/local_response/gateway.py for the
+  approved _CacheKeyDeriver seam, then rerun focused pytest and topic Pyright
+  until GREEN before implementation review.

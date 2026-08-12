@@ -1,0 +1,6 @@
+{
+  "include": ["../../tests/typecheck/local_response_generation_with_cache_reuse.py"],
+  "extraPaths": ["../../src"],
+  "pythonVersion": "3.10",
+  "typeCheckingMode": "strict"
+}
