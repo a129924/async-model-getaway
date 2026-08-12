@@ -1,103 +1,73 @@
-> Analysis routing — explicit human override: `analysis/local-response-generation-with-cache-reuse/requirements.md` and `analysis/local-response-generation-with-cache-reuse/technical-spec.md` do not exist. The approved, frozen chat contract is the execution-facing source of truth for this topic. This absence must not expand scope or block plan review.
+> Analysis routing — explicit human override: `analysis/local-response-generation-with-cache-reuse/requirements.md` and `analysis/local-response-generation-with-cache-reuse/technical-spec.md` do not exist. The human-locked P1 correction contract below is the execution-facing source of truth. This absence does not expand scope or block the new plan review.
 
 # local-response-generation-with-cache-reuse
 
 ## Goal / Outcome
 
-### Goal
-
-Add the bounded public `async_model_gateway.local_response` entrypoint. Its
-`LocalResponseGateway.generate()` accepts a caller-supplied local ONNX artifact,
-reuses an existing response-cache hit, and otherwise delegates one invocation to
-the existing internal local composition before remembering the converted string.
-
-After a verified merge, promote only the declared documentation and version
-metadata to `0.8.0` and create lightweight tag `v0.8.0`; this does not create a
-GitHub Release or publish a package.
+Amend the local-response cache identity seam so `LocalResponseGateway` privately
+injects `_CacheKeyDeriver`, delegates the complete identity inputs to it after
+registry freshness, and passes its resulting `CacheKey` unchanged to the existing
+cache facade. The amendment must prevent cache cross-hits when either invocation
+or model name differs, while preserving the existing local/ONNX guards, context,
+outcome, and async policies.
 
 ## Scope
 
-### In-Scope
+### In scope
 
-- A frozen, slotted `LocalResponseRequest` and public `LocalResponseGateway` in
-  `async_model_gateway.local_response`.
-- Local + `LoaderFamily.ONNX` validation before every collaborator call.
-- Registry freshness, injected feature hashing, existing `ResponseCache` reuse,
-  one internal local execution through the declared private ONNX adapter,
-  ONNX-result conversion, and fail-open cache write handling in the locked order.
-- Fresh RED tests, strict type witness, review gates, and bounded post-merge
-  `0.8.0` documentation/version/tag work.
+- Replace the gateway-only `hash_features` injection seam with the frozen private
+  `_CacheKeyDeriver` protocol and constructor parameter.
+- Update the gateway, its focused behavior and package-surface tests, strict type
+  witness, and the listed topic artifacts for this P1 correction.
+- Re-open the plan, Human-check, RED, implementation-review, and code-review
+  gates. Historical evidence stays repo-visible but is explicitly superseded.
 
-### Out-Of-Scope
+### Out of scope
 
-- Remote execution, `ModelGateway`, or a remote fallback; non-local requests fail
-  closed with `NotImplementedError`.
-- PICKLE/TORCH execution, loader-family inference, provider adapters, result
-  schemas beyond the injected ONNX converter, or changes to `ModelArtifact`.
-- Cache-policy, store, codec, invalidation, persistence, TTL, eviction,
-  singleflight, deduplication, lock, task, retry, timeout, background, close, or
-  unload behavior.
-- Changes to registry identity/freshness semantics, `ResponseCache` outcomes,
-  `ModelPool`, internal executor/composition behavior, or existing source/tests
-  outside the exact path contract.
-- GitHub Release, PyPI/TestPyPI publication, annotated tags, tag retargeting, or
-  release work before merge.
+- Any change to `ModelRegistry`, `ResponseCache`, `CacheKey`,
+  `ModelPayloadHasher`, `ModelArtifact`, local composition, executor, package
+  exports, request DTO, or model-source semantics.
+- Any cache algorithm owned by the gateway, including feature hashing, canonical
+  serialization, digest selection, collision handling, or namespace construction.
+- Remote execution, non-ONNX execution, singleflight, lock, retry, timeout,
+  lifecycle, persistence, invalidation, version/documentation/release work, or
+  a new dependency.
 
-### Non-Goal
+### Non-goal
 
-- Do not make `ModelPool`, the internal executor, or local composition public.
-- Do not place a new export on `async_model_gateway` root or alter its current
-  `__all__` contract.
-- Do not catch or translate registry, feature-hasher, executor, converter, or
-  cancellation failures.
-- Do not make concurrent same-key misses share work.
+- Do not expose `_CacheKeyDeriver` from the package or root package.
+- Do not store, log, or place raw prompts, model names, or artifact paths in a
+  cache namespace, cache context, or cache record.
+- Do not manufacture replacement reviewer or Human approvals while amending this
+  plan.
 
 ## Locked Decisions
 
-- D1 verdict: `non-trivial`; the Python planning extension and its required spec
-  and step tracker are mandatory.
-- The only public package is `async_model_gateway.local_response`; its package
-  root exports exactly `LocalResponseGateway` and `LocalResponseRequest`.
-- The public request contract is frozen as:
+- D1 remains `non-trivial`; the Python spec and step tracker remain required.
+- `LocalResponseRequest`, package exports, default executor seam, local-source
+  guard, and `LoaderFamily.ONNX` guard remain unchanged. Local source is a
+  guarded constant and is not an input to cache identity.
+- `gateway.py` defines this private, non-exported callable protocol exactly:
 
   ```python
-  @dataclass(frozen=True, slots=True)
-  class LocalResponseRequest:
-      model_name: str
-      model_source_kind: ModelSourceKind
-      model_payload: dict[str, ModelPayloadValue]
-      features: Mapping[str, str]
-      model_artifact: ModelArtifact
-      invocation: dict[str, object]
+  class _CacheKeyDeriver(Protocol):
+      def __call__(
+          self,
+          *,
+          model_name: str,
+          model_payload_hash: str,
+          features: Mapping[str, str],
+          model_artifact: ModelArtifact,
+          invocation: dict[str, object],
+      ) -> CacheKey: ...
   ```
 
-  `request.py` defines, but neither its `__all__` nor the package re-exports,
-  this exact Python-3.10 alias:
-
-  ```python
-  ModelPayloadValue: TypeAlias = None | bool | int | float | str | list["ModelPayloadValue"] | dict[str, "ModelPayloadValue"]
-  ```
-
-  It remains compatible with the existing registry model-payload contract; it
-  is not an additional public package export or a second hashing owner.
-- `gateway.py` defines the following non-exported private protocols exactly;
-  they are implementation typing seams, not package surface:
-
-  ```python
-  class _FeatureHasher(Protocol):
-      def __call__(self, features: Mapping[str, str]) -> str: ...
-
-  class _OnnxResultConverter(Protocol):
-      def __call__(self, result: list[object]) -> str: ...
-
-  class _LocalResponseExecutor(Protocol):
-      async def __call__(
-          self, artifact: ModelArtifact, invocation: dict[str, object]
-      ) -> list[object]: ...
-  ```
-
-- `LocalResponseGateway.generate(*, request: LocalResponseRequest) -> str` is
-  async. Its exact keyword-only constructor contract is:
+  It is a caller-defined stable, collision-controlled canonical-identity and
+  domain-separation owner. The gateway does not inspect, modify, recreate, or
+  derive any part of its returned key.
+- `LocalResponseGateway.__init__` keeps its keyword-only shape and is amended
+  exactly as follows. `_OnnxResultConverter` and `_LocalResponseExecutor` keep
+  their existing private protocols and exact call contracts.
 
   ```python
   def __init__(
@@ -105,82 +75,72 @@ GitHub Release or publish a package.
       *,
       registry: ModelRegistry,
       response_cache: ResponseCache,
-      hash_features: _FeatureHasher,
+      cache_key_deriver: _CacheKeyDeriver,
       convert_onnx_result: _OnnxResultConverter,
       executor: _LocalResponseExecutor | None = None,
   ) -> None: ...
   ```
 
-  No new dependency is introduced. When `executor is None`, the constructor
-  binds `src/async_model_gateway/local_response/_local_onnx_executor.py`'s
-  private default adapter with the `_LocalResponseExecutor` callable shape; that
-  adapter delegates only to existing `_create_local_runtime_composition()`
-  behavior and introduces no export or lifecycle change.
-- `generate()` first rejects `model_source_kind is not ModelSourceKind.LOCAL`,
-  then rejects `model_artifact.loader_family is not LoaderFamily.ONNX`, both with
-  `NotImplementedError`. These guards occur before registry, hashing, cache,
-  executor, or converter use.
-- The exact miss sequence is Registry -> feature hash -> cache lookup ->
-  execution -> converter -> remember -> return. Registry is called with the
-  request identity and `CacheKey` is built as
-  `CacheKey(namespace="local-response-v1", model_payload_hash=freshness.entry.payload_hash, feature_hash=...)`.
-- Each cache facade call creates its private context at the call site:
-  `lookup` receives `context=object()` and a miss's later `remember` receives a
-  separate `context=object()`. Each expression creates a fresh object, including
-  across calls; the two contexts for one miss are distinct. The gateway must not
-  retain, compare, export, or reuse either sentinel; it must never pass
-  `LocalResponseRequest` or any request field as context. Context stays outside
-  cache identity and stored records.
-- Cache lookup uses the existing closed outcome types and exactly this shape:
-
-  ```python
-  match lookup_outcome:
-      case CacheHit(value=value):
-          return value
-      case CacheMiss():
-          pass
-      case _:
-          assert_never(lookup_outcome)
-  ```
-
-  No lookup `try/except` is added: existing facade operational failures already
-  become `CacheMiss`.
-- A miss direct-awaits the configured executor once, passes its `list[object]`
-  result once to the configured converter, then calls `remember` with its fresh
-  call-site context sentinel. Its outcome match is `Remembered() | Skipped() |
-  Failed()` -> the converted response; an unexpected closed-union value uses
-  `assert_never`. No broad catch is allowed.
-- Registry, hasher, executor, converter, and cancellation failures propagate
-  unchanged. A failure before completion of conversion performs no cache write;
-  `remember`'s closed failed/skipped outcomes are deliberately fail-open.
-- Each same-key miss performs its own direct awaited sequence. There is no
-  singleflight task, shared lock, retry, timeout, queue, or background owner.
-- Registry, response-cache, pool, internal executor, local composition,
-  model-artifact, and loader-family source boundaries remain read-only.
-- Stable-library intent is declared: release is conditional after merge, uses
-  `0.7.0 -> 0.8.0`, and lightweight `v0.8.0` targets the post-merge release
-  documentation/version commit.
+  `hash_features` is removed from this constructor and from gateway state. This
+  is a bounded correction to an unmerged topic implementation, not a new package
+  export or a change to the request DTO.
+- After the existing guards, `generate()` awaits registry freshness, calls the
+  deriver with `request.model_name`, `freshness.entry.payload_hash`,
+  `request.features`, `request.model_artifact`, and `request.invocation`, then
+  calls cache `lookup(key=key, context=object())`. It passes the key returned by
+  the deriver unchanged to both `lookup` and a miss's `remember`.
+- Identity coverage is mandatory: model name, payload hash, features, invocation,
+  and model artifact must participate in the deriver's identity policy. A change
+  to invocation or model name must derive a different key and cannot cross-hit.
+  Tests also prove that the artifact is supplied to the deriver. The gateway may
+  pass raw inputs only to this injected collaborator; raw prompt data, model name,
+  and artifact path must never be copied into cache namespace, context, or record.
+- The existing fresh context policy is unchanged: `lookup` receives a new
+  call-site `object()` and a miss's `remember` receives another new `object()`.
+  The gateway does not retain, compare, export, or use request data as context.
+- Existing exhaustive `match/case` handling remains unchanged: `CacheHit` returns;
+  `CacheMiss` proceeds; `Remembered | Skipped | Failed` returns the converted
+  response; unexpected closed-union values reach `assert_never`. No gateway cache
+  catch is added.
+- Deriver failure propagates unchanged, occurs before lookup, and prevents lookup,
+  execution, conversion, and `remember`. Registry, executor, converter, and
+  cancellation propagation remain unchanged. Same-key misses remain independent
+  direct awaits with no task, lock, retry, timeout, queue, or background owner.
+- `ModelRegistry`, `ResponseCache`, `CacheKey`, and `ModelPayloadHasher` remain
+  ReadOnly owners. Stable-library intent is absent for this correction: it has no
+  documentation, version, tag, or release action.
+- `local-response-generation-with-cache-reuse.validation-governance.yaml` records
+  only the locked topic Pyright validation command and its result. It does not
+  change plan phase status and cannot grant any Reviewer or Human approval.
 
 ## Boundaries / Exclusions
 
-- Plan-Creator creates only this topic's plan/spec/step. Plan-Reviewer writes the
-  planning verdict; Tester writes fresh tests/type evidence; Implementer changes
-  only approved source paths; Reviewer writes implementation/code verdicts; Human
-  owns both clearance gates and merge approval.
-- The public gateway consumes existing boundaries but does not transfer ownership
-  of payload hashing, registry freshness, cache identity, local runtime loading,
-  execution lifecycle, or cache record policy.
-- Scope, path, API, outcome-match, async, test, version, or release drift returns
-  to `spec-and-plan-finalization`; no actor may rewrite historical evidence.
+- Planning actor changes only the declared plan/spec/step and marks obsolete gate
+  evidence. Tester owns fresh tests and RED evidence; Implementer owns the
+  approved gateway-only correction; Reviewer and Human alone issue new gates.
+- The cache-key deriver defines identity policy, not the gateway, registry, cache,
+  artifact, or request DTO. The gateway remains a coordinator.
+- Any request to alter public exports, cache/registry owners, artifact structure,
+  canonicalization policy, release intent, or an unlisted path returns to
+  `spec-and-plan-finalization`.
 
 ## Status / Allowed Transitions
 
-- **Current**: `review-ready`.
-- **Execution model**: `spec-and-plan-finalization -> implement-plan -> pr-comment
-  -> pr-comment-review-pr-comments-and-fix -> release`.
-- **Gate order**: plan review approved -> Human implementation clearance -> fresh
-  RED -> implementation -> implementation review approved -> code review approved
-  -> PR -> Human merge -> release clearance -> bounded `0.8.0` release.
+- **Current**: `review-ready`. The next transition is an independent
+  implementation review. This plan does not declare, replace, or mirror any gate
+  verdict. The concrete state of plan review, Human check, and P1 implementation
+  progress is determined only by their latest independent repo-visible evidence
+  artifacts and the step tracker.
+- **Execution model**: `spec-and-plan-finalization -> implement-plan ->
+  pr-comment -> pr-comment-review-pr-comments-and-fix`; no `release` phase is
+  declared for this correction.
+- **Gate evidence**: historical review and validation artifacts remain
+  repo-visible with their own recorded supersession or gate state. This plan
+  neither overwrites nor interprets those records; later routing reads their
+  declared artifacts and the step tracker.
+- **Validation-governance routing**: the declared validation-governance artifact
+  records only the topic Pyright command/result. Its stated independent
+  verification cannot close a Reviewer or Human gate or change topic status.
 - **Allowed transitions**:
   - `planned` -> `creator-in-progress`
   - `creator-in-progress` -> `review-ready`
@@ -194,7 +154,6 @@ GitHub Release or publish a package.
   - `publish-in-progress` -> `merged`
   - `pr-open` -> `needs-rework`
   - `pr-open` -> `merged`
-  - `merged` -> `released`
 
 ## Artifact Paths
 
@@ -202,42 +161,30 @@ GitHub Release or publish a package.
 
 | Artifact | Path | Owner | Role |
 | --- | --- | --- | --- |
-| Registry owner | `src/async_model_gateway/model_registry/registry.py` | No change | Freshness/payload-hash authority |
-| Registry identity | `src/async_model_gateway/model_registry/entry.py` | No change | `ModelSourceKind` and registry entry contract |
-| Cache facade | `src/async_model_gateway/response_cache/cache.py` | No change | Existing operational miss/write-outcome behavior |
-| Cache identity/outcomes | `src/async_model_gateway/response_cache/key.py` | No change | Existing `CacheKey` contract |
-| Cache outcomes | `src/async_model_gateway/response_cache/outcomes.py` | No change | Existing closed match cases |
-| Model artifact | `src/async_model_gateway/model_runtime/model_artifact/artifact.py` | No change | Caller-provided read contract |
-| Loader family | `src/async_model_gateway/model_runtime/model_artifact/loader_family.py` | No change | Explicit ONNX vocabulary |
-| Local composition | `src/async_model_gateway/model_runtime/_local_runtime_composition.py` | No change | Private default execution delegation |
-| Model pool | `src/async_model_gateway/model_runtime/model_pool/pool.py` | No change | Internal acquisition boundary |
-| Internal executor | `src/async_model_gateway/model_runtime/model_execution/execution.py` | No change | Existing invocation lifecycle |
-| Root package | `src/async_model_gateway/__init__.py` | No change | Preserve root public surface |
+| Registry owner | `src/async_model_gateway/model_registry/registry.py` | No change | Supplies authoritative freshness payload hash |
+| Cache facade | `src/async_model_gateway/response_cache/cache.py` | No change | Consumes the opaque derived key and preserves outcomes |
+| Cache key | `src/async_model_gateway/response_cache/key.py` | No change | Existing key value contract |
+| Payload hasher | `src/async_model_gateway/model_registry/model_payload/canonical_hash.py` | No change | Existing payload-hash owner |
+| Model artifact | `src/async_model_gateway/model_runtime/model_artifact/artifact.py` | No change | Read-only identity input contract |
+| Request/package/default executor | `src/async_model_gateway/local_response/request.py`, `src/async_model_gateway/local_response/__init__.py`, `src/async_model_gateway/local_response/_local_onnx_executor.py` | No change | Preserve current DTO, exports, and executor ownership |
 
 ### Written
 
 | Artifact | Path | Owner | Role |
 | --- | --- | --- | --- |
-| Topic plan | `plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.plan.md` | Plan-Creator | Frozen implementation/release contract |
-| Python spec | `plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.spec.md` | Plan-Creator | Non-trivial behavior contract |
-| Step tracker | `plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.step.md` | Plan-Creator, then phase owners | Canonical progress state |
-| Plan review | `plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.plan-review.json` | Plan-Reviewer | Independent planning verdict |
-| Human check | `plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.human-check.json` | Human | `implement-plan` clearance |
-| RED evidence | `plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.red-tests.yaml` | Tester | Fresh RED/type-analysis evidence |
-| Type config | `plan/local-response-generation-with-cache-reuse/pyrightconfig.json` | Tester | Strict analysis of the topic witness |
-| Implementation review | `plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.implementation-review.yaml` | Reviewer | Plan-conformance verdict |
-| Code review | `plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.code-review.yaml` | Reviewer | Independent quality verdict |
-| Human merge | `plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.human-merge.json` | Human | Explicit merge gate |
-| Release human check | `plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.release-human-check.json` | Human | Release clearance |
-| Release evidence | `plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.release.yaml` | Release Implementer | Release/tag evidence |
-| Release review | `plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.release-review.yaml` | Reviewer | Release-conformance verdict |
-| Public package | `src/async_model_gateway/local_response/__init__.py` | Implementer | Exact two-symbol public surface |
-| Request source | `src/async_model_gateway/local_response/request.py` | Implementer | Frozen request/value typing contract |
-| Gateway source | `src/async_model_gateway/local_response/gateway.py` | Implementer | Guarded cache-reuse generation flow |
-| Private ONNX adapter | `src/async_model_gateway/local_response/_local_onnx_executor.py` | Implementer | Private default-executor delegation to existing composition; no public surface or lifecycle ownership |
-| Gateway tests | `tests/local_response/test_gateway.py` | Tester | Behavior/order/failure/concurrency coverage |
-| Package tests | `tests/local_response/test_local_response_package_surface.py` | Tester | Export/signature/default-adapter boundary |
-| Type witness | `tests/typecheck/local_response_generation_with_cache_reuse.py` | Tester | Strict public typing evidence |
+| Topic plan | `plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.plan.md` | Planning actor | Amended execution and gate-reset contract |
+| Python spec | `plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.spec.md` | Planning actor | Amended non-trivial behavior contract |
+| Step tracker | `plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.step.md` | Planning actor, then phase owners | Reset progress and phase gates |
+| Plan review | `plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.plan-review.json` | Plan-Reviewer | Historical supersession marker, then replacement review verdict |
+| Human check | `plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.human-check.json` | Human | Historical supersession marker, then replacement clearance |
+| RED evidence | `plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.red-tests.yaml` | Tester | Historical supersession marker, then fresh RED/type evidence |
+| Validation governance | `plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.validation-governance.yaml` | Validator; Reviewer verifies its stated next gate | Records only the authoritative topic Pyright command/result; cannot itself grant any review or Human approval |
+| Implementation review | `plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.implementation-review.yaml` | Reviewer | Historical supersession marker, then replacement conformance verdict |
+| Code review | `plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.code-review.yaml` | Reviewer | Historical supersession marker, then replacement quality verdict |
+| Gateway source | `src/async_model_gateway/local_response/gateway.py` | Implementer | Private deriver injection and unchanged-key cache flow |
+| Gateway tests | `tests/local_response/test_gateway.py` | Tester | Identity, order, privacy, failure, and preserved flow coverage |
+| Package tests | `tests/local_response/test_local_response_package_surface.py` | Tester | Constructor/private protocol/package-surface coverage |
+| Type witness | `tests/typecheck/local_response_generation_with_cache_reuse.py` | Tester | Strict typed construction with the private deriver seam |
 
 ### Deleted
 
@@ -245,86 +192,61 @@ None. Any deletion is plan drift.
 
 ### Modify
 
-| Artifact | Path | Owner | Role |
-| --- | --- | --- | --- |
-| Release README | `README.md` | Release Implementer | First-read local response/cache-reuse truth |
-| Release architecture | `docs/architecture.md` | Release Implementer | Bounded implemented local flow status |
-| Release core spec | `docs/specs/core-abstractions-boundary.md` | Release Implementer | Shared dependency-direction update |
-| Release orchestrator spec | `docs/specs/orchestrator-boundary.md` | Release Implementer | Limited local gateway coordination wording |
-| Release response-cache spec | `docs/specs/response-cache-boundary.md` | Release Implementer | Document one consumer without changing cache authority |
-| Release model-side spec | `docs/specs/model-side-boundary.md` | Release Implementer | Preserve internal owner boundaries while naming public caller |
-| Runtime version | `src/async_model_gateway/__version__.py` | Release Implementer | `0.8.0` runtime version |
-| Package metadata | `pyproject.toml` | Release Implementer | `0.8.0` package version |
-| Lockfile | `uv.lock` | Release Implementer | Synchronized `0.8.0` metadata |
+None. No existing owner, documentation, version, release, or unrelated test path
+is authorized by this P1 correction.
 
-No path appears in more than one state table. All unlisted paths are outside this
-topic; pre-merge work must not modify any `Modify` path.
-
-## Stable library metadata
-
-- `README row`: describe only the public local ONNX response-generation entrypoint,
-  registry-derived cache identity, reuse on `CacheHit`, and deferred remote/broader
-  orchestration behavior.
-- `VERSION bump`: `0.7.0 -> 0.8.0` in runtime version, packaging metadata, and
-  synchronized lockfile metadata.
-- `timing`: `release`, only after Human merge and a fresh release Human check.
-- `tag`: create and push lightweight `v0.8.0` at the post-merge release
-  documentation/version commit; never retarget it.
-- `rationale`: a new public subpackage needs first-read/version promotion, without
-  implying a general remote or full orchestrator implementation.
-- No GitHub Release and no package publication.
+All unlisted paths are outside this topic. A later request that needs an unlisted
+path is a plan-alignment problem and must return to plan finalization.
 
 ## Implementation Steps
 
-1. Tester creates the declared gateway, package-surface, and strict type-witness
-   tests plus topic Pyright config; with production unchanged, records fresh RED
-   evidence that maps every locked behavior and verifies no dynamic module loading.
-2. Implementer creates `src/async_model_gateway/local_response/request.py` and
-   `src/async_model_gateway/local_response/__init__.py` with the exact frozen,
-   slotted request, non-exported recursive `ModelPayloadValue: TypeAlias`, and
-   two-symbol package surface.
-3. Implementer creates `src/async_model_gateway/local_response/gateway.py` and
-   `src/async_model_gateway/local_response/_local_onnx_executor.py`. `gateway.py`
-   owns the exact private callable protocols, constructor injection,
-   guard-before-collaborator ordering, fresh distinct call-site cache-context
-   sentinels, exact `match/case` outcomes, direct-await miss flow, and unchanged
-   failure/cancellation propagation. The private adapter only delegates one
-   supported ONNX invocation to existing composition; it creates no export or
-   lifecycle ownership.
-4. Implementer runs the declared pre-merge validation, confirms only `Written`
-   pre-merge paths changed and every `ReadOnly`/`Modify` path is untouched, then
-   truthfully updates implementation entries in the step tracker.
+1. Tester updates only the declared gateway/package/type-witness tests to express
+   the `_CacheKeyDeriver` constructor and protocol; adds RED regressions proving
+   changed invocation and changed model name derive separate keys with no
+   cross-hit, verifies artifact is passed into identity derivation, and records
+   privacy/failure/order/context coverage without dynamic module loading.
+2. Implementer updates only `src/async_model_gateway/local_response/gateway.py`:
+   replace `_FeatureHasher` and `hash_features` state/parameter with the exact
+   `_CacheKeyDeriver` protocol/parameter; after freshness, invoke it with all
+   locked inputs, hand its key unchanged to cache calls, and preserve all guards,
+   fresh contexts, outcome matches, direct-await behavior, and propagation.
+3. Implementer runs the declared focused and static validation, confirms only the
+   Written code/test paths changed beyond necessary topic artifacts and every
+   ReadOnly/Modify path is untouched, then updates the tracker truthfully.
 
 ## Validation / Acceptance Checks
 
-### TestCase
+- **Happy path / regressions**: cache hit returns before executor/converter/write;
+  cache miss follows Registry -> deriver -> lookup -> executor -> converter ->
+  remember -> return. Different invocation and different model name produce
+  different keys and receive no cross-hit.
+- **Identity / privacy**: the deriver receives model name, payload hash, features,
+  invocation, and the exact artifact. The returned `CacheKey` is passed unchanged;
+  raw prompts, model names, and artifact paths do not appear in cache namespace,
+  context, or record inputs.
+- **Invalid input / edge cases**: local and ONNX guards remain before every
+  collaborator; cache outcomes retain exhaustive matching and fail-open write
+  behavior; fresh lookup/remember contexts remain distinct private objects.
+- **Failure / cancellation / concurrency**: deriver failure is identical and
+  precedes all later collaborators with no remember; registry/executor/converter
+  failure and cancellation policy remain unchanged; same-key misses stay
+  independent.
+- **Backward compatibility**: package exports, request DTO, cache/registry/key/
+  payload-hasher/artifact sources, and default executor remain unchanged. The
+  only constructor change is replacement of the old private seam.
+- Fresh plan review and Human clearance must precede fresh RED; fresh RED,
+  implementation review, and code review must replace—not rely upon—the marked
+  historical artifacts before PR routing.
+- **Topic Pyright validation**: the command and result are recorded only in
+  `plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.validation-governance.yaml`:
 
-- **Happy path**: a cache hit returns its `str` without executor/converter/remember;
-  a miss follows the exact registry-to-return sequence and remembers the converted
-  response.
-- **Cache-context witness**: every fake `lookup` observes a call-site-created
-  `object()` context; every subsequent miss `remember` observes its own newly
-  created `object()` context. Captured contexts are identity-distinct (including
-  lookup versus remember and across calls), are not the request or any request
-  field, and are neither compared nor retained by the gateway.
-- **Invalid input**: remote source and each non-ONNX family raise
-  `NotImplementedError` before any collaborator observation.
-- **Edge case**: `Remembered`, `Skipped`, and `Failed` each return the generated
-  response; unexpected closed outcomes use `assert_never` rather than a broad
-  fallback.
-- **Regression**: existing cache facade operational failures remain misses;
-  `src/async_model_gateway/local_response/_local_onnx_executor.py` delegates only
-  to existing private composition; and package-root exports remain unchanged.
-- **Backward compatibility**: `local_response` exports only its two public types;
-  `ModelPayloadValue` and the three callable protocols stay non-exported; no
-  registry/cache/pool/executor source or public API changes.
-- **Failure/cancellation/concurrency**: registry, hasher, executor, converter, and
-  `CancelledError` propagate unchanged with no later write; concurrent same-key
-  misses perform separate direct-awaited executions with no shared task/lock.
+  ```bash
+  uv run --no-sync --locked -- pyright --project plan/local-response-generation-with-cache-reuse/pyrightconfig.json
+  ```
 
-Acceptance also requires plan-review and Human-clearance gates before RED, fresh RED
-before implementation, approved implementation/code review before PR routing, Human
-merge before release, and the bounded release review/evidence before `released`.
+  The artifact is validation evidence only. Its stated independent verification
+  does not grant plan-review, implementation-review, code-review, or Human
+  approval.
 
 ## Reviewer Handoff
 
@@ -333,9 +255,9 @@ merge before release, and the bounded release review/evidence before `released`.
   "verdict": "needs-rework",
   "blocking_issues": [
     {
-      "issue": "Awaiting independent Plan-Reviewer verdict.",
+      "issue": "Awaiting independent review of the P1 cache-key-deriver amendment.",
       "file": "plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.plan.md",
-      "fix": "Replace this review-contract skeleton with the reviewer’s actual verdict."
+      "fix": "Issue a new repo-visible verdict before any replacement Human check or implementation work."
     }
   ],
   "copilot_feedback_triage": {
@@ -348,211 +270,156 @@ merge before release, and the bounded release review/evidence before `released`.
 
 ## Post-merge / release actions
 
-After explicit Human merge and fresh release clearance, modify only the declared
-release documentation/version/lockfile paths, validate every version is `0.8.0`,
-create the release commit, then create/push lightweight `v0.8.0` at that exact
-commit. Record the declared release evidence and review. Do not create a GitHub
-Release or publish packages.
+No release workflow required. This correction declares no documentation, version,
+tag, package publication, or release action.
 
 ## Open Questions / Unresolved Items
 
-None. The explicit human override supplies the absent optional analysis layer, and
-all implementation, async, artifact, gate, and release decisions are frozen.
+None. The human-locked P1 contract freezes the constructor, identity inputs,
+privacy policy, failure behavior, paths, and gate reset.
 
 ## Python Implementation Extension
 
 ### Goal
 
-Implement the one public local ONNX response path and no broader orchestration.
+Correct the private cache-key derivation seam without changing the async gateway's
+ownership boundaries.
 
 ### Non-goals
 
-See `Out-Of-Scope` and `Non-Goal`: no remote path, source-boundary change,
-singleflight/lifecycle policy, broad exception handling, or pre-merge release work.
+No new public export, cache key algorithm, registry/cache/artifact change, remote
+path, lifecycle policy, or release work.
 
 ### Current Context
 
-`ModelRegistry.resolve_freshness()` already owns payload hashing and returns an
-entry with `payload_hash`. `ResponseCache.lookup()` converts known operational
-failures to `CacheMiss`, while `remember()` returns closed write outcomes.
-`_LocalRuntimeComposition.execute()` already executes a caller-supplied
-`ModelArtifact` and invocation through the private ONNX binding. No public local
-response entrypoint currently exists.
+The existing gateway currently calls `hash_features` after registry freshness and
+constructs a key itself. `ModelRegistry` already supplies
+`freshness.entry.payload_hash`; `ResponseCache` owns lookup/write outcomes. The
+correction moves only complete response-identity derivation to the injected
+private collaborator.
 
 ### Requirements
 
-1. The package exports exactly `LocalResponseGateway` and `LocalResponseRequest`.
-2. Request fields, frozen/slotted behavior, non-exported recursive payload alias,
-   method signature, exact constructor/callable seams, local/ONNX guards,
-   namespace, fresh cache-context sentinel policy, and operation order match
-   `Locked Decisions`.
-3. A cache hit returns before execution/conversion/write; a miss performs exactly
-   one direct executor await, conversion, and outcome-matched remember call.
-4. All specified failures/cancellation propagate unchanged and concurrent misses
-   remain independent.
-5. Focused/full tests, strict Pyright, Ruff, lock check, and diff check pass;
-   release validation later proves all version sources say `0.8.0`.
+1. The exact protocol and constructor use `cache_key_deriver`, not `hash_features`.
+2. The gateway passes every locked identity input to the deriver and uses the
+   returned key unchanged for lookup and remember.
+3. Different invocation and model-name inputs cannot cross-hit under the test
+   deriver; the artifact participates in the deriver call contract.
+4. Privacy, failure, context, outcome, cancellation, and independent-miss policy
+   remain as locked above.
+5. Focused pytest, the topic Pyright witness, Ruff, and `git diff --check` pass.
 
 ### Decisions
 
-- Async-planning status: triggered — cite trigger evidence: new async
-  `generate()`, async registry/cache/executor collaborators, response-cache
-  failure behavior, caller-owned cancellation, and concurrent miss policy.
-- Module/package placement: new `local_response/request.py`, `gateway.py`,
-  `_local_onnx_executor.py`, and package initializer only. The private adapter
-  consumes existing private composition without moving its ownership, exposing a
-  public surface, or adding lifecycle behavior.
-- New public API: yes — `LocalResponseRequest` and
-  `LocalResponseGateway.generate(*, request: LocalResponseRequest) -> str`.
-- Interface changes: no existing interface changes; a new direct-import
-  subpackage is added and root package remains unchanged.
-- Breaking changes allowed: no; all current public boundaries remain compatible.
-- New dependencies: no; use existing standard-library typing/dataclasses,
-  `typing_extensions.assert_never`, and existing project dependencies.
-- Error handling strategy: source/family guard raises `NotImplementedError`; known
-  cache facade outcomes are matched; all other specified exceptions and
-  cancellation propagate without translation.
-- Typing strategy: strict annotations, `Mapping[str, str]`, the exact three
-  private callable protocols, the exact non-exported recursive
-  `ModelPayloadValue: TypeAlias`, no `Any`, and only a line-local named private-
-  usage suppression if strict Pyright reports the intentional default-composition
-  import.
+- Async-planning status: triggered — cite trigger evidence: existing async
+  `generate()`, async registry/cache/executor calls, failure/cancellation
+  propagation, and independent concurrent miss policy remain behaviorally locked.
+- Module/package placement: only existing `local_response/gateway.py` changes;
+  protocol remains private there.
+- New public API: no new export; the public gateway constructor replaces an
+  implementation collaborator parameter before publication.
+- Interface changes: yes, the constructor parameter changes from `hash_features`
+  to `cache_key_deriver`; request and package interfaces do not change.
+- Breaking changes allowed: yes, only for the unmerged topic's superseded private
+  injection seam, to correct P1 identity behavior before a new approval.
+- New dependencies: no.
+- Error handling strategy: all deriver failures propagate unchanged before cache
+  lookup; existing guarded and cache-outcome behavior remains unchanged.
+- Typing strategy: strict typed private `Protocol`, `Mapping[str, str]`,
+  `ModelArtifact`, `dict[str, object]`, and `CacheKey`; no `Any`.
 
 #### Async boundary decision
 
-Only `generate()` and collaborator calls are async. Request construction, guards,
-feature hashing, key construction, and conversion remain synchronous; no domain
-boundary is converted to async beyond the gateway coordinator.
+Only the established registry, cache, executor, and `generate()` calls are async.
+The deriver is synchronous and runs after freshness but before lookup.
 
 #### Resource lifecycle decision
 
-The gateway owns no pool, session, task, semaphore, close, or unload lifecycle.
-The optional executor seam is caller-owned; the private adapter in
-`_local_onnx_executor.py` delegates to the existing composition owner only and
-does not add a cleanup surface.
+The gateway owns no task, pool, session, semaphore, or cleanup lifecycle. The
+deriver is caller-owned and introduces no retained resources.
 
 #### Concurrency model
 
-Every call directly awaits registry, lookup, executor, and remember in sequence.
-Same-key callers intentionally execute independent misses. No task creation,
-gather, lock, queue, retry, batching, streaming, or background work is allowed.
+Each call invokes its own synchronous deriver and directly awaits the established
+sequence. Same-key calls do not share work.
 
 #### Failure model
 
-The existing cache facade alone classifies cache operational lookup/write cases.
-The gateway only matches its closed outcomes; registry, hasher, executor, converter,
-unexpected defects, and cancellation retain their original exception identity.
+Deriver exceptions pass through unchanged and stop the flow before lookup. No
+catch, cache write, translation, or fallback is added.
 
 #### Cancellation / timeout policy
 
-The caller owns cancellation. `CancelledError` is not caught, shielded, delayed, or
-written through; there is no timeout or retry policy.
+No timeout is introduced. Cancellation from existing async collaborators still
+propagates unchanged and prevents later cache write.
 
 #### Validation plan
 
-Fresh async pytest coverage records ordering and non-calls, failure/cancellation
-cutoffs, and independent concurrent misses. Strict type witness proves request and
-constructor seams; GREEN includes focused/full pytest, topic/global Pyright, Ruff,
-lock, and diff checks.
+Focused tests prove identity separation, artifact input, unchanged-key handoff,
+privacy, and deriver-stop-before-lookup; package/type tests prove the frozen
+private signature. Static and diff validation must pass.
 
 #### Handoff notes for the implementer
 
-Keep both guards above every collaborator call. Preserve the two explicit
-`match/case` blocks and their `assert_never` fallback. Put a fresh literal
-`context=object()` at each lookup and post-miss remember call; do not retain,
-compare, export, or substitute request data for either sentinel. Never turn cache
-misses into a catch-all policy or add singleflight/timeout/retry behavior.
-
-#### Async contradiction log
-
-No async contradictions. The approved contract explicitly selects direct awaits,
-caller-owned cancellation, and independent concurrent misses.
+Do not calculate a namespace, hash, canonical representation, or key field in the
+gateway. Preserve the existing guards, contexts, match/case blocks, and default
+executor behavior exactly.
 
 ### Public Contract / API Changes
 
-New direct-import package only:
-
-```python
-class LocalResponseGateway:
-    def __init__(
-        self,
-        *,
-        registry: ModelRegistry,
-        response_cache: ResponseCache,
-        hash_features: _FeatureHasher,
-        convert_onnx_result: _OnnxResultConverter,
-        executor: _LocalResponseExecutor | None = None,
-    ) -> None: ...
-
-    async def generate(self, *, request: LocalResponseRequest) -> str: ...
-```
-
-`LocalResponseRequest` has the exact fields shown in `Locked Decisions`, including
-the request.py-local `ModelPayloadValue` alias. Constructor collaborators are
-keyword-only, and its three callable annotations are the non-exported private
-protocols frozen above. There is no root re-export, remote method, compatibility
-adapter, or change to any existing signature.
+`LocalResponseGateway` remains public with the exact amended keyword-only
+constructor in `Locked Decisions`. `_CacheKeyDeriver` is private and non-exported;
+no package/root export or request DTO changes occur.
 
 ### Affected Files / Modules
 
-Likely affected files are exactly the `Written` and `Modify` rows in `Artifact
-Paths`. `ReadOnly` rows are inspected as integration inputs only; all other paths
-are out of contract.
+Likely affected files:
+
+- `src/async_model_gateway/local_response/gateway.py`
+- `tests/local_response/test_gateway.py`
+- `tests/local_response/test_local_response_package_surface.py`
+- `tests/typecheck/local_response_generation_with_cache_reuse.py`
+
+Candidate files to inspect:
+
+- `src/async_model_gateway/response_cache/key.py`
+- `src/async_model_gateway/model_registry/registry.py`
 
 ### Implementation Steps
 
-Use the four canonical pre-merge steps above. RED test authoring occurs before
-production code; release actions remain only under `Post-merge / release actions`.
+See the canonical `Implementation Steps`; its three numbered items are the
+creator-owned executable work for this Python extension.
 
 ### Test Plan
 
-Use every `TestCase` category above. The focused behavior suite must additionally
-assert call order, exact cache key fields, fresh distinct lookup/remember context
-sentinels that are not request data, hit short-circuiting, every remember outcome,
-the `_local_onnx_executor.py` private adapter's delegation-only behavior, original
-exception/cancellation identity, and two independent concurrent same-key miss
-executions. The strict witness uses direct static imports:
-
-```python
-from async_model_gateway.local_response import LocalResponseGateway, LocalResponseRequest
-```
-
-It supplies typed callable collaborators to prove the constructor seams and a
-nested payload to prove the request alias, without importing or exporting the
-private protocols or `ModelPayloadValue`. Tests use ordinary static imports only;
-dynamic module loading is prohibited.
+Happy path: hit and miss retain the locked sequence. Invalid input: existing
+local/ONNX guards remain first. Edge case: all closed outcomes and fresh contexts
+remain correct. Regression: changed invocation and changed model name receive
+different derived keys/no cross-hit; artifact is passed to deriver. Backward
+compatibility: package/request/default executor and ReadOnly owners do not change.
+Failure tests cover deriver propagation/no lookup or remember; concurrency tests
+retain independent misses.
 
 ### Validation Commands
 
 ```bash
 uv run pytest --no-cov tests/local_response -v
-uv run pytest -v
-uv run pyright --project plan/local-response-generation-with-cache-reuse/pyrightconfig.json
-uv run pyright
-uv run ruff check src tests plan/local-response-generation-with-cache-reuse
-uv lock --check
+uv run --no-sync --locked -- pyright --project plan/local-response-generation-with-cache-reuse/pyrightconfig.json
+uv run ruff check src/async_model_gateway/local_response tests/local_response tests/typecheck/local_response_generation_with_cache_reuse.py
 git diff --check
-```
-
-Release-only:
-
-```bash
-rg -n '0\.8\.0' README.md docs/architecture.md docs/specs/core-abstractions-boundary.md docs/specs/orchestrator-boundary.md docs/specs/response-cache-boundary.md docs/specs/model-side-boundary.md pyproject.toml src/async_model_gateway/__version__.py uv.lock
-uv lock --check
 ```
 
 ### Risks
 
-Reordering registry/hash/cache operations can create incorrect cache identity;
-catching facade or cancellation failures would obscure the frozen failure model;
-adding shared-miss coordination would silently change execution cost/lifecycle;
-release wording could overstate remote or broader orchestration support.
+An implementer might reconstruct or alter the returned key, omit an identity
+input, or leak a raw value through cache-facing fields; the focused regressions
+and privacy witnesses must catch each case.
 
 ### Rollback Plan
 
-Before merge, revert only the declared `Written` pre-merge sources/tests/type/gate
-artifacts and leave every `ReadOnly` path untouched. After `v0.8.0` exists, never
-retarget or delete it; correct release wording or behavior in a new bounded topic.
+Revert only `src/async_model_gateway/local_response/gateway.py`, the three
+declared test/witness files, and the topic artifacts in this plan if the amended
+contract is rejected. Do not revert or alter ReadOnly owners.
 
 ### Open Questions
 

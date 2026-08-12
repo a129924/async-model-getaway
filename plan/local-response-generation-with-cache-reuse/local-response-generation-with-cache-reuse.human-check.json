@@ -4,8 +4,10 @@
     "decision": "approved",
     "status": "cleared",
     "plan_review_verdict": "approved",
-    "cleared_for": "implementation-review",
+    "cleared_for": "implement-plan",
     "cleared": true,
+    "authorization": "Execution Authorized",
+    "revision": "cache-key-deriver-identity-fix",
     "recorded_on": "2026-08-12",
-    "summary": "Human confirms the latest approved plan review, including the private ONNX adapter Written-path amendment, and clears this completed implementation for independent implementation review."
+    "summary": "Human explicitly approved the reviewed cache identity revision. The private injected _CacheKeyDeriver must include model_name, Registry payload_hash, features, invocation, and model_artifact in cache identity. This clearance replaces prior implementation clearance and authorizes a fresh RED-test subphase followed by implementation."
 }

@@ -29,10 +29,18 @@ from .request import LocalResponseRequest
 __all__ = ["LocalResponseGateway"]
 
 
-class _FeatureHasher(Protocol):
-    """Describe feature-hash derivation supplied by the caller."""
+class _CacheKeyDeriver(Protocol):
+    """Describe complete cache-key derivation supplied by the caller."""
 
-    def __call__(self, features: Mapping[str, str]) -> str: ...
+    def __call__(
+        self,
+        *,
+        model_name: str,
+        model_payload_hash: str,
+        features: Mapping[str, str],
+        model_artifact: ModelArtifact,
+        invocation: dict[str, object],
+    ) -> CacheKey: ...
 
 
 class _OnnxResultConverter(Protocol):
@@ -59,14 +67,14 @@ class LocalResponseGateway:
         *,
         registry: ModelRegistry,
         response_cache: ResponseCache,
-        hash_features: _FeatureHasher,
+        cache_key_deriver: _CacheKeyDeriver,
         convert_onnx_result: _OnnxResultConverter,
         executor: _LocalResponseExecutor | None = None,
     ) -> None:
         """Bind the existing owners and optional local execution seam."""
         self._registry = registry
         self._response_cache = response_cache
-        self._hash_features = hash_features
+        self._cache_key_deriver = cache_key_deriver
         self._convert_onnx_result = convert_onnx_result
         self._executor: _LocalResponseExecutor = (
             _LocalOnnxExecutor(composition=_create_local_runtime_composition())
@@ -88,11 +96,12 @@ class LocalResponseGateway:
             model_source_kind=request.model_source_kind,
             model_payload=request.model_payload,
         )
-        feature_hash = self._hash_features(request.features)
-        key = CacheKey(
-            namespace="local-response-v1",
+        key = self._cache_key_deriver(
+            model_name=request.model_name,
             model_payload_hash=freshness.entry.payload_hash,
-            feature_hash=feature_hash,
+            features=request.features,
+            model_artifact=request.model_artifact,
+            invocation=request.invocation,
         )
         lookup_outcome = await self._response_cache.lookup(key=key, context=object())
 

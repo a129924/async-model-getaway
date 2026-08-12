@@ -1,15 +1,9 @@
 {
-    "verdict": "approved",
-    "blocking_issues": [],
-    "copilot_feedback_triage": {
-        "ADDRESS": [],
-        "DISCUSS": [
-            {
-                "comment": "The Human-owned implementation-clearance artifact remains absent.",
-                "optional": false,
-                "why": "The amendment is approved and may return to the Human-check boundary. This separate required workflow gate must be supplied by a Human and must not be fabricated or inferred from chat approval by a reviewer."
-            }
-        ],
-        "SKIP": []
-    }
+  "verdict": "approved",
+  "blocking_issues": [],
+  "copilot_feedback_triage": {
+    "ADDRESS": [],
+    "DISCUSS": [],
+    "SKIP": []
+  }
 }

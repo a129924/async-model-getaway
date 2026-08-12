@@ -1,0 +1,43 @@
+topic: local-response-generation-with-cache-reuse
+artifact: validation-governance
+status: COMPLETE
+active_for_gating: true
+scope: >-
+  This record amends only the topic Pyright validation command. It does not
+  change source, tests, dependencies, pyright configuration, plan phase status,
+  or any reviewer or Human approval.
+authoritative_validation:
+  command: >-
+    uv run --no-sync --locked -- pyright --project
+    plan/local-response-generation-with-cache-reuse/pyrightconfig.json
+  exit_code: 0
+  errors: 0
+  warnings: 0
+  informations: 0
+  result: passed
+historical_command_evidence:
+  status: superseded-non-gating
+  reason: >-
+    The historical command did not pin the locked environment or suppress sync,
+    so it cannot gate this topic's current Pyright validation.
+  records:
+    - artifact: >-
+        plan/local-response-generation-with-cache-reuse/
+        local-response-generation-with-cache-reuse.red-tests.yaml
+      command: >-
+        uv run pyright --project
+        plan/local-response-generation-with-cache-reuse/pyrightconfig.json
+      historical_result: 2 errors, 0 warnings; expected RED failure
+    - artifact: >-
+        plan/local-response-generation-with-cache-reuse/
+        local-response-generation-with-cache-reuse.implementation-review.yaml
+      command: >-
+        uv run pyright --project
+        plan/local-response-generation-with-cache-reuse/pyrightconfig.json
+      historical_result: 0 errors, 0 warnings, 0 informations
+next_review_gate:
+  owner: Reviewer
+  status: pending
+  requirement: >-
+    Independently verify this command amendment and its authoritative result;
+    this record neither grants implementation review nor code-review approval.

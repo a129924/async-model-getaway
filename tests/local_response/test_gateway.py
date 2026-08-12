@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
+from collections.abc import Mapping
 
 import pytest
 
@@ -88,22 +91,108 @@ class _RecordingCache:
         return self.remember_outcome
 
 
+class _KeyedRecordingCache:
+    """Model cache hits by the opaque key received from the gateway."""
+
+    def __init__(self, events: list[str]) -> None:
+        self.events = events
+        self.values: dict[CacheKey, str] = {}
+        self.lookup_calls: list[tuple[CacheKey, object]] = []
+        self.remember_calls: list[tuple[CacheKey, str, object]] = []
+
+    async def lookup(self, *, key: CacheKey, context: object) -> object:
+        self.events.append("lookup")
+        self.lookup_calls.append((key, context))
+        value = self.values.get(key)
+        return CacheMiss() if value is None else CacheHit(value=value)
+
+    async def remember(self, *, key: CacheKey, value: str, context: object) -> object:
+        self.events.append("remember")
+        self.remember_calls.append((key, value, context))
+        self.values[key] = value
+        return Remembered()
+
+
+class _RecordingKeyDeriver:
+    """Derive opaque test keys while recording every locked identity input."""
+
+    def __init__(
+        self,
+        events: list[str],
+        *,
+        error: BaseException | None = None,
+    ) -> None:
+        self.events = events
+        self.error = error
+        self.calls: list[dict[str, object]] = []
+        self.keys: list[CacheKey] = []
+
+    def __call__(
+        self,
+        *,
+        model_name: str,
+        model_payload_hash: str,
+        features: Mapping[str, str],
+        model_artifact: ModelArtifact,
+        invocation: dict[str, object],
+    ) -> CacheKey:
+        self.events.append("deriver")
+        self.calls.append(
+            {
+                "model_name": model_name,
+                "model_payload_hash": model_payload_hash,
+                "features": features,
+                "model_artifact": model_artifact,
+                "invocation": invocation,
+            }
+        )
+        if self.error is not None:
+            raise self.error
+
+        identity = {
+            "model_name": model_name,
+            "model_payload_hash": model_payload_hash,
+            "features": dict(features),
+            "loader_family": model_artifact.loader_family.value,
+            "artifact_path": model_artifact.artifact_path,
+            "loader_options": repr(model_artifact.loader_options),
+            "invocation": invocation,
+        }
+        digest = hashlib.sha256(
+            json.dumps(identity, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        key = CacheKey(
+            namespace="test-local-response-v1",
+            model_payload_hash=model_payload_hash,
+            feature_hash=digest,
+        )
+        self.keys.append(key)
+        return key
+
+
 def _request(
     *,
+    model_name: str = "demo",
     model_source_kind: ModelSourceKind = ModelSourceKind.LOCAL,
     loader_family: LoaderFamily = LoaderFamily.ONNX,
+    model_artifact: ModelArtifact | None = None,
+    invocation: dict[str, object] | None = None,
 ) -> LocalResponseRequest:
     return LocalResponseRequest(
-        model_name="demo",
+        model_name=model_name,
         model_source_kind=model_source_kind,
         model_payload={"revision": 1, "nested": ["value", {"enabled": True}]},
         features={"format": "text"},
-        model_artifact=ModelArtifact(
-            loader_family=loader_family,
-            artifact_path="model.onnx",
-            loader_options={},
+        model_artifact=(
+            ModelArtifact(
+                loader_family=loader_family,
+                artifact_path="model.onnx",
+                loader_options={},
+            )
+            if model_artifact is None
+            else model_artifact
         ),
-        invocation={"prompt": "hello"},
+        invocation={"prompt": "hello"} if invocation is None else invocation,
     )
 
 
@@ -112,13 +201,11 @@ def _gateway(
     events: list[str],
     registry: _RecordingRegistry,
     cache: _RecordingCache,
+    deriver: _RecordingKeyDeriver | None = None,
     executor_error: BaseException | None = None,
     converter_error: BaseException | None = None,
 ) -> LocalResponseGateway:
-    def hash_features(features: object) -> str:
-        events.append("features")
-        assert features == {"format": "text"}
-        return "feature-hash"
+    cache_key_deriver = deriver or _RecordingKeyDeriver(events)
 
     async def executor(artifact: ModelArtifact, invocation: dict[str, object]) -> list[object]:
         events.append("executor")
@@ -138,7 +225,36 @@ def _gateway(
     return LocalResponseGateway(
         registry=registry,
         response_cache=cache,
-        hash_features=hash_features,
+        cache_key_deriver=cache_key_deriver,
+        convert_onnx_result=convert_onnx_result,
+        executor=executor,
+    )
+
+
+def _cross_identity_gateway(
+    *,
+    events: list[str],
+    registry: _RecordingRegistry,
+    cache: _KeyedRecordingCache,
+    deriver: _RecordingKeyDeriver,
+    executions: list[dict[str, object]],
+) -> LocalResponseGateway:
+    """Build a gateway whose result distinguishes each independent execution."""
+
+    async def executor(artifact: ModelArtifact, invocation: dict[str, object]) -> list[object]:
+        events.append("executor")
+        assert artifact.loader_family is LoaderFamily.ONNX
+        executions.append(invocation)
+        return [len(executions)]
+
+    def convert_onnx_result(result: list[object]) -> str:
+        events.append("converter")
+        return f"generated-{result[0]}"
+
+    return LocalResponseGateway(
+        registry=registry,
+        response_cache=cache,
+        cache_key_deriver=deriver,
         convert_onnx_result=convert_onnx_result,
         executor=executor,
     )
@@ -156,7 +272,7 @@ async def test_cache_hit_returns_before_execution_conversion_or_write() -> None:
     )
 
     assert result == "cached"
-    assert events == ["registry", "features", "lookup"]
+    assert events == ["registry", "deriver", "lookup"]
     assert registry.calls == [
         {
             "model_name": "demo",
@@ -183,20 +299,120 @@ async def test_cache_miss_uses_locked_order_key_and_fail_open_write_outcomes(
     events: list[str] = []
     registry = _RecordingRegistry(events)
     cache = _RecordingCache(events, remember_outcome=remember_outcome)
+    deriver = _RecordingKeyDeriver(events)
+    request = _request()
 
-    result = await _gateway(events=events, registry=registry, cache=cache).generate(
-        request=_request()
+    result = await _gateway(
+        events=events,
+        registry=registry,
+        cache=cache,
+        deriver=deriver,
+    ).generate(
+        request=request
     )
 
     assert result == "generated"
-    assert events == ["registry", "features", "lookup", "executor", "converter", "remember"]
-    assert cache.lookup_calls[0][0] == CacheKey(
-        namespace="local-response-v1",
-        model_payload_hash="fresh-payload-hash",
-        feature_hash="feature-hash",
-    )
-    assert cache.remember_calls[0][0] == cache.lookup_calls[0][0]
+    assert events == ["registry", "deriver", "lookup", "executor", "converter", "remember"]
+    assert deriver.calls == [
+        {
+            "model_name": request.model_name,
+            "model_payload_hash": "fresh-payload-hash",
+            "features": request.features,
+            "model_artifact": request.model_artifact,
+            "invocation": request.invocation,
+        }
+    ]
+    assert cache.lookup_calls[0][0] is deriver.keys[0]
+    assert cache.remember_calls[0][0] is deriver.keys[0]
     assert cache.remember_calls[0][1] == "generated"
+
+
+@pytest.mark.asyncio
+async def test_changed_invocation_derives_a_distinct_key_without_a_cross_hit() -> None:
+    """Invocation identity prevents one request from reusing another response."""
+    events: list[str] = []
+    registry = _RecordingRegistry(events)
+    cache = _KeyedRecordingCache(events)
+    deriver = _RecordingKeyDeriver(events)
+    executions: list[dict[str, object]] = []
+    artifact = ModelArtifact(
+        loader_family=LoaderFamily.ONNX,
+        artifact_path="models/alpha.onnx",
+        loader_options={},
+    )
+    gateway = _cross_identity_gateway(
+        events=events,
+        registry=registry,
+        cache=cache,
+        deriver=deriver,
+        executions=executions,
+    )
+    first = _request(model_artifact=artifact, invocation={"prompt": "prompt-alpha"})
+    second = _request(model_artifact=artifact, invocation={"prompt": "prompt-beta"})
+
+    assert await gateway.generate(request=first) == "generated-1"
+    assert await gateway.generate(request=second) == "generated-2"
+    assert deriver.keys[0] != deriver.keys[1]
+    assert len(executions) == 2
+    assert len(cache.remember_calls) == 2
+    assert cache.lookup_calls[0][0] is deriver.keys[0]
+    assert cache.lookup_calls[1][0] is deriver.keys[1]
+    assert deriver.calls[0]["model_artifact"] is artifact
+    assert deriver.calls[1]["model_artifact"] is artifact
+    for key in deriver.keys:
+        assert all(
+            raw not in field
+            for raw in ("prompt-alpha", "prompt-beta", artifact.artifact_path)
+            for field in (key.namespace, key.model_payload_hash, key.feature_hash)
+        )
+
+
+@pytest.mark.asyncio
+async def test_changed_model_name_derives_a_distinct_key_without_a_cross_hit() -> None:
+    """Model identity prevents a differently named request from reusing a response."""
+    events: list[str] = []
+    registry = _RecordingRegistry(events)
+    cache = _KeyedRecordingCache(events)
+    deriver = _RecordingKeyDeriver(events)
+    executions: list[dict[str, object]] = []
+    artifact = ModelArtifact(
+        loader_family=LoaderFamily.ONNX,
+        artifact_path="models/alpha.onnx",
+        loader_options={},
+    )
+    gateway = _cross_identity_gateway(
+        events=events,
+        registry=registry,
+        cache=cache,
+        deriver=deriver,
+        executions=executions,
+    )
+    first = _request(
+        model_name="model-alpha",
+        model_artifact=artifact,
+        invocation={"prompt": "prompt-shared"},
+    )
+    second = _request(
+        model_name="model-beta",
+        model_artifact=artifact,
+        invocation={"prompt": "prompt-shared"},
+    )
+
+    assert await gateway.generate(request=first) == "generated-1"
+    assert await gateway.generate(request=second) == "generated-2"
+    assert deriver.keys[0] != deriver.keys[1]
+    assert len(executions) == 2
+    assert len(cache.remember_calls) == 2
+    assert deriver.calls[0]["model_name"] == "model-alpha"
+    assert deriver.calls[1]["model_name"] == "model-beta"
+    assert deriver.calls[0]["model_artifact"] is artifact
+    assert deriver.calls[1]["model_artifact"] is artifact
+    for key in deriver.keys:
+        assert all(
+            raw not in field
+            for raw in ("model-alpha", "model-beta", artifact.artifact_path)
+            for field in (key.namespace, key.model_payload_hash, key.feature_hash)
+        )
 
 
 @pytest.mark.asyncio
@@ -275,14 +491,14 @@ async def test_unexpected_closed_cache_outcomes_reach_assert_never(unexpected_on
     with pytest.raises(AssertionError):
         await _gateway(events=events, registry=registry, cache=cache).generate(request=_request())
 
-    expected = ["registry", "features", "lookup"]
+    expected = ["registry", "deriver", "lookup"]
     if unexpected_on == "remember":
         expected.extend(["executor", "converter", "remember"])
     assert events == expected
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("failure_site", ["registry", "hasher", "executor", "converter"])
+@pytest.mark.parametrize("failure_site", ["registry", "executor", "converter"])
 async def test_pre_remember_failures_propagate_by_identity_without_a_write(
     failure_site: str,
 ) -> None:
@@ -298,24 +514,29 @@ async def test_pre_remember_failures_propagate_by_identity_without_a_write(
         executor_error=failure if failure_site == "executor" else None,
         converter_error=failure if failure_site == "converter" else None,
     )
-    if failure_site == "hasher":
-        def failing_hasher(features: object) -> str:
-            events.append("features")
-            _ = features
-            raise failure
+    with pytest.raises(RuntimeError) as raised:
+        await gateway.generate(request=_request())
 
-        gateway = LocalResponseGateway(
-            registry=registry,
-            response_cache=cache,
-            hash_features=failing_hasher,
-            convert_onnx_result=lambda result: str(result),
-            executor=lambda artifact, invocation: asyncio.sleep(0, result=[]),
-        )
+    assert raised.value is failure
+    assert cache.remember_calls == []
+
+
+@pytest.mark.asyncio
+async def test_deriver_failure_propagates_before_lookup_or_remember() -> None:
+    """A failed identity derivation has no cache or execution side effect."""
+    events: list[str] = []
+    failure = RuntimeError("deriver")
+    registry = _RecordingRegistry(events)
+    cache = _RecordingCache(events)
+    deriver = _RecordingKeyDeriver(events, error=failure)
+    gateway = _gateway(events=events, registry=registry, cache=cache, deriver=deriver)
 
     with pytest.raises(RuntimeError) as raised:
         await gateway.generate(request=_request())
 
     assert raised.value is failure
+    assert events == ["registry", "deriver"]
+    assert cache.lookup_calls == []
     assert cache.remember_calls == []
 
 
@@ -337,7 +558,7 @@ async def test_cancellation_from_executor_propagates_unchanged_without_a_write()
         await gateway.generate(request=_request())
 
     assert raised.value is cancellation
-    assert events == ["registry", "features", "lookup", "executor"]
+    assert events == ["registry", "deriver", "lookup", "executor"]
     assert cache.remember_calls == []
 
 
@@ -360,7 +581,7 @@ async def test_concurrent_same_key_misses_direct_await_separate_execution_paths(
     gateway = LocalResponseGateway(
         registry=registry,
         response_cache=cache,
-        hash_features=lambda features: (events.append("features"), "feature-hash")[1],
+        cache_key_deriver=_RecordingKeyDeriver(events),
         convert_onnx_result=lambda result: (events.append("converter"), str(result[0]))[1],
         executor=executor,
     )
@@ -404,7 +625,7 @@ async def test_default_executor_adapter_delegates_to_existing_private_compositio
     gateway = LocalResponseGateway(
         registry=registry,
         response_cache=cache,
-        hash_features=lambda features: (events.append("features"), "feature-hash")[1],
+        cache_key_deriver=_RecordingKeyDeriver(events),
         convert_onnx_result=lambda result: (events.append("converter"), "generated")[1],
     )
 
@@ -414,7 +635,7 @@ async def test_default_executor_adapter_delegates_to_existing_private_compositio
     assert events == [
         "composition.create",
         "registry",
-        "features",
+        "deriver",
         "lookup",
         "composition.execute",
         "converter",
