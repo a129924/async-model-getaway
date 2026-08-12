@@ -1,0 +1,157 @@
+topic: local-response-generation-with-cache-reuse
+review: implementation-review
+verdict: approved
+review_status: COMPLETE
+
+preconditions:
+  plan_review:
+    status: approved
+    artifact: plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.plan-review.json
+  human_check:
+    status: cleared
+    artifact: plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.human-check.json
+    detail: >-
+      The Human-owned artifact is valid JSON and explicitly clears this completed
+      implementation for independent implementation review after the latest plan review.
+  red_test_evidence:
+    status: red-tests-ready
+    artifact: plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.red-tests.yaml
+  implementation_step_gate: passed
+
+blocking_issues: []
+
+traceability_matrix:
+  - step: >-
+      1. Tester creates the declared gateway, package-surface, and strict type-witness
+      tests plus topic Pyright config; with production unchanged, records fresh RED
+      evidence that maps every locked behavior and verifies no dynamic module loading.
+    status: done
+    evidence: >-
+      tests/local_response/test_gateway.py:147;
+      tests/local_response/test_local_response_package_surface.py:18;
+      tests/typecheck/local_response_generation_with_cache_reuse.py:9;
+      plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.red-tests.yaml
+  - step: >-
+      2. Implementer creates request.py and __init__.py with the frozen slotted request,
+      non-exported recursive alias, and exact two-symbol surface.
+    status: done
+    evidence: >-
+      src/async_model_gateway/local_response/request.py:14;
+      src/async_model_gateway/local_response/request.py:25;
+      src/async_model_gateway/local_response/__init__.py:3
+  - step: >-
+      3. Implementer creates gateway.py and _local_onnx_executor.py with private seams,
+      guarded cache flow, contexts, exhaustive outcomes, direct-await propagation, and
+      delegation-only default execution.
+    status: done
+    evidence: >-
+      src/async_model_gateway/local_response/gateway.py:32;
+      src/async_model_gateway/local_response/gateway.py:57;
+      src/async_model_gateway/local_response/gateway.py:77;
+      src/async_model_gateway/local_response/gateway.py:99;
+      src/async_model_gateway/local_response/_local_onnx_executor.py:11
+  - step: >-
+      4. Implementer runs the declared pre-merge validation, confirms only Written paths
+      changed and every ReadOnly/Modify path is untouched, then truthfully updates
+      implementation tracking.
+    status: done
+    evidence: >-
+      Focused pytest 20 passed; full pytest 234 passed; topic/global Pyright,
+      Ruff, uv lock --check, and git diff --check passed. git ls-files --others
+      --exclude-standard contains only declared Written artifacts; ReadOnly and
+      pre-merge Modify paths have no changes.
+
+scope_creep_check:
+  - non_goal: No remote execution, non-ONNX execution, loader inference, provider adapter, or ModelArtifact change.
+    violated: no
+    evidence: src/async_model_gateway/local_response/gateway.py:79
+  - non_goal: No cache/registry/pool/executor/composition source-boundary or policy change.
+    violated: no
+    evidence: git status --short; only declared new local_response source and topic artifacts
+  - non_goal: No singleflight, lock, task, retry, timeout, background, close, or unload behavior.
+    violated: no
+    evidence: src/async_model_gateway/local_response/gateway.py:86
+  - non_goal: No root-package export or pre-merge documentation/version/release work.
+    violated: no
+    evidence: src/async_model_gateway/local_response/__init__.py:6; unchanged root and Modify paths
+  - non_goal: Only declared Written paths may be added before merge.
+    violated: no
+    evidence: >-
+      The amended plan expressly lists
+      src/async_model_gateway/local_response/_local_onnx_executor.py as a Written artifact.
+  - non_goal: Tests use direct imports; dynamic module loading is not authorized.
+    violated: no
+    evidence: >-
+      rg found no importlib, __import__, spec_from_file_location, or SourceFileLoader
+      matches in tests/local_response or tests/typecheck/local_response_generation_with_cache_reuse.py.
+
+contract_check:
+  - item: Exact local_response two-symbol public surface and frozen request DTO.
+    status: matches
+    detail: >-
+      __init__.py:6 and request.py:14-34 provide the exact exports, six fields,
+      frozen/slotted dataclass, and non-exported recursive alias.
+  - item: Exact constructor, private callable protocols, and default execution seam.
+    status: matches
+    detail: >-
+      gateway.py:32-75 matches the keyword-only constructor and three private
+      protocols; the declared private adapter is present at the approved Written path
+      and delegates directly to existing composition at _local_onnx_executor.py:18.
+  - item: Guard-first local/ONNX validation before collaborator use.
+    status: matches
+    detail: gateway.py:79-84 guards before registry, hasher, cache, executor, and converter use.
+  - item: Registry-authoritative key, fixed namespace, fresh distinct call-site contexts, and exhaustive cache outcomes.
+    status: matches
+    detail: >-
+      gateway.py:86-119 uses freshness.entry.payload_hash, local-response-v1,
+      independent literal object() contexts, closed match/case outcomes, and assert_never.
+  - item: Direct-await independent misses with unchanged exception and cancellation propagation.
+    status: matches
+    detail: >-
+      gateway.py:107-113 has no catch, task, lock, retry, or timeout; focused
+      failure, cancellation, and concurrency coverage passes.
+
+test_plan_check:
+  - case_type: public surface, DTO, signatures, and private seams
+    status: present
+    location: tests/local_response/test_local_response_package_surface.py:18
+  - case_type: cache hit and locked miss order/key/write outcomes
+    status: present
+    location: tests/local_response/test_gateway.py:147
+  - case_type: fresh distinct non-request cache contexts
+    status: present
+    location: tests/local_response/test_gateway.py:202
+  - case_type: unsupported local source/family guards
+    status: present
+    location: tests/local_response/test_gateway.py:240
+  - case_type: assert_never on unexpected closed outcomes
+    status: present
+    location: tests/local_response/test_gateway.py:263
+  - case_type: failure and cancellation propagation without cache write
+    status: present
+    location: tests/local_response/test_gateway.py:284
+  - case_type: independent concurrent same-key misses
+    status: present
+    location: tests/local_response/test_gateway.py:344
+  - case_type: default private composition adapter
+    status: present
+    location: tests/local_response/test_gateway.py:379
+  - case_type: strict public typing witness
+    status: present
+    location: tests/typecheck/local_response_generation_with_cache_reuse.py:9
+
+validation_evidence:
+  focused_pytest: "uv run pytest --no-cov tests/local_response -v: 20 passed"
+  full_pytest: "uv run pytest --no-cov -q: 234 passed"
+  topic_pyright: "uv run pyright --project plan/local-response-generation-with-cache-reuse/pyrightconfig.json: 0 errors, 0 warnings, 0 informations"
+  global_pyright: "uv run pyright: 0 errors, 0 warnings, 0 informations"
+  ruff: "uv run ruff check src tests plan/local-response-generation-with-cache-reuse: passed"
+  lock_check: "uv lock --check: passed"
+  diff_check: "git diff --check: passed"
+  dynamic_test_import_check: "passed; no unauthorized dynamic module loading matches"
+
+next_gate:
+  status: ready-for-code-review
+  detail: >-
+    Implementation conformance is approved. Run independent python-code-review;
+    do not commit, push, or open a draft PR until that gate is approved.

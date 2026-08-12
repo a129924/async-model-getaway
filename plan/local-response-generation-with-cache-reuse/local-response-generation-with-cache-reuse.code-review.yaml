@@ -1,0 +1,39 @@
+topic: local-response-generation-with-cache-reuse
+review: python-code-review
+verdict: approved
+tooling_detected: "pyproject.toml: pyright strict; ruff; pytest"
+
+findings:
+  typing: []
+  lint: []
+  readability: []
+  error_handling: []
+  anti_patterns: []
+  test_quality: []
+  observability: []
+
+review_scope:
+  source:
+    - src/async_model_gateway/local_response/__init__.py
+    - src/async_model_gateway/local_response/request.py
+    - src/async_model_gateway/local_response/gateway.py
+    - src/async_model_gateway/local_response/_local_onnx_executor.py
+  tests:
+    - tests/local_response/test_gateway.py
+    - tests/local_response/test_local_response_package_surface.py
+    - tests/typecheck/local_response_generation_with_cache_reuse.py
+
+evidence:
+  implementation_review: approved
+  strict_typing: "topic and global Pyright: 0 errors, 0 warnings, 0 informations"
+  lint: "Ruff: all checks passed"
+  test_quality: >-
+    Focused coverage asserts observable outcome/order, no-call boundaries, cache-context
+    identity, exception/cancellation identity, independent concurrent misses, private-adapter
+    delegation, package surface, and strict public typing. No dynamic module loading was found.
+
+next_gate:
+  status: ready-for-human-merge-gate
+  detail: >-
+    Both implementation and code review gates are approved. Commit, push, and draft-PR
+    routing may proceed only under the approved topic flow; Human merge remains required.

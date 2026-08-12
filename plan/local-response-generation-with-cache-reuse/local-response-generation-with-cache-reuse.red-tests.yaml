@@ -1,0 +1,152 @@
+topic: local-response-generation-with-cache-reuse
+phase: tdd-test-authoring
+status: COMPLETE
+verdict: red-tests-ready
+authored_on: "2026-08-12"
+d1_verdict:
+  verdict: non-trivial
+  reason: >-
+    The topic introduces a public async gateway with ordered registry/cache/executor
+    collaboration, caller-owned cancellation, cache-write outcomes, and independent
+    concurrent misses.
+behavior_contract:
+  source: plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.spec.md
+  active_acceptance_criteria:
+    - AC-1
+    - AC-2
+    - AC-3
+    - AC-4
+    - AC-5
+    - AC-6
+    - AC-7
+    - AC-8
+    - AC-9
+test_mapping:
+  - requirement_id: AC-1
+    test_case_name: test_local_response_exports_exactly_the_two_declared_public_types
+    coverage_category: public_contract
+  - requirement_id: AC-1
+    test_case_name: test_request_is_frozen_slotted_and_has_the_exact_six_field_contract
+    coverage_category: public_contract
+  - requirement_id: AC-2
+    test_case_name: test_gateway_constructor_and_generate_signature_are_the_locked_public_contract
+    coverage_category: public_contract
+  - requirement_id: AC-2
+    test_case_name: test_private_callable_protocols_have_the_frozen_annotations_without_becoming_exports
+    coverage_category: boundary_edge
+  - requirement_id: AC-2
+    test_case_name: test_cache_context_sentinels_are_fresh_distinct_objects_and_not_request_data
+    coverage_category: state_side_effects
+  - requirement_id: AC-2
+    test_case_name: check_public_gateway_preserves_the_frozen_typed_surface
+    coverage_category: static_typing
+  - requirement_id: AC-3
+    test_case_name: test_cache_hit_returns_before_execution_conversion_or_write
+    coverage_category: happy_path
+  - requirement_id: AC-3
+    test_case_name: test_cache_miss_uses_locked_order_key_and_fail_open_write_outcomes
+    coverage_category: integration_points
+  - requirement_id: AC-4
+    test_case_name: test_pre_remember_failures_propagate_by_identity_without_a_write
+    coverage_category: error_exception
+  - requirement_id: AC-4
+    test_case_name: test_cancellation_from_executor_propagates_unchanged_without_a_write
+    coverage_category: error_exception
+  - requirement_id: AC-4
+    test_case_name: test_concurrent_same_key_misses_direct_await_separate_execution_paths
+    coverage_category: integration_points
+  - requirement_id: AC-5
+    test_case_name: test_unsupported_source_or_loader_family_fails_before_any_collaborator_call
+    coverage_category: boundary_edge
+  - requirement_id: AC-6
+    test_case_name: test_unexpected_closed_cache_outcomes_reach_assert_never
+    coverage_category: boundary_edge
+  - requirement_id: AC-7
+    test_case_name: test_cache_miss_uses_locked_order_key_and_fail_open_write_outcomes
+    coverage_category: state_side_effects
+  - requirement_id: AC-8
+    test_case_name: test_default_executor_adapter_delegates_to_existing_private_composition
+    coverage_category: regression
+  - requirement_id: AC-9
+    test_case_name: test_local_response_exports_exactly_the_two_declared_public_types
+    coverage_category: backward_compatibility
+validation_checks:
+  d1_decision: passed
+  behavior_contract_source: plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.spec.md
+  requirements_mapped: true
+  public_contract_coverage: true
+  test_categories_present:
+    happy_path: true
+    error_exception: true
+    boundary_edge: true
+    state_side_effects: true
+    integration_points: true
+  expected_initial_status: red
+  production_code_modified: false
+  approved_plan_review:
+    path: plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.plan-review.json
+    verdict: approved
+    passed: true
+  human_check:
+    source: explicit human chat approval to continue implementation
+    repo_visible_artifact: absent
+    passed_for_routing: true
+    limitation: >-
+      No Human-owned human-check artifact exists in the topic directory; this
+      tester did not fabricate or modify one.
+  production_baseline_guard:
+    command: git diff --name-only -- src
+    result: no output
+    passed: true
+  source_governance:
+    static_imports_only: true
+    dynamic_module_loading_matches: []
+    command: >-
+      rg -n '(importlib|__import__|spec_from_file_location|SourceFileLoader)'
+      tests/local_response tests/typecheck/local_response_generation_with_cache_reuse.py
+    exit_code: 1
+    passed: true
+  focused_pytest:
+    command: uv run pytest --no-cov tests/local_response -v
+    exit_code: 2
+    expected_nonzero: true
+    collected_tests_before_import_failure: 0
+    collection_errors: 2
+    primary_failure: >-
+      ModuleNotFoundError: No module named 'async_model_gateway.local_response'
+    failure_matches_missing_approved_boundary: true
+    passed: true
+  dedicated_pyright:
+    command: >-
+      uv run pyright --project
+      plan/local-response-generation-with-cache-reuse/pyrightconfig.json
+    exit_code: 1
+    expected_nonzero: true
+    analyzed_fixture: tests/typecheck/local_response_generation_with_cache_reuse.py
+    analyzed_fixture_confirmed: true
+    errors: 9
+    warnings: 0
+    primary_diagnostic: reportMissingImports
+    primary_failure: >-
+      async_model_gateway.local_response could not be resolved; the remaining
+      diagnostics are expected Unknown-type fallout from that missing package.
+    failure_matches_missing_approved_boundary: true
+    passed: true
+  authored_test_quality:
+    command: >-
+      uv run ruff check tests/local_response
+      tests/typecheck/local_response_generation_with_cache_reuse.py
+      plan/local-response-generation-with-cache-reuse
+    exit_code: 0
+    passed: true
+  diff_check:
+    command: git diff --check
+    exit_code: 0
+    passed: true
+issues:
+  - >-
+    The Human-owned human-check artifact is absent. Explicit human chat approval
+    authorized this RED gate, but the repository evidence remains incomplete.
+next_step: >-
+  Implement only the approved local_response request, package, and gateway source
+  paths; then rerun focused pytest and dedicated Pyright for GREEN evidence.
