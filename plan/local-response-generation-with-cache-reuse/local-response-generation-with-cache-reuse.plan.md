@@ -94,12 +94,14 @@ cannot make cache identity diverge from execution input.
 
 ## Status / Allowed Transitions
 
-- **Current**: `creator-in-progress`; the topic is at
-  `spec-and-plan-finalization` with its tracker pending. No plan-review,
-  Human-check, RED, implementation-review, or code-review clearance is claimed.
+- **Current**: `pr-open`; the fresh snapshot plan review, Human clearance,
+  RED evidence, implementation review, and aggregate code review are recorded
+  as complete. PR comment handling and Human merge approval remain separate
+  uncompleted gates; no thread resolution or merge clearance is claimed.
 - **Execution model**: `spec-and-plan-finalization -> plan-review -> human-check
   -> tdd-test-authoring -> implement-plan -> aggregate implementation-review ->
-  aggregate code-review -> pr-comment`. No release phase is part of this topic.
+  aggregate code-review -> pr-open`. The tracker records the workflow phase
+  separately. No release phase is part of this topic.
 - **Review baseline rule**: each aggregate review starts from
   `d5c5b329fec43f1d46fabdb87e1afb55573eb424`, names the exact current review
   head after the snapshot change is committed, and covers all cumulative paths
@@ -195,14 +197,8 @@ baseline; all unlisted paths are plan drift.
 
 ```json
 {
-  "verdict": "needs-rework",
-  "blocking_issues": [
-    {
-      "issue": "The snapshot amendment awaits fresh plan review and must reset every downstream gate.",
-      "file": "plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.plan.md",
-      "fix": "Review the current plan, then issue fresh snapshot evidence and aggregate reviews against the actual PR baseline."
-    }
-  ],
+  "verdict": "approved",
+  "blocking_issues": [],
   "copilot_feedback_triage": {
     "ADDRESS": [],
     "DISCUSS": [],
