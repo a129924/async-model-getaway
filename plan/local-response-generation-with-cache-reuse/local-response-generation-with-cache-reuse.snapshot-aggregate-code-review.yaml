@@ -1,0 +1,143 @@
+topic: local-response-generation-with-cache-reuse
+review: snapshot-aggregate-python-code-review
+revision: invocation-snapshot-aggregate-review-reset
+status: COMPLETE
+active_for_gating: true
+verdict: approved
+review_status: COMPLETE
+
+immutable_scope:
+  baseline: d5c5b329fec43f1d46fabdb87e1afb55573eb424
+  head: f615fe42b859bf5da1fd9ac5a5157b05325535dc
+  comparison: cumulative committed range only
+  changed_path_count: 19
+  changed_paths:
+    - plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.code-review.yaml
+    - plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.human-check.json
+    - plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.implementation-review.yaml
+    - plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.plan-review.json
+    - plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.plan.md
+    - plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.red-tests.yaml
+    - plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.snapshot.plan-review.json
+    - plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.snapshot.red-tests.yaml
+    - plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.spec.md
+    - plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.step.md
+    - plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.validation-governance.yaml
+    - plan/local-response-generation-with-cache-reuse/pyrightconfig.json
+    - src/async_model_gateway/local_response/__init__.py
+    - src/async_model_gateway/local_response/_local_onnx_executor.py
+    - src/async_model_gateway/local_response/gateway.py
+    - src/async_model_gateway/local_response/request.py
+    - tests/local_response/test_gateway.py
+    - tests/local_response/test_local_response_package_surface.py
+    - tests/typecheck/local_response_generation_with_cache_reuse.py
+  path_authorization: approved
+  path_authorization_detail: >-
+    The cumulative range contains only the paths declared by the current topic
+    plan as topic evidence, local-response implementation context, or focused
+    test/type-witness coverage. ReadOnly owners, README.md,
+    docs/architecture.md, and pyproject.toml are unchanged.
+
+preconditions:
+  aggregate_implementation_review:
+    artifact: plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.snapshot-aggregate-implementation-review.yaml
+    verdict: approved
+    status: COMPLETE
+    passed: true
+  historical_addfdb3_code_review:
+    status: non-gating
+    detail: >-
+      The historical review is retained unchanged and is not used to satisfy
+      this current-baseline code-review gate.
+
+tooling_detected:
+  - "pyproject.toml: Pyright strict; Python 3.10; source includes src"
+  - "pyproject.toml: Ruff E, W, F, N, D, UP, B, A, C4, ARG, RUF; line-length 100"
+  - "pyproject.toml: pytest asyncio_mode=strict; coverage threshold 90%"
+
+reviewed_paths:
+  production:
+    - src/async_model_gateway/local_response/__init__.py
+    - src/async_model_gateway/local_response/_local_onnx_executor.py
+    - src/async_model_gateway/local_response/gateway.py
+    - src/async_model_gateway/local_response/request.py
+  tests:
+    - tests/local_response/test_gateway.py
+    - tests/local_response/test_local_response_package_surface.py
+    - tests/typecheck/local_response_generation_with_cache_reuse.py
+  topic_evidence:
+    - plan/local-response-generation-with-cache-reuse/
+
+findings:
+  typing: []
+  lint: []
+  readability: []
+  error_handling: []
+  anti_patterns: []
+  test_quality: []
+  observability: []
+
+quality_and_boundary_checks:
+  snapshot_top_level_semantics: >-
+    approved: generate() performs exactly one dict(request.invocation) after
+    both supported-path guards and immediately before resolve_freshness. No
+    later gateway read of request.invocation exists. The copy is shallow, so
+    nested leaf identity is deliberately retained without unapproved deep-copy
+    or mutation-detection behavior.
+  cache_key_identity: >-
+    approved: the injected private deriver remains the sole cache-identity
+    owner. The gateway forwards the one snapshot to it, never constructs or
+    alters a CacheKey, and passes the returned opaque key unchanged to both
+    lookup and miss-path remember.
+  async_cancellation_and_errors: >-
+    approved: registry, cache, and executor remain direct awaits. Snapshot,
+    deriver, executor, and converter failures propagate without a catch, task,
+    retry, timeout, lock, or cancellation suppression; unexpected closed
+    outcomes remain exhaustive assert_never branches.
+  public_surface_and_privacy: >-
+    approved: package exports remain limited to LocalResponseGateway and
+    LocalResponseRequest. Private collaborators stay module-private; raw model
+    inputs reach only the deriver and cache contexts remain fresh opaque
+    objects.
+  test_governance_and_coverage: >-
+    approved: deterministic registry suspension verifies the top-level mutation
+    race, same snapshot identity at deriver and executor, shallow leaf identity,
+    opaque-key reuse, materialization-failure ordering, guards, cancellation,
+    independent misses, package surface, and strict type witness. Topic test
+    paths contain no importlib, __import__, spec_from_file_location, or
+    SourceFileLoader usage; no dynamic-loading exception is declared or used.
+  documentation_deferral: >-
+    approved: README.md, docs/architecture.md, and version metadata are absent
+    from the committed range, matching the current plan's explicitly deferred
+    post-merge 0.8.0 release work.
+
+read_only_checks:
+  committed_head:
+    command: git rev-parse HEAD
+    result: f615fe42b859bf5da1fd9ac5a5157b05325535dc
+  cumulative_diff_check:
+    command: >-
+      git diff --check d5c5b329fec43f1d46fabdb87e1afb55573eb424
+      f615fe42b859bf5da1fd9ac5a5157b05325535dc
+    result: passed
+  dynamic_module_loading_check:
+    command: >-
+      rg -n '(importlib|__import__|spec_from_file_location|SourceFileLoader)'
+      tests/local_response tests/typecheck/local_response_generation_with_cache_reuse.py
+    result: no matches
+  validation_evidence_reviewed:
+    source: plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.snapshot-aggregate-implementation-review.yaml
+    result: >-
+      Focused and full pytest, locked topic and global Pyright, Ruff, lock, and
+      committed-range diff checks are recorded as passing. This code review did
+      not rerun those executable validations.
+
+blocking_issues: []
+warnings: []
+next_gate:
+  status: review-evidence-ready
+  detail: >-
+    Only the reviewer-owned evidence artifact and tracker completion are now
+    uncommitted. Once those review-evidence changes are committed and pushed,
+    the PR thread-resolution step may proceed; human merge approval remains a
+    separate gate.

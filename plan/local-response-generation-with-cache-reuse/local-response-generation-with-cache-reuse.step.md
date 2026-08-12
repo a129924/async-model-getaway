@@ -10,7 +10,7 @@ amendment: invocation-snapshot-aggregate-review-reset
 
 > **Executor**: Mark each step `[X]` only when complete.
 > The fresh snapshot plan review and Human clearance are recorded, and Tester RED
-> evidence is complete. Implementation and aggregate review gates remain pending.
+> evidence is complete. Aggregate reviews are complete.
 > Historical
 > `addfdb3`-baseline reviews stay immutable and non-gating.
 
@@ -20,8 +20,8 @@ amendment: invocation-snapshot-aggregate-review-reset
 - [X] plan-review
 - [X] tdd-test-authoring
 - [X] implementation
-- [ ] implementation-review
-- [ ] code-review
+- [X] implementation-review
+- [X] code-review
 
 ## Implementation Steps
 
