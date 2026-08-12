@@ -1,0 +1,133 @@
+topic: local-response-generation-with-cache-reuse
+phase: tdd-test-authoring
+status: COMPLETE
+active_for_gating: true
+verdict: red-tests-ready
+authored_on: "2026-08-12"
+d1_verdict:
+  verdict: non-trivial
+  reason: >-
+    The pre-first-await shallow state-capture correction changes async ordering,
+    mutation-race behavior, and collaborator failure ordering while retaining the
+    existing private contracts.
+d2_evidence: sufficient
+behavior_contract:
+  source: plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.spec.md
+  active_acceptance_criteria:
+    - AC-1
+    - AC-2
+    - AC-3
+    - AC-4
+    - AC-5
+    - AC-6
+    - AC-7
+    - AC-8
+    - AC-9
+test_mapping:
+  - requirement_id: AC-1
+    test_case_name: test_registry_suspension_keeps_cache_identity_and_execution_on_one_shallow_snapshot
+    coverage_category: integration_points
+  - requirement_id: AC-2
+    test_case_name: test_registry_suspension_keeps_cache_identity_and_execution_on_one_shallow_snapshot
+    coverage_category: state_side_effects
+  - requirement_id: AC-3
+    test_case_name: test_registry_suspension_keeps_cache_identity_and_execution_on_one_shallow_snapshot
+    coverage_category: boundary_edge
+  - requirement_id: AC-4
+    test_case_name: test_snapshot_materialization_failure_prevents_all_collaborator_observation
+    coverage_category: error_exception
+  - requirement_id: AC-5
+    test_case_name: test_registry_suspension_keeps_cache_identity_and_execution_on_one_shallow_snapshot
+    coverage_category: integration_points
+  - requirement_id: AC-6
+    test_case_name: test_registry_suspension_keeps_cache_identity_and_execution_on_one_shallow_snapshot
+    coverage_category: regression
+  - requirement_id: AC-7
+    test_case_name: tests/local_response/test_gateway.py existing cache, guard, cancellation, and direct-await coverage
+    coverage_category: backward_compatibility
+  - requirement_id: AC-8
+    test_case_name: test_local_response_package_surface and check_public_gateway_preserves_the_frozen_typed_surface
+    coverage_category: public_contract
+  - requirement_id: AC-9
+    test_case_name: snapshot aggregate review handoff recorded in this topic plan
+    coverage_category: governance
+validation_checks:
+  d1_decision: passed
+  behavior_contract_source: plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.spec.md
+  requirements_mapped: true
+  public_contract_coverage: true
+  test_categories_present:
+    happy_path: true
+    error_exception: true
+    boundary_edge: true
+    state_side_effects: true
+    integration_points: true
+  expected_initial_status: red
+  production_code_modified: false
+  production_baseline_guard:
+    command: git diff --name-only -- src
+    result: no output
+    passed: true
+    scope: >-
+      The current gateway remains the approved old-behavior baseline; this RED
+      gate writes no production source.
+  snapshot_plan_review:
+    path: plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.snapshot.plan-review.json
+    verdict: approved
+    blocking_issues: []
+    passed: true
+  snapshot_human_check:
+    path: plan/local-response-generation-with-cache-reuse/local-response-generation-with-cache-reuse.human-check.json
+    decision: approved
+    status: cleared
+    revision: invocation-snapshot-aggregate-review-reset
+    authorization: Execution Authorized
+    passed: true
+  source_governance:
+    static_imports_only: true
+    dynamic_module_loading_matches: []
+    command: >-
+      rg -n '(importlib|__import__|spec_from_file_location|SourceFileLoader)'
+      tests/local_response tests/typecheck/local_response_generation_with_cache_reuse.py
+    exit_code: 1
+    passed: true
+  focused_pytest:
+    command: uv run pytest --no-cov tests/local_response -v
+    exit_code: 1
+    expected_nonzero: true
+    collected_tests: 24
+    passed_tests: 22
+    failed_tests: 2
+    primary_failures:
+      - >-
+        test_registry_suspension_keeps_cache_identity_and_execution_on_one_shallow_snapshot:
+        old gateway returns B after caller mutation, rather than the pre-await A.
+      - >-
+        test_snapshot_materialization_failure_prevents_all_collaborator_observation:
+        old gateway never invokes dict() and therefore does not raise the sentinel.
+    failure_matches_missing_approved_behavior: true
+    passed: true
+  dedicated_pyright:
+    command: >-
+      uv run --no-sync --locked -- pyright --project
+      plan/local-response-generation-with-cache-reuse/pyrightconfig.json
+    exit_code: 0
+    analyzed_fixture: tests/typecheck/local_response_generation_with_cache_reuse.py
+    errors: 0
+    warnings: 0
+    passed: true
+  ruff:
+    command: >-
+      uv run --no-sync --locked -- ruff check tests/local_response
+      tests/typecheck/local_response_generation_with_cache_reuse.py
+    exit_code: 0
+    passed: true
+  diff_check:
+    command: git diff --check
+    exit_code: 0
+    passed: true
+issues: []
+next_step: >-
+  Implement only src/async_model_gateway/local_response/gateway.py: materialize
+  one dict(request.invocation) after both guards and before registry freshness,
+  then pass that same snapshot unchanged to the existing deriver and executor.

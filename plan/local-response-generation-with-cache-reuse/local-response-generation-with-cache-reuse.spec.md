@@ -2,77 +2,85 @@
 
 ## Acceptance Criteria
 
-1. `gateway.py` defines the private, non-exported `_CacheKeyDeriver` protocol with
-   keyword-only `model_name: str`, `model_payload_hash: str`,
-   `features: Mapping[str, str]`, `model_artifact: ModelArtifact`, and
-   `invocation: dict[str, object]` inputs, returning `CacheKey`.
-2. `LocalResponseGateway.__init__` has keyword-only `registry`, `response_cache`,
-   `cache_key_deriver`, `convert_onnx_result`, and optional `executor` parameters;
-   it no longer accepts or retains `hash_features`. Package exports, request DTO,
-   converter, executor, and default adapter contracts remain unchanged.
-3. After the established local/ONNX guards and registry freshness, `generate()`
-   calls the deriver with request model name, registry payload hash, features,
-   artifact, and invocation. The returned `CacheKey` is handed unchanged to
-   `lookup` and, on miss, `remember`.
-4. The test deriver proves a changed invocation produces a different key and no
-   cache cross-hit; it separately proves a changed model name produces a different
-   key and no cache cross-hit. The artifact is an observed deriver identity input.
-5. The gateway owns no canonicalization, hash, collision control, or namespace
-   decision. Raw prompts, model names, and artifact paths appear neither in
-   cache-facing namespace, context, nor record inputs.
-6. Existing cache-context policy remains: lookup receives one fresh `object()`;
-   miss remember receives another fresh `object()`; neither is retained, compared,
-   exported, or request data.
-7. Existing `CacheHit`/`CacheMiss` and `Remembered`/`Skipped`/`Failed` exhaustive
-   `match/case` behavior, fail-open writes, direct await, and independent misses
-   remain unchanged.
-8. A deriver error propagates unchanged before lookup and causes no lookup,
-   execution, converter call, or remember. Existing registry/executor/converter
-   failures and cancellation propagation remain unchanged.
-9. `ModelRegistry`, `ResponseCache`, `CacheKey`, `ModelPayloadHasher`, and
-   `ModelArtifact` remain ReadOnly; no release/doc/version work is introduced.
+1. After its existing local and ONNX guards, and before first awaiting registry
+   freshness, `LocalResponseGateway.generate()` materializes exactly one
+   `invocation_snapshot = dict(request.invocation)`.
+2. The gateway does not read `request.invocation` after materialization. It calls
+   the private deriver exactly as
+   `deriver(model_name=request.model_name,
+   model_payload_hash=freshness.entry.payload_hash, features=request.features,
+   model_artifact=request.model_artifact, invocation=invocation_snapshot)` and
+   gives the existing private executor `artifact=request.model_artifact,
+   invocation=invocation_snapshot`. The executor invocation container has the
+   same identity as the deriver invocation argument; neither private signature
+   nor public package surface changes.
+3. The snapshot freezes only top-level key/value associations. Nested/unknown
+   leaf objects preserve identity and are not deep-copied; the caller must not
+   mutate the leaf graph while generation is running.
+4. If snapshot materialization fails, that exception propagates unchanged before
+   registry, deriver, cache, executor, converter, or remember observation, and
+   the gateway adds no await, task, retry, timeout, catch, or fallback.
+5. The deriver's opaque returned `CacheKey` is passed unchanged to cache lookup
+   and miss remember; the gateway neither reconstructs it nor derives a second
+   key.
+6. A deterministic suspend-point test pauses registry freshness after snapshot
+   materialization, mutates the original request mapping, and proves deriver and
+   executor receive the same original top-level snapshot; cache identity and
+   execution result cannot diverge.
+7. Local/ONNX guards, fresh private cache contexts, exhaustive cache outcome
+   matching, fail-open writes, privacy, direct awaits, exception/cancellation
+   propagation, and independent same-key misses remain unchanged.
+8. `ModelRegistry`, `ResponseCache`, `CacheKey`, `ModelPayloadHasher`,
+   `ModelArtifact`, default executor, request DTO, package exports,
+   `README.md`, `docs/architecture.md`, and version metadata remain unchanged.
+9. Current aggregate implementation and code review evidence compares the actual
+   PR baseline `d5c5b329fec43f1d46fabdb87e1afb55573eb424` with the exact
+   post-commit review head and covers all cumulative declared topic paths. Old
+   `addfdb3`-baseline reviews are historical/non-gating and are not rewritten.
 
 ## Behavioral Scenarios
 
-### Scenario 1: opaque key supports a cache hit
+### Scenario 1: cache identity and execution share the snapshot
 
-- **Given**: a supported request, registry freshness, an injected deriver, and a
-  `CacheHit`.
-- **When**: `generate()` is awaited.
-- **Then**: it calls Registry -> deriver -> lookup, returns the hit, and does not
-  execute, convert, or remember; the lookup receives the deriver's same key and
-  a fresh private context.
+- **Given**: a supported request and cache miss.
+- **When**: generation materializes its snapshot before registry freshness.
+- **Then**: registry ->
+  `deriver(model_name=request.model_name,
+  model_payload_hash=freshness.entry.payload_hash, features=request.features,
+  model_artifact=request.model_artifact, invocation=invocation_snapshot)` ->
+  lookup -> executor with `artifact=request.model_artifact,
+  invocation=invocation_snapshot` -> converter -> remember runs. The executor
+  and deriver invocation arguments have the same container identity, and
+  lookup/remember receive the deriver's unchanged opaque key.
 
-### Scenario 2: miss generates with unchanged key handoff
+### Scenario 2: caller mutation during registry freshness cannot split behavior
 
-- **Given**: a supported request and `CacheMiss`.
-- **When**: `generate()` is awaited.
-- **Then**: it calls Registry -> deriver -> lookup -> executor -> converter ->
-  remember -> return, and lookup/remember receive the exact same key object/value
-  supplied by the deriver.
+- **Given**: registry signals that it has been awaited after snapshot materialization.
+- **When**: the caller replaces a top-level invocation value and registry resumes.
+- **Then**: deriver and executor observe the same pre-mutation snapshot, and the
+  derived cache identity and response correspond to that same input.
 
-### Scenario 3: identity separation prevents cross-hit
+### Scenario 3: shallow leaf semantics remain explicit
 
-- **Given**: two otherwise equivalent requests that differ only in invocation,
-  and a second pair that differ only in model name.
-- **When**: each pair is generated through a deriver whose canonical identity
-  includes all five locked inputs.
-- **Then**: each changed input derives a distinct key, lookup does not return the
-  other request's cached response, and the artifact is observed by the deriver.
+- **Given**: an invocation containing an unknown nested object.
+- **When**: the gateway makes its top-level snapshot.
+- **Then**: the nested object identity is preserved; caller leaf mutation during
+  generation is outside the gateway contract.
 
-### Scenario 4: deriver failure stops before cache use
+### Scenario 4: snapshot materialization fails before async work
 
-- **Given**: a supported request and a deriver that raises a sentinel exception.
-- **When**: `generate()` is awaited.
-- **Then**: the same exception propagates after registry freshness, and lookup,
-  executor, converter, and remember are not called.
+- **Given**: an invocation mapping whose `dict()` materialization raises a
+  sentinel exception.
+- **When**: generation is awaited after passing both guards.
+- **Then**: that same exception propagates and no registry, deriver, cache,
+  executor, converter, or remember call occurs.
 
 ## Error / Edge Cases
 
 - Non-local source and non-ONNX artifact still raise `NotImplementedError` before
-  registry, deriver, cache, executor, or converter observation.
-- The gateway does not catch deriver exceptions or cancellation and does not
-  remember after any pre-remember failure.
+  snapshot materialization or collaborator observation.
+- The gateway neither catches snapshot/deriver failures nor suppresses
+  cancellation, and it never remembers after a pre-remember failure.
 - `Remembered`, `Skipped`, and `Failed` still return converted output; unexpected
   closed outcomes reach `assert_never`.
 - Tests use static imports only; dynamic module loading is not authorized.

@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 
 import pytest
 
@@ -62,6 +62,58 @@ class _RecordingRegistry:
             ),
             previous_payload_hash=None,
         )
+
+
+class _PausingRegistry(_RecordingRegistry):
+    """Expose the first registry suspension as a deterministic test boundary."""
+
+    def __init__(self, events: list[str]) -> None:
+        super().__init__(events)
+        self.awaited = asyncio.Event()
+        self.resume = asyncio.Event()
+
+    async def resolve_freshness(
+        self,
+        *,
+        model_name: str,
+        model_source_kind: ModelSourceKind,
+        model_payload: dict[str, object],
+    ) -> RegistryFreshnessResult:
+        self.events.append("registry")
+        self.calls.append(
+            {
+                "model_name": model_name,
+                "model_source_kind": model_source_kind,
+                "model_payload": model_payload,
+            }
+        )
+        self.awaited.set()
+        await self.resume.wait()
+        return RegistryFreshnessResult(
+            decision=RegistryFreshnessDecision.FIRST_SEEN,
+            entry=RegistryEntry(
+                model_name=model_name,
+                model_source_kind=model_source_kind,
+                payload_hash="fresh-payload-hash",
+            ),
+            previous_payload_hash=None,
+        )
+
+
+class _ExplodingInvocation(Mapping[str, object]):
+    """Raise the exact sentinel when the gateway materializes a mapping copy."""
+
+    def __init__(self, error: BaseException) -> None:
+        self._error = error
+
+    def __getitem__(self, _key: str) -> object:
+        raise self._error
+
+    def __iter__(self) -> Iterator[str]:
+        raise self._error
+
+    def __len__(self) -> int:
+        return 1
 
 
 class _RecordingCache:
@@ -559,6 +611,90 @@ async def test_cancellation_from_executor_propagates_unchanged_without_a_write()
 
     assert raised.value is cancellation
     assert events == ["registry", "deriver", "lookup", "executor"]
+    assert cache.remember_calls == []
+
+
+@pytest.mark.asyncio
+async def test_registry_suspension_keeps_cache_identity_and_execution_on_one_shallow_snapshot(
+) -> None:
+    """A top-level caller mutation cannot split the derived key from execution input."""
+    events: list[str] = []
+    registry = _PausingRegistry(events)
+    cache = _RecordingCache(events)
+    deriver = _RecordingKeyDeriver(events)
+    executor_calls: list[tuple[ModelArtifact, dict[str, object]]] = []
+    opaque_leaf = ["nested-leaf"]
+    original_invocation: dict[str, object] = {"prompt": "A", "opaque_leaf": opaque_leaf}
+    request = _request(invocation=original_invocation)
+
+    async def executor(artifact: ModelArtifact, invocation: dict[str, object]) -> list[object]:
+        events.append("executor")
+        executor_calls.append((artifact, invocation))
+        return [invocation["prompt"]]
+
+    def convert_onnx_result(result: list[object]) -> str:
+        events.append("converter")
+        return str(result[0])
+
+    gateway = LocalResponseGateway(
+        registry=registry,
+        response_cache=cache,
+        cache_key_deriver=deriver,
+        convert_onnx_result=convert_onnx_result,
+        executor=executor,
+    )
+
+    generation = asyncio.create_task(gateway.generate(request=request))
+    await registry.awaited.wait()
+
+    assert events == ["registry"]
+    assert deriver.calls == []
+    assert cache.lookup_calls == []
+    assert executor_calls == []
+
+    original_invocation["prompt"] = "B"
+    registry.resume.set()
+
+    assert await generation == "A"
+    snapshot = deriver.calls[0]["invocation"]
+    assert snapshot == {"prompt": "A", "opaque_leaf": opaque_leaf}
+    assert snapshot["opaque_leaf"] is opaque_leaf
+    assert snapshot is executor_calls[0][1]
+    assert snapshot is not original_invocation
+    assert executor_calls[0][0] is request.model_artifact
+    assert original_invocation == {"prompt": "B", "opaque_leaf": opaque_leaf}
+    assert deriver.calls == [
+        {
+            "model_name": request.model_name,
+            "model_payload_hash": "fresh-payload-hash",
+            "features": request.features,
+            "model_artifact": request.model_artifact,
+            "invocation": snapshot,
+        }
+    ]
+    assert cache.lookup_calls[0][0] is deriver.keys[0]
+    assert cache.remember_calls[0][0] is deriver.keys[0]
+    assert events == ["registry", "deriver", "lookup", "executor", "converter", "remember"]
+
+
+@pytest.mark.asyncio
+async def test_snapshot_materialization_failure_prevents_all_collaborator_observation() -> None:
+    """The unchanged materialization error occurs before the first async boundary."""
+    events: list[str] = []
+    failure = RuntimeError("snapshot materialization")
+    registry = _RecordingRegistry(events)
+    cache = _RecordingCache(events)
+    deriver = _RecordingKeyDeriver(events)
+    gateway = _gateway(events=events, registry=registry, cache=cache, deriver=deriver)
+
+    with pytest.raises(RuntimeError) as raised:
+        await gateway.generate(request=_request(invocation=_ExplodingInvocation(failure)))
+
+    assert raised.value is failure
+    assert events == []
+    assert registry.calls == []
+    assert deriver.calls == []
+    assert cache.lookup_calls == []
     assert cache.remember_calls == []
 
 

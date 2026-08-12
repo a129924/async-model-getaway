@@ -7,7 +7,7 @@
     "cleared_for": "implement-plan",
     "cleared": true,
     "authorization": "Execution Authorized",
-    "revision": "cache-key-deriver-identity-fix",
+    "revision": "invocation-snapshot-aggregate-review-reset",
     "recorded_on": "2026-08-12",
-    "summary": "Human explicitly approved the reviewed cache identity revision. The private injected _CacheKeyDeriver must include model_name, Registry payload_hash, features, invocation, and model_artifact in cache identity. This clearance replaces prior implementation clearance and authorizes a fresh RED-test subphase followed by implementation."
+    "summary": "Human approves the reviewed invocation snapshot revision. LocalResponseGateway must create one top-level shallow invocation snapshot after local/ONNX guards and before registry freshness; the cache-key deriver and executor must receive that same snapshot. Nested or opaque leaf objects are not deep-copied and must not be mutated by the caller while generation is running. Documentation remains deferred to the post-merge 0.8.0 release phase. This clearance authorizes fresh RED tests and implementation, followed by aggregate reviews against the full PR range."
 }

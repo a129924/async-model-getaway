@@ -91,6 +91,7 @@ class LocalResponseGateway:
             msg = "only ONNX local response generation is supported"
             raise NotImplementedError(msg)
 
+        invocation_snapshot = dict(request.invocation)
         freshness = await self._registry.resolve_freshness(
             model_name=request.model_name,
             model_source_kind=request.model_source_kind,
@@ -101,7 +102,7 @@ class LocalResponseGateway:
             model_payload_hash=freshness.entry.payload_hash,
             features=request.features,
             model_artifact=request.model_artifact,
-            invocation=request.invocation,
+            invocation=invocation_snapshot,
         )
         lookup_outcome = await self._response_cache.lookup(key=key, context=object())
 
@@ -113,7 +114,7 @@ class LocalResponseGateway:
             case _:
                 assert_never(lookup_outcome)
 
-        result = await self._executor(request.model_artifact, request.invocation)
+        result = await self._executor(request.model_artifact, invocation_snapshot)
         response = self._convert_onnx_result(result)
         remember_outcome = await self._response_cache.remember(
             key=key,
