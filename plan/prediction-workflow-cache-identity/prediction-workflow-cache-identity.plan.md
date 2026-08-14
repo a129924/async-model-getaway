@@ -74,7 +74,7 @@
 
 ## Status / Allowed Transitions
 
-- **Current**: `publish-in-progress`
+- **Current**: `pr-open`
 - **Execution model**: `spec-and-plan-finalization -> implement-plan ->
   pr-comment`; this topic stops at `merged` and has no release phase.
 - **Allowed transitions**:
@@ -97,8 +97,9 @@ Routing notes:
   shared workflow and topic-plan contracts.
 - The human-check artifact records the explicit 2026-08-14 authorization to
   enter `implement-plan`; it is not inferred from earlier design discussion.
-- All declared documentation implementation and validation work is complete;
-  the next action is commit, push, and draft-PR creation.
+- All declared documentation implementation and validation work is complete.
+  Draft PR #28 is open for human review; actionable feedback routes to
+  `pr-comment-review-pr-comments-and-fix`.
 
 ## Artifact Paths
 

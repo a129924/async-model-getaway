@@ -1,6 +1,6 @@
 ---
 topic: prediction-workflow-cache-identity
-phase: publish-in-progress
+phase: pr-open
 created: 2026-08-14
 ---
 
@@ -28,3 +28,4 @@ created: 2026-08-14
 - Full `uv run pytest` passed: 238 tests passed with 95.43% coverage.
 - Cross-document review confirmed that target workflow wording remains separate
   from current implementation wording and keeps pandas outside storage.
+- Draft PR #28 is open for human review.
