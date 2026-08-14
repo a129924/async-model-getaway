@@ -4,14 +4,17 @@
 
 這份文件定義 core abstractions 的輸入邊界。
 
-在目前階段，正式共享的 canonical input 由以下四個欄位構成：
+target workflow 的正式共享 canonical input 由以下五個欄位構成：
 
 - `model_name`
 - `model_source_kind`
 - `model-payload`
 - `features`
+- `prediction_input`
 
 producer 除了提供 identity material，也必須在 local path 提供一份獨立的 read contract。
+目前已實作的 local request 仍以 `invocation` 表示受限輸入；它是 target
+`prediction_input` 的 transition projection，不是已完成的通用 request shape。
 
 ## `model_name`
 
@@ -68,20 +71,35 @@ closed。
 
 這一輪不需要定出完整 capability 詞彙清單，但語意方向固定為受控能力詞彙，而不是任意 producer label。
 
+## `prediction_input`
+
+`prediction_input` 是會影響 application result 的實際 prediction material。
+它和 `features` 不同：前者回答「這次要對什麼輸入產生結果」，後者回答「要使用
+哪一種 bounded capability / usage mode」。
+
+target workflow 要求它先被投影成 JSON-like identity material，並在第一次 await 前
+建立深層 immutable snapshot。identity derivation 和 execution 必須消費同一 snapshot，
+避免 caller mutation 使 cache key 和實際 execution input 分離。trace ID、request ID、
+timestamp 等 observability-only material 不得進入 input identity。
+
+`Predictor` 決定哪些 input differences 會影響結果；`PredictionInputHasher` 才負責
+canonicalization 和 hash。兩者都是 target architecture vocabulary，尚未形成 Python
+surface。
+
 ## Boundary
 
 這一層負責：
 
 這一層負責：
 
-- 固定 `model_name`、`model_source_kind`、`model-payload`、`features` 作為正式共享輸入詞彙
+- 固定 `model_name`、`model_source_kind`、`model-payload`、`features`、`prediction_input` 作為 target 共享輸入詞彙
 - 聲明 external request shape 仍 deferred
 - 固定它們是進入核心 orchestration boundary 前的 canonical input
 
 這一層不負責：
 
 - 產生 `payload-hash`
-- 決定 cache identity
+- 決定 cache identity 或自身 hash
 - 決定 registry freshness
 - 校正 `model_name`
 - 擴張 `model_source_kind` 成 provider taxonomy
@@ -108,7 +126,8 @@ store key。
 freshness boundary 也已存在，但 cache identity wiring 與 orchestration
 flow 仍不屬於這份 spec 的實作範圍。
 
-`features` 在目前階段只參與 cache 邊界，不參與 model identity authority。
+`features` 在 target workflow 中只參與 feature identity，不參與 model identity authority。
+`prediction_input` 則只參與 prediction-input identity；兩者不能互相取代。
 
 ## `model_artifact`
 

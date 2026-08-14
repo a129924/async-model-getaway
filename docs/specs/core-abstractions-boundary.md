@@ -11,9 +11,10 @@
 建議依照以下順序閱讀：
 
 1. [canonical-input-boundary.md](canonical-input-boundary.md)
-2. [model-side-boundary.md](model-side-boundary.md)
-3. [orchestrator-boundary.md](orchestrator-boundary.md)
-4. [response-cache-boundary.md](response-cache-boundary.md)
+2. [prediction-workflow-boundary.md](prediction-workflow-boundary.md)
+3. [model-side-boundary.md](model-side-boundary.md)
+4. [orchestrator-boundary.md](orchestrator-boundary.md)
+5. [response-cache-boundary.md](response-cache-boundary.md)
 
 ## 共享詞彙
 
@@ -24,13 +25,19 @@
 - `model-payload`
 - `model_artifact`
 - `features`
+- `prediction_input`
 - `orchestrator`
+- `PredictionOrchestrator`
+- `Predictor`
+- `ResultCodec`
 - `ModelRegistry`
 - `ModelPool`
 - `ModelGateway`
 - `ResponseCache`
 - `runtime-model`
 - `payload-hash`
+- `model_identity_hash`
+- `prediction_input_hash`
 
 `ModelGateway` 是正式名詞；不使用 `ModelGetaway`。
 
@@ -38,15 +45,16 @@
 
 高層依賴方向固定為：
 
-1. `canonical input boundary` 定義 `model_name`、`model_source_kind`、`model-payload`、`features`
-2. `ModelRegistry` 擁有 `payload-hash`、identity context 與 freshness authority
-3. internal local composition 在 acquisition 前依 explicit `LoaderFamily` 解析配對的 Loader、Executor 與 concurrency policy
-4. internal `ModelPool` 消費 composition 注入的 Loader，載入 raw provider runtime 並建立 concrete `LoadedRuntimeModel`
-5. `ModelGateway` 擁有 remote `runtime-model` provider / access boundary
-6. internal Executor 消費同一個 pre-resolved binding 的 `LoadedRuntimeModel`，在 gate 後處理單次 invocation lifecycle
-7. local runtime composition、pool、loader、executor 與 loaded model 均沒有 public package entrypoint
-8. `ResponseCache` 依賴 `payload-hash + features`
-9. `orchestrator` 協調 registry、provider、execution 與 cache boundary，但不直接 execute model
+1. target `canonical input boundary` 定義 `model_name`、`model_source_kind`、`model-payload`、`features` 與 `prediction_input`
+2. `PredictionOrchestrator` 在首次 await 前建立 prediction-input snapshot，並協調下游 authority
+3. `ModelRegistry` 擁有 `payload-hash`、完整 model identity context、freshness authority，以及 target `model_identity_hash`
+4. `Predictor` 投影 input identity 與 application result；專責 hashers、namespace deriver、key deriver 在 cache 外產生 target key
+5. internal local composition 在 acquisition 前依 explicit `LoaderFamily` 解析配對的 Loader、Executor 與 concurrency policy
+6. internal `ModelPool` 消費 composition 注入的 Loader，載入 raw provider runtime 並建立 concrete `LoadedRuntimeModel`
+7. `ModelGateway` 擁有 remote `runtime-model` provider / access boundary
+8. internal Executor 消費同一個 pre-resolved binding 的 `LoadedRuntimeModel`，在 gate 後處理單次 invocation lifecycle
+9. `ResultCodec` 在 application layer 做 application result `↔` cache `str`；`ResponseCache` 只處理 cache `str` reuse
+10. local runtime composition、pool、loader、executor 與 loaded model 均沒有 public package entrypoint
 
 在目前階段：
 

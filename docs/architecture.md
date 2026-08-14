@@ -8,14 +8,15 @@
 
 ## Canonical Input Boundary
 
-目前的 canonical input boundary 是：
+target prediction workflow 的 canonical input boundary 是：
 
 - `model_name`
 - `model_source_kind`
 - `model-payload`
 - `features`
+- `prediction_input`
 
-專案目前不定義原始 external request shape。未來任何外部 request，都預期先經過 normalization，再進入核心 orchestration boundary。
+專案目前不定義原始 external request shape。未來任何外部 request，都預期先經過 normalization，再進入核心 orchestration boundary。`prediction_input` 是會影響 application result 的實際輸入；現有 local request 的 `invocation` 只是其受限 transition projection。
 
 在目前階段，`model_source_kind` 只鎖 `local | remote`；local runtime 的多樣性留在 model side 內部消化。對外能力差異則先收斂在 `features`，不先拆成多方法名公開介面。
 
@@ -43,19 +44,19 @@ shared read contract：`model_runtime` 是 umbrella root，而
 目前 `orchestrator` 的概念角色，是圍繞 canonical input 來協調 response generation。
 它負責推進高層順序，但不直接 execute model。
 
-高層預期 flow 如下：
+target 高層 flow 如下：
 
-1. Receive `model_name`, `model_source_kind`, `model-payload`, and `features`
-2. Derive a payload-oriented identity from `model_name`, `model_source_kind`, and `model-payload`
-3. Derive a `CacheKey` from already-derived payload identity and feature hash
-4. Check response cache
-5. Return cached response on hit
-6. Use the relevant model-side provider path on miss
-7. Delegate any provider invocation through its model-side boundary
-8. Persist the generated response into response cache
-9. Return the response
+1. Receive `model_name`, `model_source_kind`, `model-payload`, `features`, and `prediction_input`
+2. Before the first await, create one deep immutable prediction-input snapshot shared by identity derivation and execution
+3. Resolve registry freshness and receive target `model_identity_hash`
+4. Derive feature hash, prediction-input hash, result-codec-compatible namespace, and target four-field `CacheKey`
+5. Check response cache
+6. Decode cache `str` to application result on hit and return it
+7. Use `ModelExecution` through the relevant model-side path on miss
+8. Let `Predictor` project raw result to application result, encode it to cache `str`, and remember it
+9. Return the application result
 
-這裡描述的是高層概念 flow。除了最小 `ModelRegistry` boundary、`model-payload`
+這裡描述的是 target concept flow。除了最小 `ModelRegistry` boundary、`model-payload`
 hashing core、最小 keyed/operational `response_cache` boundary，以及 internal local runtime slice
 已落地外，其餘 orchestration 與完整 runtime acquisition/execution flow 仍未在
 repository 中落地。
@@ -71,9 +72,11 @@ repository 中落地。
 - canonical input handling after normalization
 - coordination across provider, execution, and cache boundaries
 
-在目前 repo 已落地的受限 cache boundary 中，gateway side 只先準備
+在目前 repo 已落地的受限 cache boundary 中，gateway side 只先準備目前三欄
 `CacheKey`：它由 literal `namespace`、既有 `ModelPayloadHasher` 產生的
 `model_payload_hash` 與已導出的 `feature_hash` 組成，cache 不再自行計算 hashes。
+target workflow 則讓 `ModelRegistry`、`Predictor`、專責 hashers、namespace deriver 與
+key deriver 在 cache 外完成四欄 key；這是未實作的 explicit breaking replacement。
 `ResponseCache` 只透過 async `CacheStore` 消費這個 key，並以 codec、token factory、
 write-time expiry policy 與 injected UTC clock 建立完整 record。lookup 不會更新 expiry；
 過期或不支援 record 的 cleanup 使用觀測到的 version token compare-delete，以免刪除較新的
@@ -129,8 +132,12 @@ framework、cache、close/unload、完整 lifecycle、timeout 或 retry。
 - `model-payload`
 - `model_artifact`
 - `features`
+- `prediction_input`
 - `ModelPool`
 - `ModelGateway`
+- `PredictionOrchestrator`
+- `Predictor`
+- `ResultCodec`
 - response cache
 - `runtime-model`
 - local model source
@@ -146,7 +153,7 @@ runtime-model consumption API。
 initialization 階段不包含：
 
 - concrete API signatures
-- cache-key algorithm details
+- target key implementation、Python surface 與舊 key migration
 - provider-specific contracts
 - adapter schemas
 - framework integration
@@ -162,3 +169,6 @@ initialization 階段不包含：
 這份文件則用來承接那些對 README 來說太深、但又足夠重要、必須在 initialization 階段保留下來的概念說明。
 
 若需要進一步閱讀 core abstractions 的文件化邊界，請再讀 [docs/specs/core-abstractions-boundary.md](specs/core-abstractions-boundary.md)。
+
+若要討論 target prediction workflow、四部分 cache identity 或 application result
+representation，請讀 [docs/specs/prediction-workflow-boundary.md](specs/prediction-workflow-boundary.md)；該文件不改變目前 runtime surface。
