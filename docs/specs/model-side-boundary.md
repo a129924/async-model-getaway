@@ -16,6 +16,8 @@ package-consumer 的 surface。
 ## `ModelRegistry`
 
 `ModelRegistry` 是 identity context owner、`payload-hash` authority 與 freshness authority。
+在 target prediction workflow 中，它也交付完整 `model_identity_hash`；這不代表
+目前最小 class 已經新增該欄位或 public method。
 
 目前 repo 已落地這個 boundary 的最小 class-first 版本：
 `async_model_gateway.model_registry.ModelRegistry`。
@@ -38,6 +40,8 @@ async-only `RegistryStore` contract、empty-only constructor，以及同一 inst
   - `model-payload`
 - 以 `model_name + model_source_kind` 作為 store lookup identity
 - 從上述 identity context 派生穩定的 `payload-hash`
+- 在 target workflow 中，從 `model_name`、`model_source_kind` 與
+  `payload-hash` 派生完整 `model_identity_hash`
 - 交付受限的 freshness decision：`first-seen`、`unchanged`、`changed`
 - 在 freshness 不是 `unchanged` 時更新 registry state
 - 提供與 payload identity 相關的決策資訊給 `orchestrator`
@@ -48,6 +52,7 @@ async-only `RegistryStore` contract、empty-only constructor，以及同一 inst
 - local model lifecycle
 - remote model execution
 - response cache persistence
+- feature identity、prediction-input identity 或 result representation
 
 gateway / registry 不做語意等價判斷；只要 `model-payload` material 不同，就一律視為模型已更新。
 

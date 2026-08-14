@@ -8,10 +8,29 @@ backend selection、store lifecycle、persistence、settings、eviction 或 metr
 
 ## Identity 與 context
 
-`CacheKey(namespace, model_payload_hash, feature_hash)` 是唯一 cache identity authority。
-所有三個值都必須在 cache 之外導出；cache 不重新計算 payload 或 feature hash。
+目前已實作的 `CacheKey(namespace, model_payload_hash, feature_hash)` 是狹義 cache
+identity carrier。target workflow 將以明確 breaking replacement 改為
+`CacheKey(namespace, model_identity_hash, feature_hash, prediction_input_hash)`；
+本文件不宣稱該 replacement 已落地。
+
+所有 identity 值都必須在 cache 之外導出；cache 不重新計算 model、feature 或
+prediction-input hash。target namespace 是 predictor base namespace、predictor
+compatibility token 與 `ResultCodec` compatibility token 的 canonical SHA-256
+result；它隔離 result format 和 predictor semantics 的版本，避免誤讀舊 cache value。
 `lookup` 與 `remember` 接收 context 作為單次呼叫輸入，但不讀取、保存或序列化它；context
 不影響 identity、record、metadata、expiry 或 version token。
+
+## Result representation boundary
+
+`ResponseCache` facade 的 value contract 目前是 `str`，而 `CacheCodec` 只負責
+`str ↔ bytes`。application result（包含 `pandas.DataFrame` 或 row Mapping）不得
+穿透到 facade、store 或 codec。
+
+target `ResultCodec` 位於 workflow/application layer：它把 application result encode
+成 facade 的 cache `str`，並在 hit 後把 cache `str` decode 回 application result。
+`ResultCodec` 不是 `CacheCodec` 的替代品，也不屬於 response-cache package。
+decode 或 encode failure 原樣傳播，不得以 cache miss、fallback representation 或
+unconditional deletion 隱藏。
 
 ## Facade 與 record ownership
 

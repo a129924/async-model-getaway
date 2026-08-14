@@ -128,6 +128,11 @@ orchestration、remote execution、lifecycle、timeout 與 retry 仍 deferred。
 
 core abstractions 的 boundary spec 入口整理在 [docs/specs/core-abstractions-boundary.md](docs/specs/core-abstractions-boundary.md)。
 
+後續 application flow 的 target workflow、cache identity 與 result representation
+責任基線整理在 [docs/specs/prediction-workflow-boundary.md](docs/specs/prediction-workflow-boundary.md)。
+該文件是設計基線，不代表 generic orchestrator、四欄 `CacheKey`、`ResultCodec` 或
+`DataFrame` flow 已實作。
+
 ## 尚未實作
 
 這個 repository 目前尚未實作：
