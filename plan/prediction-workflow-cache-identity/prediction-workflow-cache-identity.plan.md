@@ -101,9 +101,8 @@ Routing notes:
   enter `implement-plan`; it is not inferred from earlier design discussion.
 - All declared documentation implementation and validation work is complete.
   PR #28 has entered `pr-comment-review-pr-comments-and-fix`; all six current
-  actionable review threads are addressed by the documentation changes pending
-  commit and push. The tracker records their validation before thread
-  resolution.
+  actionable review threads were addressed, committed, pushed, and resolved.
+  The tracker records the validation and completed thread resolution.
 
 ## Artifact Paths
 

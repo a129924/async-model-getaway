@@ -35,4 +35,6 @@ created: 2026-08-14
   side-effect-free preflight before registry freshness; and assigning feature
   validation/projection to `Predictor`.
 - The full suite was re-run after those review fixes: 238 tests passed with
-  95.43% coverage. Thread resolution follows the review-fix commit and push.
+  95.43% coverage.
+- Review-fix commit `a0c8a4e` was pushed to PR #28; the six addressed review
+  threads were then resolved successfully.
