@@ -4,8 +4,8 @@
 
 `orchestrator` 是這個系統的高層協調者。
 
-它負責圍繞 canonical input 協調 response generation，但不擁有 hashing、model lifecycle、execution policy 或 response cache identity 的 authority。target
-workflow 將這個角色正式稱為 `PredictionOrchestrator`；名稱本身尚未新增 Python surface。
+它負責圍繞 canonical input 協調 response generation，但不擁有 hashing、model lifecycle、execution policy 或 response cache identity 的 authority。
+target workflow 將這個角色正式稱為 `PredictionOrchestrator`；名稱本身尚未新增 Python surface。
 
 ## Owner Responsibility
 
@@ -17,8 +17,10 @@ workflow 將這個角色正式稱為 `PredictionOrchestrator`；名稱本身尚�
   - `model-payload`
   - `features`
   - `prediction_input`
-- 在第一次 await 前建立並保有 prediction-input deep immutable snapshot，將同一
-  snapshot handoff 給 identity derivation 與 execution
+- 在第一次 await 前建立並保有 prediction-input 與 features 的 deep immutable
+  snapshots，將同一份各自的 snapshot handoff 給 identity derivation 與 execution
+- 在可能寫入 registry 前，先協調全部 side-effect-free feature/input validation、
+  projection、canonicalization 與 namespace derivation
 - 協調高層決策順序
 - 根據下游 authority 的結果推進 response generation
 - 委派 `ModelExecution` 發生 model invocation，而不是自己直接 execute model
@@ -29,7 +31,8 @@ workflow 將這個角色正式稱為 `PredictionOrchestrator`；名稱本身尚�
 
 - `ModelRegistry` 提供 `payload-hash` 與 freshness result
 - target `ModelRegistry` result 提供 `model_identity_hash`
-- `Predictor` 提供 input identity projection 與 application-result projection
+- `Predictor` 提供 feature validation/execution projection、input identity projection
+  與 application-result projection
 - `FeatureIdentityHasher`、`PredictionInputHasher`、`CacheNamespaceDeriver` 與
   `CacheKeyDeriver` 在 cache 外完成 target key material
 - `ResultCodec` 在 application result 與 cache `str` 間轉換
@@ -49,7 +52,7 @@ workflow 將這個角色正式稱為 `PredictionOrchestrator`；名稱本身尚�
 - 直接 execute model
 - 擁有 execution policy 或 invocation semantics
 - 擁有 cache identity authority
-- 自行解讀 `features` 或 `prediction_input` 的語意
+- 自行定義 `features` 或 `prediction_input` 的語意
 - 將 application result、Mapping 或 pandas value 下推到 `ResponseCache`、
   `CacheCodec` 或 `CacheStore`
 - 擁有 persistence schema

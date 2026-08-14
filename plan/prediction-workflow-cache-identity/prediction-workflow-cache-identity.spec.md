@@ -8,13 +8,14 @@
 2. Target `CacheKey` identity has exactly namespace, model identity hash,
    feature hash, and prediction-input hash; it does not reuse the current
    three-field key contract by implication.
-3. The target workflow makes `prediction_input` JSON-like, deeply snapshotted
-   before the first await, and shared by identity derivation and execution.
+3. The target workflow deeply snapshots both JSON-like `prediction_input` and
+   features before the first await, shares them with identity derivation and
+   execution, and completes side-effect-free validation before registry writes.
 4. `ResultCodec` is application-layer only; `ResponseCache` continues to own
    cache `str` values and `CacheCodec` continues to own `str ↔ bytes`.
-5. Codec compatibility contributes to the namespace through the canonical hash
-   of predictor base namespace and codec token. Codec encode/decode errors
-   propagate without a fallback execution or write.
+5. Predictor and codec compatibility contribute to the namespace through the
+   canonical hash of predictor base namespace plus both compatibility tokens.
+   Codec encode/decode errors propagate without a fallback execution or write.
 6. Every changed document states whether it describes current implementation or
    target architecture. `LocalResponseGateway` remains a transition projection.
 

@@ -46,9 +46,9 @@
 高層依賴方向固定為：
 
 1. target `canonical input boundary` 定義 `model_name`、`model_source_kind`、`model-payload`、`features` 與 `prediction_input`
-2. `PredictionOrchestrator` 在首次 await 前建立 prediction-input snapshot，並協調下游 authority
+2. `PredictionOrchestrator` 在首次 await 前建立 prediction-input 與 features snapshots，並在 registry write 前協調全部 side-effect-free validation
 3. `ModelRegistry` 擁有 `payload-hash`、完整 model identity context、freshness authority，以及 target `model_identity_hash`
-4. `Predictor` 投影 input identity 與 application result；專責 hashers、namespace deriver、key deriver 在 cache 外產生 target key
+4. `Predictor` 宣告 compatibility token、驗證/投影 features、投影 input identity 與 application result；專責 hashers、namespace deriver、key deriver 在 cache 外產生 target key
 5. internal local composition 在 acquisition 前依 explicit `LoaderFamily` 解析配對的 Loader、Executor 與 concurrency policy
 6. internal `ModelPool` 消費 composition 注入的 Loader，載入 raw provider runtime 並建立 concrete `LoadedRuntimeModel`
 7. `ModelGateway` 擁有 remote `runtime-model` provider / access boundary

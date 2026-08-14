@@ -14,9 +14,9 @@ identity carrier。target workflow 將以明確 breaking replacement 改為
 本文件不宣稱該 replacement 已落地。
 
 所有 identity 值都必須在 cache 之外導出；cache 不重新計算 model、feature 或
-prediction-input hash。target namespace 是 predictor base namespace 與
-`ResultCodec` compatibility token 的 canonical SHA-256 result，讓新 result format
-不會誤讀舊 cache value。
+prediction-input hash。target namespace 是 predictor base namespace、predictor
+compatibility token 與 `ResultCodec` compatibility token 的 canonical SHA-256
+result；它隔離 result format 和 predictor semantics 的版本，避免誤讀舊 cache value。
 `lookup` 與 `remember` 接收 context 作為單次呼叫輸入，但不讀取、保存或序列化它；context
 不影響 identity、record、metadata、expiry 或 version token。
 

@@ -34,21 +34,23 @@
 
 - This is a non-stable docs-only topic; no release workflow, `VERSION`, or
   release metadata change is required.
-- Target canonical input adds `prediction_input`. It is JSON-like, is deeply
-  snapshotted before the first await, and the snapshot is shared by identity
-  derivation and execution.
+- Target canonical input adds `prediction_input`. It and `features` are deeply
+  snapshotted before the first await, and their snapshots are shared by identity
+  derivation and execution. All side-effect-free identity validation completes
+  before registry freshness can write state.
 - `ModelRegistry` remains the model identity and freshness authority. Its
   target result supplies `model_identity_hash`, derived from model name, source
   kind, and payload hash.
-- `Predictor` owns stable base namespace declaration, prediction-input identity
-  projection, and raw-result-to-application-result projection. It does not own
-  hashing, key construction, storage, or execution lifecycle.
+- `Predictor` owns stable base namespace declaration, a compatibility token,
+  feature validation/execution projection, prediction-input identity projection,
+  and raw-result-to-application-result projection. It does not own hashing, key
+  construction, storage, or execution lifecycle.
 - `FeatureIdentityHasher` owns `Mapping[str, str]` feature hashing;
   `PredictionInputHasher` owns JSON-like prediction-input hashing; both fail
   closed before cache lookup or execution.
-- `CacheNamespaceDeriver` canonically hashes the predictor base namespace and
-  `ResultCodec` compatibility token. `CacheKeyDeriver` only assembles the
-  completed identity values.
+- `CacheNamespaceDeriver` canonically hashes the predictor base namespace,
+  predictor compatibility token, and `ResultCodec` compatibility token.
+  `CacheKeyDeriver` only assembles the completed identity values.
 - The target key is
   `CacheKey(namespace, model_identity_hash, feature_hash, prediction_input_hash)`.
   It is a future explicit breaking replacement for the current three-field
@@ -98,8 +100,10 @@ Routing notes:
 - The human-check artifact records the explicit 2026-08-14 authorization to
   enter `implement-plan`; it is not inferred from earlier design discussion.
 - All declared documentation implementation and validation work is complete.
-  Draft PR #28 is open for human review; actionable feedback routes to
-  `pr-comment-review-pr-comments-and-fix`.
+  PR #28 has entered `pr-comment-review-pr-comments-and-fix`; all six current
+  actionable review threads are addressed by the documentation changes pending
+  commit and push. The tracker records their validation before thread
+  resolution.
 
 ## Artifact Paths
 

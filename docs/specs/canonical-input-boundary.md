@@ -67,7 +67,10 @@ closed。
 
 它回答的是「這個模型這次要做什麼」，而不是「這是不是同一個模型」。
 
-在目前階段，`features` 只影響 cache，不參與 model identity，也不被擴張成 provider contract、settings object 或 execution contract。
+在 target workflow 中，`features` 不參與 model identity，也不被擴張成
+provider contract 或 settings object。`Predictor` 是 capability / usage-mode
+vocabulary 的 semantic owner：它驗證 feature snapshot，並投影 execution material
+給 `ModelExecution`；`orchestrator` 不自行解讀 feature 語意。
 
 這一輪不需要定出完整 capability 詞彙清單，但語意方向固定為受控能力詞彙，而不是任意 producer label。
 
@@ -87,8 +90,6 @@ canonicalization 和 hash。兩者都是 target architecture vocabulary，尚未
 surface。
 
 ## Boundary
-
-這一層負責：
 
 這一層負責：
 

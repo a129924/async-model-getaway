@@ -47,9 +47,9 @@ shared read contract：`model_runtime` 是 umbrella root，而
 target 高層 flow 如下：
 
 1. Receive `model_name`, `model_source_kind`, `model-payload`, `features`, and `prediction_input`
-2. Before the first await, create one deep immutable prediction-input snapshot shared by identity derivation and execution
-3. Resolve registry freshness and receive target `model_identity_hash`
-4. Derive feature hash, prediction-input hash, result-codec-compatible namespace, and target four-field `CacheKey`
+2. Before the first await, create deep immutable prediction-input and features snapshots shared by identity derivation and execution
+3. Complete side-effect-free feature/input validation, projection, hashing, and namespace derivation before registry freshness can write state
+4. Resolve registry freshness and receive target `model_identity_hash`, then assemble the target four-field `CacheKey`
 5. Check response cache
 6. Decode cache `str` to application result on hit and return it
 7. Use `ModelExecution` through the relevant model-side path on miss

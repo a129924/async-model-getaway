@@ -28,4 +28,11 @@ created: 2026-08-14
 - Full `uv run pytest` passed: 238 tests passed with 95.43% coverage.
 - Cross-document review confirmed that target workflow wording remains separate
   from current implementation wording and keeps pandas outside storage.
-- Draft PR #28 is open for human review.
+- PR #28 entered `pr-comment-review-pr-comments-and-fix` on 2026-08-14. Its
+  six actionable threads were addressed by: separating the target-workflow
+  sentence; removing the duplicate heading; adding the Predictor compatibility
+  token to namespace compatibility; deep-snapshotting features; completing
+  side-effect-free preflight before registry freshness; and assigning feature
+  validation/projection to `Predictor`.
+- The full suite was re-run after those review fixes: 238 tests passed with
+  95.43% coverage. Thread resolution follows the review-fix commit and push.
