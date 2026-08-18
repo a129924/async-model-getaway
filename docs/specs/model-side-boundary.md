@@ -30,6 +30,12 @@ async-only `RegistryStore` contract、empty-only constructor，以及同一 inst
 `async_model_gateway.model_registry.model_payload.ModelPayloadHasher`
 作為 `payload-hash` owner。
 
+每個候選 `RegistryEntry` 也可導出完整、唯讀的 `model_identity_hash`：其 material
+固定為 model name、source kind 與既有 payload hash，並由 submodule public 的
+`async_model_gateway.model_registry.model_identity.ModelIdentityHasher` 計算。這是
+registry identity capability，不改變 store lookup identity、freshness decision、
+response-cache key 或任何 execution flow。
+
 它負責：
 
 - 消費以下 identity context：

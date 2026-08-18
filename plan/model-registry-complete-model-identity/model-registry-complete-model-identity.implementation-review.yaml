@@ -1,0 +1,103 @@
+verdict: approved
+review_status: complete
+topic: model-registry-complete-model-identity
+implementation_review:
+  traceability_matrix:
+    - step: "1. Add the sole model_identity test-package marker; keep pytest config/import mode and all other test-package markers unchanged."
+      status: done
+      evidence: "tests/model_registry/model_identity/__init__.py:1; pyproject.toml unchanged"
+    - step: "2. Write RED tests and future RED evidence for all locked identity cases."
+      status: done
+      evidence: "tests/model_registry/model_identity/test_canonical_hash.py:38; tests/model_registry/test_registry.py:306; plan/model-registry-complete-model-identity/model-registry-complete-model-identity.red-tests.yaml:1"
+    - step: "3. Implement the new submodule and static framed hasher."
+      status: done
+      evidence: "src/async_model_gateway/model_registry/model_identity/__init__.py:3; src/async_model_gateway/model_registry/model_identity/canonical_hash.py:15"
+    - step: "4. Add the lazy derived entry property without state changes."
+      status: done
+      evidence: "src/async_model_gateway/model_registry/entry.py:18; src/async_model_gateway/model_registry/entry.py:26"
+    - step: "5. Force the pre-policy identity read and verify failure ordering."
+      status: done
+      evidence: "src/async_model_gateway/model_registry/registry.py:39; tests/model_registry/test_registry.py:314"
+    - step: "6. Update bounded docs, validate, and update the step artifact."
+      status: done
+      evidence: "README.md:52; docs/architecture.md:31; docs/specs/model-side-boundary.md:33; plan/model-registry-complete-model-identity/model-registry-complete-model-identity.step.md:16"
+  scope_creep_check:
+    - non_goal: "No CacheKey change or cache-record migration."
+      violated: no
+      evidence: "clean; CacheKey regression asserted at tests/model_registry/test_freshness_policy.py:31"
+    - non_goal: "No registry persistence, store API, or lookup-key change."
+      violated: no
+      evidence: "clean; unchanged lookup call at src/async_model_gateway/model_registry/registry.py:39"
+    - non_goal: "No ModelPayloadHasher behavior change."
+      violated: no
+      evidence: "clean; existing hasher remains consumed at src/async_model_gateway/model_registry/registry.py:46"
+    - non_goal: "No orchestrator, provider, runtime, or execution wiring."
+      violated: no
+      evidence: "clean"
+    - non_goal: "No dependency, root re-export, compatibility adapter, release, or version bump."
+      violated: no
+      evidence: "clean; root surface asserted at tests/model_registry/test_model_registry_package_surface.py:16"
+  contract_check:
+    - item: "ModelIdentityHasher static keyword-only API and lowercase SHA-256 hex."
+      status: matches
+      detail: "Exact three-parameter static signature at canonical_hash.py:15; locked golden test passes."
+    - item: "Literal framed UTF-8 material and fail-closed validation without coercion."
+      status: matches
+      detail: "Ordered ASCII-label/NUL/8-byte-big-endian/UTF-8 frames at canonical_hash.py:33; TypeError and ValueError paths at lines 44-58."
+    - item: "RegistryEntry.model_identity_hash is lazy, read-only, and excluded from dataclass state."
+      status: matches
+      detail: "Frozen slotted three-field dataclass is retained at entry.py:18; property lazy-imports and derives at lines 26-35."
+    - item: "Existing signatures, result shape, CacheKey fields, root exports, lookup timing, policy, and upsert condition remain frozen."
+      status: matches
+      detail: "Only candidate property read added before policy at registry.py:48; signature and shape regression tests pass."
+  test_plan_check:
+    - case_type: "happy path: golden digest and entry property"
+      status: present
+      location: "tests/model_registry/model_identity/test_canonical_hash.py:61; tests/model_registry/model_identity/test_canonical_hash.py:161"
+    - case_type: "invalid input: type, empty, raw-source, and invalid-source rejection"
+      status: present
+      location: "tests/model_registry/model_identity/test_canonical_hash.py:135"
+    - case_type: "edge case: Unicode, framing-sensitive material, and each identity-field change"
+      status: present
+      location: "tests/model_registry/model_identity/test_canonical_hash.py:72; tests/model_registry/model_identity/test_canonical_hash.py:90; tests/model_registry/model_identity/test_canonical_hash.py:106"
+    - case_type: "regression: first-seen, unchanged, changed lookup, policy, previous-hash, and upsert"
+      status: present
+      location: "tests/model_registry/test_registry.py:100; tests/model_registry/test_registry.py:131; tests/model_registry/test_registry.py:160"
+    - case_type: "pre-policy identity failure prevents policy and upsert after lookup"
+      status: present
+      location: "tests/model_registry/test_registry.py:306"
+    - case_type: "backward compatibility: dataclass/result/CacheKey shapes, signatures, root non-re-export, and collection"
+      status: present
+      location: "tests/model_registry/model_identity/test_canonical_hash.py:161; tests/model_registry/test_freshness_policy.py:17; tests/model_registry/test_model_registry_package_surface.py:16"
+  governance_check:
+    dynamic_test_loading: "none in topic test changes"
+    permitted_test_marker: "only tests/model_registry/model_identity/__init__.py"
+    docs_boundary: "accurately states derived registry identity and explicitly excludes lookup, freshness, cache-key, and execution changes"
+validation:
+  - command: "uv run pytest --collect-only"
+    result: "passed; 257 tests collected, including both model_identity and model_payload test_canonical_hash modules without import mismatch"
+  - command: "uv run pytest"
+    result: "passed; 257 passed, total coverage 95.58%"
+  - command: "uv run pyright"
+    result: "passed; 0 errors, 0 warnings, 0 informations"
+  - command: "uv run ruff check src tests"
+    result: "passed; all checks passed"
+code_review:
+  verdict: approved
+  tooling_detected: "pyright strict and ruff (E, W, F, N, D, UP, B, A, C4, ARG, RUF)"
+  findings:
+    typing:
+      - severity: warning
+        location: "tests/model_registry/model_identity/test_canonical_hash.py:155"
+        issue: "The test-only type-ignore comments name the ignored diagnostic but do not explain the intentional invalid-boundary invocation."
+        fix: "Optionally append a short reason, for example that the parametrized test deliberately supplies invalid public API inputs."
+      - severity: warning
+        location: "tests/model_registry/test_registry.py:324"
+        issue: "The test-only type-ignore comment names the ignored diagnostic but does not explain the intentionally incompatible policy double."
+        fix: "Optionally append a short reason describing the deliberate failure-order test double."
+    lint: []
+    readability: []
+    error_handling: []
+    anti_patterns: []
+    test_quality: []
+    observability: []

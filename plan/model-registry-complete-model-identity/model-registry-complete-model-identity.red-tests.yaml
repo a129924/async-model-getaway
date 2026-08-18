@@ -1,0 +1,55 @@
+verdict: red-tests-ready
+d1_verdict:
+  verdict: non-trivial
+  reason: "Adds a public hashing surface, a derived entry capability, and enforced freshness-flow ordering while preserving existing contracts."
+test_mapping:
+  - requirement_id: R1-submodule-surface
+    test_case_name: test_model_identity_hasher_is_exposed_only_from_its_submodule
+    coverage_category: integration-points
+  - requirement_id: R1-static-api-shape
+    test_case_name: test_model_identity_hasher_has_the_locked_static_keyword_only_api
+    coverage_category: happy-path
+  - requirement_id: R2-locked-framing-and-golden
+    test_case_name: test_model_identity_hasher_matches_locked_golden_digest
+    coverage_category: happy-path
+  - requirement_id: R2-literal-utf8-framing
+    test_case_name: test_model_identity_hasher_uses_literal_utf8_length_framing
+    coverage_category: boundary-edge
+  - requirement_id: R3-fail-closed-validation
+    test_case_name: test_model_identity_hasher_rejects_invalid_material_without_coercion
+    coverage_category: error-exception
+  - requirement_id: R4-derived-entry-property
+    test_case_name: test_registry_entry_identity_hash_is_derived_read_only_and_not_state
+    coverage_category: state-side-effects
+  - requirement_id: R5-pre-policy-identity-read
+    test_case_name: test_model_registry_invalid_identity_stops_before_policy_and_upsert_after_lookup
+    coverage_category: integration-points
+  - requirement_id: R6-frozen-contracts
+    test_case_name: test_registry_freshness_result_shape_is_locked_to_three_fields
+    coverage_category: state-side-effects
+  - requirement_id: R6-cache-key-contract
+    test_case_name: test_cache_key_shape_stays_locked_to_its_existing_three_fields
+    coverage_category: state-side-effects
+  - requirement_id: R7-root-surface-and-doc-boundary
+    test_case_name: test_model_registry_package_reexports_only_model_registry
+    coverage_category: integration-points
+  - requirement_id: R8-canonical-test-collection
+    test_case_name: pytest-collects-model-identity-and-model-payload-canonical-hash-modules
+    coverage_category: integration-points
+validation_checks:
+  d1_decision: non-trivial
+  behavior_contract_source: plan/model-registry-complete-model-identity/model-registry-complete-model-identity.spec.md
+  requirements_mapped: true
+  public_contract_coverage: true
+  test_categories_present:
+    - happy-path
+    - error-exception
+    - boundary-edge
+    - state-side-effects
+    - integration-points
+  expected_initial_status: red
+  production_code_modified: false
+  red_validation_command: "uv run pytest --no-header -rN tests/model_registry/model_identity/test_canonical_hash.py tests/model_registry/test_registry.py tests/model_registry/test_freshness_policy.py tests/model_registry/test_model_registry_package_surface.py"
+  red_validation_result: "2 collection errors: ModuleNotFoundError for async_model_gateway.model_registry.model_identity"
+issues: []
+next_step: "Proceed to implementation of the declared model_identity subpackage and bounded registry changes."

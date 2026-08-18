@@ -31,7 +31,11 @@ shared read contract：`model_runtime` 是 umbrella root，而
 `async_model_gateway.model_registry.ModelRegistry` 會先以
 `model_name + model_source_kind` 做 store lookup，再透過既有的
 `async_model_gateway.model_registry.model_payload.ModelPayloadHasher`
-產生 `payload-hash`，最後交付受限的 freshness decision。
+產生 `payload-hash`。候選 `RegistryEntry` 可再由 model name、source kind 與
+payload hash 導出完整唯讀 `model_identity_hash`；此 capability 的 public owner 僅為
+`async_model_gateway.model_registry.model_identity.ModelIdentityHasher`，不改變
+lookup key、freshness decision 或 response-cache key，最後仍交付受限的 freshness
+decision。
 
 其中 `ModelPayloadHasher.hash_model_payload(...)` 仍只負責
 `model-payload` 的 recursive canonicalization 與穩定 SHA-256 digest

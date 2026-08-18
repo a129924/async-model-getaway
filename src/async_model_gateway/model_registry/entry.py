@@ -22,3 +22,14 @@ class RegistryEntry:
     model_name: str
     model_source_kind: ModelSourceKind
     payload_hash: str
+
+    @property
+    def model_identity_hash(self) -> str:
+        """Derive the complete model identity without storing additional state."""
+        from .model_identity import ModelIdentityHasher
+
+        return ModelIdentityHasher.hash_model_identity(
+            model_name=self.model_name,
+            model_source_kind=self.model_source_kind,
+            model_payload_hash=self.payload_hash,
+        )

@@ -45,6 +45,7 @@ class ModelRegistry:
             model_source_kind=model_source_kind,
             payload_hash=self._payload_hasher.hash_model_payload(model_payload),
         )
+        _ = candidate_entry.model_identity_hash
         result = self._freshness_policy.evaluate(
             candidate_entry=candidate_entry,
             stored_entry=stored_entry,
