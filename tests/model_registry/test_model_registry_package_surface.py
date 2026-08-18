@@ -6,6 +6,7 @@ import async_model_gateway.model_registry as model_registry_module
 import async_model_gateway.model_registry.entry as entry_module
 import async_model_gateway.model_registry.freshness_policy as freshness_policy_module
 import async_model_gateway.model_registry.freshness_result as freshness_result_module
+import async_model_gateway.model_registry.model_identity as model_identity_module
 import async_model_gateway.model_registry.ports as ports_module
 import async_model_gateway.model_registry.ports.store as store_module
 import inspect
@@ -23,6 +24,7 @@ def test_model_registry_package_reexports_only_model_registry() -> None:
         "RegistryFreshnessPolicy",
         "RegistryFreshnessResult",
         "ModelPayloadHasher",
+        "ModelIdentityHasher",
     ):
         assert not hasattr(model_registry_module, attr_name)
 
@@ -68,4 +70,7 @@ def test_registry_supporting_surfaces_stay_in_single_concept_modules() -> None:
     assert (
         freshness_result_module.RegistryFreshnessResult.__module__
         == "async_model_gateway.model_registry.freshness_result"
+    )
+    assert model_identity_module.ModelIdentityHasher.__module__ == (
+        "async_model_gateway.model_registry.model_identity.canonical_hash"
     )

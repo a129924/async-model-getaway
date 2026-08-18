@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from dataclasses import fields
 from async_model_gateway.model_registry.entry import ModelSourceKind, RegistryEntry
 from async_model_gateway.model_registry.freshness_policy import RegistryFreshnessPolicy
 from async_model_gateway.model_registry.freshness_result import (
     RegistryFreshnessDecision,
     RegistryFreshnessResult,
 )
+from async_model_gateway.response_cache.key import CacheKey
 import inspect
 
 
@@ -18,6 +20,20 @@ def test_registry_freshness_result_shape_is_locked_to_three_fields() -> None:
         "entry",
         "previous_payload_hash",
     }
+    assert [field.name for field in fields(RegistryFreshnessResult)] == [
+        "decision",
+        "entry",
+        "previous_payload_hash",
+    ]
+
+
+def test_cache_key_shape_stays_locked_to_its_existing_three_fields() -> None:
+    """The new registry identity does not migrate the response-cache key contract."""
+    assert [field.name for field in fields(CacheKey)] == [
+        "namespace",
+        "model_payload_hash",
+        "feature_hash",
+    ]
 
 
 def test_registry_freshness_policy_evaluate_is_sync_only() -> None:

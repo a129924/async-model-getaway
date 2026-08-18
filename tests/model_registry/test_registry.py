@@ -53,6 +53,22 @@ class RecordingStore(RegistryStore):
             raise self._upsert_error
 
 
+class RecordingPolicy:
+    """Policy double that records whether identity failure reaches evaluation."""
+
+    def __init__(self) -> None:
+        self.evaluate_calls: list[tuple[RegistryEntry, RegistryEntry | None]] = []
+
+    def evaluate(
+        self,
+        *,
+        candidate_entry: RegistryEntry,
+        stored_entry: RegistryEntry | None,
+    ) -> object:
+        self.evaluate_calls.append((candidate_entry, stored_entry))
+        raise AssertionError("identity validation must stop before policy evaluation")
+
+
 def test_model_registry_public_contract_is_async_only() -> None:
     """The new boundary should stay class-first and async-only."""
     init_signature = inspect.signature(ModelRegistry.__init__)
@@ -284,6 +300,41 @@ async def test_model_registry_invalid_payload_raises_type_error_before_write() -
     assert store.lookup_calls == [
         {"model_name": "demo", "model_source_kind": ModelSourceKind.LOCAL},
     ]
+    assert store.upserted_entries == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("model_name", "model_source_kind", "error_type"),
+    [
+        ("", ModelSourceKind.LOCAL, ValueError),
+        ("demo", "local", TypeError),
+    ],
+)
+async def test_model_registry_invalid_identity_stops_before_policy_and_upsert_after_lookup(
+    model_name: str,
+    model_source_kind: ModelSourceKind | str,
+    error_type: type[Exception],
+) -> None:
+    """Identity errors retain lookup timing but stop every later registry side effect."""
+    store = RecordingStore()
+    policy = RecordingPolicy()
+    registry = ModelRegistry(
+        store=store,
+        freshness_policy=policy,  # type: ignore[arg-type]
+    )
+
+    with pytest.raises(error_type):
+        await registry.resolve_freshness(
+            model_name=model_name,
+            model_source_kind=model_source_kind,  # type: ignore[arg-type]
+            model_payload={"revision": 1},
+        )
+
+    assert store.lookup_calls == [
+        {"model_name": model_name, "model_source_kind": model_source_kind},
+    ]
+    assert policy.evaluate_calls == []
     assert store.upserted_entries == []
 
 

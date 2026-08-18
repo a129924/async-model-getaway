@@ -52,8 +52,11 @@ root package 目前只公開 `__version__` 與 `main`；`ModelRegistry` 由
 `async_model_gateway.model_registry` 提供，
 `async_model_gateway.model_registry.stores` 提供 submodule public 的
 `InMemoryRegistryStore`，而 `model-payload` hashing 的 public owner 仍維持為
-`ModelPayloadHasher`。這不代表 broader cache backend/policy、`orchestrator`
-flow 或 broader cache architecture 已完成。
+`ModelPayloadHasher`。`RegistryEntry` 也提供由 model name、source kind 與
+payload hash 組成的唯讀 `model_identity_hash`，其 public hashing owner 只在
+`async_model_gateway.model_registry.model_identity.ModelIdentityHasher`。這不代表
+cache migration、broader cache backend/policy、`orchestrator` flow 或 broader cache
+architecture 已完成。
 
 ## 核心概念
 
@@ -79,6 +82,7 @@ semantics、response cache architecture、`orchestrator` 與完整 `runtime-mode
 - `async_model_gateway.model_registry.ModelRegistry`
 - `async_model_gateway.model_registry.stores.InMemoryRegistryStore`
 - `async_model_gateway.model_registry.model_payload.ModelPayloadHasher`
+- `async_model_gateway.model_registry.model_identity.ModelIdentityHasher`
 
 其中 `ModelPayloadHasher`：
 
@@ -88,6 +92,10 @@ semantics、response cache architecture、`orchestrator` 與完整 `runtime-mode
 - list 順序保留
 - scalar 不做 normalization
 - unsupported type 會 fail closed 並 raise `TypeError`
+
+`RegistryEntry.model_identity_hash` 則以 model name、source kind 與既有 payload
+hash 產生完整且唯讀的 registry identity；它不變更 store lookup key、freshness
+decision 或 response-cache key。
 
 目前已落地的受限 response-cache boundary 包含：
 
