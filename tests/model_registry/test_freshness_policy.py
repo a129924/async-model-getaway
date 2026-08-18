@@ -27,12 +27,13 @@ def test_registry_freshness_result_shape_is_locked_to_three_fields() -> None:
     ]
 
 
-def test_cache_key_shape_stays_locked_to_its_existing_three_fields() -> None:
-    """The new registry identity does not migrate the response-cache key contract."""
+def test_cache_key_shape_uses_registry_identity_without_changing_freshness_result() -> None:
+    """The key consumes complete model identity while freshness stays three-field."""
     assert [field.name for field in fields(CacheKey)] == [
         "namespace",
-        "model_payload_hash",
+        "model_identity_hash",
         "feature_hash",
+        "prediction_input_hash",
     ]
 
 

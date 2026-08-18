@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from typing import Protocol
 
 from typing_extensions import assert_never
@@ -15,7 +14,6 @@ from async_model_gateway.model_runtime._local_runtime_composition import (
 from async_model_gateway.model_runtime.model_artifact import LoaderFamily, ModelArtifact
 from async_model_gateway.response_cache import (
     CacheHit,
-    CacheKey,
     CacheMiss,
     Failed,
     Remembered,
@@ -23,24 +21,16 @@ from async_model_gateway.response_cache import (
     Skipped,
 )
 
+from ._identity_derivers import (
+    _assemble_cache_key,  # pyright: ignore[reportPrivateUsage]
+    _derive_feature_hash,  # pyright: ignore[reportPrivateUsage]
+    _derive_namespace,  # pyright: ignore[reportPrivateUsage]
+    _derive_prediction_input_hash,  # pyright: ignore[reportPrivateUsage]
+)
 from ._local_onnx_executor import _LocalOnnxExecutor  # pyright: ignore[reportPrivateUsage]
-from .request import LocalResponseRequest
+from .request import LocalResponseRequest, ModelPayloadValue
 
 __all__ = ["LocalResponseGateway"]
-
-
-class _CacheKeyDeriver(Protocol):
-    """Describe complete cache-key derivation supplied by the caller."""
-
-    def __call__(
-        self,
-        *,
-        model_name: str,
-        model_payload_hash: str,
-        features: Mapping[str, str],
-        model_artifact: ModelArtifact,
-        invocation: dict[str, object],
-    ) -> CacheKey: ...
 
 
 class _OnnxResultConverter(Protocol):
@@ -55,7 +45,7 @@ class _LocalResponseExecutor(Protocol):
     async def __call__(
         self,
         artifact: ModelArtifact,
-        invocation: dict[str, object],
+        invocation: dict[str, ModelPayloadValue],
     ) -> list[object]: ...
 
 
@@ -67,14 +57,12 @@ class LocalResponseGateway:
         *,
         registry: ModelRegistry,
         response_cache: ResponseCache,
-        cache_key_deriver: _CacheKeyDeriver,
         convert_onnx_result: _OnnxResultConverter,
         executor: _LocalResponseExecutor | None = None,
     ) -> None:
         """Bind the existing owners and optional local execution seam."""
         self._registry = registry
         self._response_cache = response_cache
-        self._cache_key_deriver = cache_key_deriver
         self._convert_onnx_result = convert_onnx_result
         self._executor: _LocalResponseExecutor = (
             _LocalOnnxExecutor(composition=_create_local_runtime_composition())
@@ -91,18 +79,20 @@ class LocalResponseGateway:
             msg = "only ONNX local response generation is supported"
             raise NotImplementedError(msg)
 
-        invocation_snapshot = dict(request.invocation)
+        invocation_snapshot: dict[str, ModelPayloadValue] = dict(request.invocation)
+        namespace = _derive_namespace()
+        feature_hash = _derive_feature_hash(request.features)
+        prediction_input_hash = _derive_prediction_input_hash(invocation_snapshot)
         freshness = await self._registry.resolve_freshness(
             model_name=request.model_name,
             model_source_kind=request.model_source_kind,
             model_payload=request.model_payload,
         )
-        key = self._cache_key_deriver(
-            model_name=request.model_name,
-            model_payload_hash=freshness.entry.payload_hash,
-            features=request.features,
-            model_artifact=request.model_artifact,
-            invocation=invocation_snapshot,
+        key = _assemble_cache_key(
+            namespace=namespace,
+            model_identity_hash=freshness.entry.model_identity_hash,
+            feature_hash=feature_hash,
+            prediction_input_hash=prediction_input_hash,
         )
         lookup_outcome = await self._response_cache.lookup(key=key, context=object())
 

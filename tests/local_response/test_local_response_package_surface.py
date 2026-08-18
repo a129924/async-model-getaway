@@ -14,7 +14,6 @@ import async_model_gateway.local_response.request as request_module
 from async_model_gateway.local_response import LocalResponseGateway, LocalResponseRequest
 from async_model_gateway.model_registry.entry import ModelSourceKind
 from async_model_gateway.model_runtime.model_artifact import LoaderFamily, ModelArtifact
-from async_model_gateway.response_cache import CacheKey
 
 
 def test_local_response_exports_exactly_the_two_declared_public_types() -> None:
@@ -50,8 +49,8 @@ def test_request_is_frozen_slotted_and_has_the_exact_six_field_contract() -> Non
     assert annotations["model_name"] is str
     assert annotations["model_source_kind"] is ModelSourceKind
     assert annotations["model_artifact"] is ModelArtifact
-    assert annotations["invocation"] == dict[str, object]
-    assert annotations["features"].__origin__.__name__ == "Mapping"
+    assert annotations["invocation"] == dict[str, request_module.ModelPayloadValue]
+    assert annotations["features"] == Mapping[str, str]
     assert hasattr(request_module, "ModelPayloadValue")
     assert "ModelPayloadValue" not in request_module.__all__
 
@@ -65,7 +64,6 @@ def test_gateway_constructor_and_generate_signature_are_the_locked_public_contra
         "self",
         "registry",
         "response_cache",
-        "cache_key_deriver",
         "convert_onnx_result",
         "executor",
     )
@@ -76,34 +74,26 @@ def test_gateway_constructor_and_generate_signature_are_the_locked_public_contra
     )
     assert constructor.parameters["registry"].annotation == "ModelRegistry"
     assert constructor.parameters["response_cache"].annotation == "ResponseCache"
-    assert constructor.parameters["cache_key_deriver"].annotation == "_CacheKeyDeriver"
     assert constructor.parameters["executor"].default is None
     assert inspect.iscoroutinefunction(LocalResponseGateway.generate)
     assert tuple(generate.parameters) == ("self", "request")
     assert generate.parameters["request"].kind is inspect.Parameter.KEYWORD_ONLY
     assert generate.parameters["request"].annotation == "LocalResponseRequest"
     assert generate.return_annotation == "str"
-    assert hasattr(gateway_module, "_CacheKeyDeriver")
+    assert not hasattr(gateway_module, "_CacheKeyDeriver")
     assert not hasattr(gateway_module, "_FeatureHasher")
     assert hasattr(gateway_module, "_OnnxResultConverter")
     assert hasattr(gateway_module, "_LocalResponseExecutor")
 
 
-def test_private_callable_protocols_have_the_frozen_annotations_without_becoming_exports() -> None:
+def test_private_executor_protocol_has_the_migrated_json_like_annotation_without_exports() -> None:
     """The private seams retain their exact typed callable contracts."""
-    deriver_hints = get_type_hints(gateway_module._CacheKeyDeriver.__call__)
     converter_hints = get_type_hints(gateway_module._OnnxResultConverter.__call__)
     executor_hints = get_type_hints(gateway_module._LocalResponseExecutor.__call__)
 
-    assert deriver_hints["model_name"] is str
-    assert deriver_hints["model_payload_hash"] is str
-    assert deriver_hints["features"] == Mapping[str, str]
-    assert deriver_hints["model_artifact"] is ModelArtifact
-    assert deriver_hints["invocation"] == dict[str, object]
-    assert deriver_hints["return"] is CacheKey
     assert converter_hints["return"] is str
     assert executor_hints["artifact"] is ModelArtifact
-    assert executor_hints["invocation"] == dict[str, object]
+    assert executor_hints["invocation"] == dict[str, request_module.ModelPayloadValue]
     assert executor_hints["return"] == list[object]
     assert inspect.iscoroutinefunction(gateway_module._LocalResponseExecutor.__call__)
     assert LoaderFamily.ONNX.value == "onnx"

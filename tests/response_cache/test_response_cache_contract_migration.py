@@ -164,73 +164,6 @@ async def test_stale_cleanup_race_keeps_concurrent_replacement_and_original_look
 
 
 @pytest.mark.asyncio
-async def test_legacy_adapter_maps_set_and_invalidate_cancellation() -> None:
-    """Compatibility maps outcomes only; its invalidator remains a separate async collaborator."""
-    import async_model_gateway.response_cache.compat as compat
-    from async_model_gateway.response_cache.outcomes import (
-        CacheFailureKind,
-        CacheSkipReason,
-        Failed,
-        Invalidated,
-        NotFound,
-        Remembered,
-        Skipped,
-    )
-
-    class Facade:
-        def __init__(self, result: object) -> None:
-            self.result = result
-            self.contexts: list[object] = []
-
-        async def remember(self, *, key: object, value: str, context: object) -> object:
-            self.contexts.append(context)
-            if isinstance(self.result, BaseException):
-                raise self.result
-            return self.result
-
-    class Invalidator:
-        def __init__(self, result: object) -> None:
-            self.result = result
-
-        async def invalidate(self, *, key: object) -> object:
-            if isinstance(self.result, BaseException):
-                raise self.result
-            return self.result
-
-    with pytest.warns(DeprecationWarning):
-        adapter = compat.LegacyResponseCacheAdapter(
-            facade=Facade(Remembered()), invalidator=Invalidator(Invalidated())
-        )
-    assert await adapter.set(key=object(), entry=compat.ResponseCacheEntry("value")) is None
-    assert await adapter.invalidate(key=object()) is True
-
-    with pytest.warns(DeprecationWarning):
-        closed_adapter = compat.LegacyResponseCacheAdapter(
-            facade=Facade(Skipped(CacheSkipReason.CLOSED)), invalidator=Invalidator(NotFound())
-        )
-    with pytest.raises(compat.LegacyCacheClosedError):
-        await closed_adapter.set(key=object(), entry=compat.ResponseCacheEntry("value"))
-    assert await closed_adapter.invalidate(key=object()) is False
-
-    with pytest.warns(DeprecationWarning):
-        failed_adapter = compat.LegacyResponseCacheAdapter(
-            facade=Facade(Failed(CacheFailureKind.CODEC)),
-            invalidator=Invalidator(asyncio.CancelledError()),
-        )
-    with pytest.raises(compat.LegacyCacheOperationError):
-        await failed_adapter.set(key=object(), entry=compat.ResponseCacheEntry("value"))
-    with pytest.raises(asyncio.CancelledError):
-        await failed_adapter.invalidate(key=object())
-
-    with pytest.warns(DeprecationWarning):
-        cancelled_adapter = compat.LegacyResponseCacheAdapter(
-            facade=Facade(asyncio.CancelledError()), invalidator=Invalidator(NotFound())
-        )
-    with pytest.raises(asyncio.CancelledError):
-        await cancelled_adapter.set(key=object(), entry=compat.ResponseCacheEntry("value"))
-
-
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "error_type",
     [
@@ -473,3 +406,98 @@ async def test_store_backed_invalidator_is_key_local_and_propagates_failures() -
         await invalidator.invalidate(key="operational")
     with pytest.raises(asyncio.CancelledError):
         await invalidator.invalidate(key="cancelled")
+
+
+@pytest.mark.asyncio
+async def test_legacy_adapter_bridges_four_field_key_set_invalidate_and_cancellation() -> None:
+    """The retained bridge relays an opaque four-field key without identity policy."""
+    from async_model_gateway.response_cache import CacheKey
+    from async_model_gateway.response_cache.compat import (
+        LegacyCacheClosedError,
+        LegacyCacheOperationError,
+        LegacyResponseCacheAdapter,
+        ResponseCacheEntry,
+    )
+    from async_model_gateway.response_cache.outcomes import (
+        CacheFailureKind,
+        CacheSkipReason,
+        Failed,
+        Invalidated,
+        NotFound,
+        Remembered,
+        Skipped,
+    )
+
+    key = CacheKey(
+        namespace="response-cache",
+        model_identity_hash="model-identity",
+        feature_hash="feature-identity",
+        prediction_input_hash="input-identity",
+    )
+    cancellation = asyncio.CancelledError("legacy invalidate cancelled")
+
+    class Facade:
+        def __init__(self, result: object) -> None:
+            self.result = result
+            self.remember_calls: list[tuple[CacheKey, str, object]] = []
+
+        async def remember(self, *, key: CacheKey, value: str, context: object) -> object:
+            self.remember_calls.append((key, value, context))
+            if isinstance(self.result, BaseException):
+                raise self.result
+            return self.result
+
+    class Invalidator:
+        def __init__(self, result: object) -> None:
+            self.result = result
+            self.keys: list[CacheKey] = []
+
+        async def invalidate(self, *, key: CacheKey) -> object:
+            self.keys.append(key)
+            if isinstance(self.result, BaseException):
+                raise self.result
+            return self.result
+
+    facade = Facade(Remembered())
+    invalidator = Invalidator(Invalidated())
+    with pytest.warns(DeprecationWarning):
+        adapter = LegacyResponseCacheAdapter(facade=facade, invalidator=invalidator)
+
+    assert await adapter.set(key=key, entry=ResponseCacheEntry(response="legacy response")) is None
+    assert await adapter.invalidate(key=key) is True
+    assert len(facade.remember_calls) == 1
+    remembered_key, remembered_value, context = facade.remember_calls[0]
+    assert remembered_key is key
+    assert remembered_value == "legacy response"
+    assert context is not key
+    assert invalidator.keys == [key]
+
+    with pytest.warns(DeprecationWarning):
+        closed_adapter = LegacyResponseCacheAdapter(
+            facade=Facade(Skipped(CacheSkipReason.CLOSED)),
+            invalidator=Invalidator(NotFound()),
+        )
+    with pytest.raises(LegacyCacheClosedError):
+        await closed_adapter.set(key=key, entry=ResponseCacheEntry(response="legacy response"))
+    assert await closed_adapter.invalidate(key=key) is False
+
+    with pytest.warns(DeprecationWarning):
+        failed_adapter = LegacyResponseCacheAdapter(
+            facade=Facade(Failed(CacheFailureKind.CODEC)),
+            invalidator=Invalidator(cancellation),
+        )
+    with pytest.raises(LegacyCacheOperationError):
+        await failed_adapter.set(key=key, entry=ResponseCacheEntry(response="legacy response"))
+    with pytest.raises(asyncio.CancelledError) as raised:
+        await failed_adapter.invalidate(key=key)
+    assert raised.value is cancellation
+
+    write_cancellation = asyncio.CancelledError("legacy write cancelled")
+    with pytest.warns(DeprecationWarning):
+        cancelled_adapter = LegacyResponseCacheAdapter(
+            facade=Facade(write_cancellation),
+            invalidator=Invalidator(NotFound()),
+        )
+    with pytest.raises(asyncio.CancelledError) as write_raised:
+        await cancelled_adapter.set(key=key, entry=ResponseCacheEntry(response="legacy response"))
+    assert write_raised.value is write_cancellation

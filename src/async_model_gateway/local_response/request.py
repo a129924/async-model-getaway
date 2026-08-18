@@ -31,4 +31,4 @@ class LocalResponseRequest:
     model_payload: dict[str, ModelPayloadValue]
     features: Mapping[str, str]
     model_artifact: ModelArtifact
-    invocation: dict[str, object]
+    invocation: dict[str, ModelPayloadValue]

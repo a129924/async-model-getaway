@@ -12,5 +12,6 @@ class CacheKey:
     """Immutable cache identity assembled from already-derived values."""
 
     namespace: str
-    model_payload_hash: str
+    model_identity_hash: str
     feature_hash: str
+    prediction_input_hash: str

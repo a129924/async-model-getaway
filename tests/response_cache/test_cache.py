@@ -13,7 +13,7 @@ import pytest
 def _key() -> object:
     from async_model_gateway.response_cache.key import CacheKey
 
-    return CacheKey("response-cache", "payload", "feature")
+    return CacheKey("response-cache", "model", "feature", "input")
 
 
 def _record(*, value: str, token: str, expires_at: datetime | None = None) -> object:

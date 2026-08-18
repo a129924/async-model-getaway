@@ -6,6 +6,7 @@ import inspect
 
 import async_model_gateway.response_cache as response_cache
 import async_model_gateway.response_cache.ports as ports
+import pytest
 
 
 def test_package_root_exports_only_target_facade_identity_and_outcomes() -> None:
@@ -79,30 +80,39 @@ def test_target_ports_are_async_or_sync_at_the_frozen_boundary() -> None:
     assert not inspect.iscoroutinefunction(VersionTokenFactory.new)
 
 
-def test_compatibility_submodule_has_the_exact_temporary_direct_import_surface() -> None:
-    """The one sanctioned legacy route is narrow and never root-reexported."""
+def test_compatibility_submodule_retains_only_the_legacy_operation_bridge() -> None:
+    """The compat module retains its bridge but exposes no three-field identity route."""
     import async_model_gateway.response_cache.compat as compat
 
     assert compat.__all__ == [
-        "CanonicalFeatureHasher",
-        "FeatureHasher",
         "LegacyCacheClosedError",
         "LegacyCacheOperationError",
         "LegacyResponseCacheAdapter",
         "ResponseCacheEntry",
-        "ResponseCacheKey",
-        "ResponseCacheKeyFactory",
     ]
     assert all(hasattr(compat, name) for name in compat.__all__)
     assert all(
         not hasattr(compat, name)
         for name in (
-            "CacheHit",
-            "CacheInvalidator",
-            "CacheKey",
-            "Invalidated",
-            "Remembered",
-            "ResponseCache",
-            "Skipped",
+            "ResponseCacheKey",
+            "FeatureHasher",
+            "CanonicalFeatureHasher",
+            "ResponseCacheKeyFactory",
         )
     )
+    with pytest.raises(ImportError):
+        from async_model_gateway.response_cache.compat import (  # noqa: F401
+            ResponseCacheKey,
+        )
+    with pytest.raises(ImportError):
+        from async_model_gateway.response_cache.compat import (  # noqa: F401
+            FeatureHasher,
+        )
+    with pytest.raises(ImportError):
+        from async_model_gateway.response_cache.compat import (  # noqa: F401
+            CanonicalFeatureHasher,
+        )
+    with pytest.raises(ImportError):
+        from async_model_gateway.response_cache.compat import (  # noqa: F401
+            ResponseCacheKeyFactory,
+        )

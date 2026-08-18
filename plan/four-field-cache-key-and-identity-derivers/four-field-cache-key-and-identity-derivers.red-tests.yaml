@@ -1,0 +1,74 @@
+verdict: red-tests-ready
+d1_verdict:
+  verdict: non-trivial
+  reason: api_change
+test_mapping:
+  - requirement_id: "1"
+    test_case_name: test_cache_key_is_the_only_frozen_slotted_four_field_identity_value
+    coverage_category: happy_path
+  - requirement_id: "1"
+    test_case_name: test_cache_key_does_not_normalize_and_each_literal_field_changes_identity
+    coverage_category: boundary_edge
+  - requirement_id: "2"
+    test_case_name: test_cache_hit_uses_complete_registry_identity_before_execution
+    coverage_category: integration_points
+  - requirement_id: "3"
+    test_case_name: test_private_derivers_canonicalize_order_equivalent_material_without_exports
+    coverage_category: happy_path
+  - requirement_id: "3"
+    test_case_name: test_private_derivers_fail_closed_for_invalid_identity_material
+    coverage_category: error_exception
+  - requirement_id: "3"
+    test_case_name: test_feature_identity_hasher_rejects_non_string_feature_keys_and_values
+    coverage_category: error_exception
+  - requirement_id: "4"
+    test_case_name: test_invalid_identity_material_stops_before_registry_cache_or_execution
+    coverage_category: error_exception
+  - requirement_id: "5"
+    test_case_name: test_gateway_constructor_and_generate_signature_are_the_locked_public_contract
+    coverage_category: integration_points
+  - requirement_id: "4"
+    test_case_name: test_cache_miss_reuses_one_snapshot_for_identity_and_execution
+    coverage_category: state_side_effects
+  - requirement_id: "6"
+    test_case_name: test_compatibility_submodule_retains_only_the_legacy_operation_bridge
+    coverage_category: boundary_edge
+  - requirement_id: "6"
+    test_case_name: test_legacy_adapter_bridges_four_field_key_set_invalidate_and_cancellation
+    coverage_category: integration_points
+  - requirement_id: "7"
+    test_case_name: test_cache_miss_remember_outcomes_are_fail_open_without_reexecution_or_reconversion
+    coverage_category: state_side_effects
+validation_checks:
+  d1_decision: non-trivial
+  d2_evidence: sufficient_evidence
+  behavior_contract_source: plan/four-field-cache-key-and-identity-derivers/four-field-cache-key-and-identity-derivers.spec.md
+  plan_review: approved
+  human_check: approved-for-implementation
+  requirements_mapped: true
+  public_contract_coverage: true
+  test_categories_present:
+    - happy_path
+    - error_exception
+    - boundary_edge
+    - state_side_effects
+    - integration_points
+  expected_initial_status:
+    migration_contracts: red
+    preserved_regressions: pass_existing
+  focused_pytest:
+    command: "uv run pytest --no-header -rN -o addopts='' tests/local_response/test_identity_derivers.py tests/local_response/test_gateway.py tests/local_response/test_local_response_package_surface.py tests/response_cache/test_key.py tests/response_cache/test_cache.py tests/response_cache/test_in_memory_store.py tests/response_cache/test_response_cache_freshness_policy.py tests/response_cache/test_response_cache_contract_migration.py tests/response_cache/test_response_cache_package_surface.py tests/model_registry/test_freshness_policy.py"
+    result: "42 failed, 26 passed"
+    genuinely_red_evidence:
+      - "missing private local_response identity-deriver module"
+      - "four-field CacheKey constructor and field assertions fail against the current three-field type"
+      - "LocalResponseGateway still requires cache_key_deriver"
+      - "compat still exposes the retired three-field identity symbols instead of only the retained bridge"
+      - "the retained adapter bridge rejects the required four-field CacheKey before set/invalidate/cancellation assertions can pass"
+      - "new non-str feature key and value cases are RED through the missing private feature-identity deriver and gateway migration"
+  lint:
+    command: "uv run ruff check <focused RED test paths>"
+    result: passed
+  production_code_modified: false
+issues: []
+next_step: Proceed to approved implementation; preserve the RED tests, retain the compat entry/error/operation bridge over supplied four-field keys, reject non-str feature keys and values before registry work, and make every remember outcome fail-open without re-execution or re-conversion.
