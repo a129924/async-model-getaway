@@ -1,0 +1,118 @@
+verdict: approved
+review_status: COMPLETE
+
+review_scope:
+  detail: "Fresh independent implementation review of the current topic diff, including the snapshot-correction path."
+  prior_approval: "The preceding approved artifact was read as historical evidence only; this verdict re-traces the current implementation and tests."
+
+step_gate:
+  status: passed
+  evidence: "plan/four-field-cache-key-and-identity-derivers/four-field-cache-key-and-identity-derivers.step.md:26-31 marks all six Implementation Steps [X]."
+
+traceability_matrix:
+  - step: "1. Reconfirm or update declared RED tests and fresh evidence before implementation."
+    status: done
+    evidence: "Fresh plan review, human clearance, and RED evidence are present at the declared topic artifact paths; focused coverage is present in tests/local_response/test_identity_derivers.py:10-94, tests/local_response/test_gateway.py:167-317, and tests/response_cache/test_response_cache_package_surface.py:83-118."
+  - step: "2. Add private synchronous local-response identity derivers, including FeatureIdentityHasher and a four-value-only assembler."
+    status: done
+    evidence: "src/async_model_gateway/local_response/_identity_derivers.py:25-89 supplies the private synchronous feature, prediction-input, namespace, and four-value key derivation; lines 34-40 reject non-string feature keys and values."
+  - step: "3. Replace CacheKey with the exact frozen/slotted four-field value and migrate response-cache callers without operational changes."
+    status: done
+    evidence: "src/async_model_gateway/response_cache/key.py:10-17 defines exactly the ordered four fields; the current constructors under src/ and tests all provide four identities, with field/constructor coverage in tests/response_cache/test_key.py:13-63."
+  - step: "4. Migrate request, executor, and gateway; remove cache-key injection; derive before registry await; consume RegistryEntry.model_identity_hash; share one invocation snapshot."
+    status: done
+    evidence: "src/async_model_gateway/local_response/gateway.py:55-107 removes the injected deriver, derives before resolve_freshness, reads freshness.entry.model_identity_hash, and passes invocation_snapshot directly to execution. src/async_model_gateway/local_response/_local_onnx_executor.py:17-40 refines and relays that same object without copying. tests/local_response/test_gateway.py:214-252 directly asserts composition_invocations[0] is identity_invocations[0]."
+  - step: "5. Retain only the opaque-key legacy entry/error/operation bridge; remove retired compat identity helpers and dedicated tests; preserve test_entry."
+    status: done
+    evidence: "src/async_model_gateway/response_cache/compat.py:16-90 retains exactly the approved bridge; tests/response_cache/test_canonical_feature_hasher.py and tests/response_cache/test_key_factory.py are deleted; tests/response_cache/test_response_cache_contract_migration.py:412-503 and tests/response_cache/test_response_cache_package_surface.py:83-118 cover the retained and removed routes. tests/response_cache/test_entry.py has no diff."
+  - step: "6. Migrate gateway/package/registry/type-witness callers, cover every remember outcome fail-open, run declared validation, and update the step tracker."
+    status: done
+    evidence: "tests/local_response/test_gateway.py:278-307 covers Remembered, Skipped, and Failed with one execution and conversion; tests/local_response/test_local_response_package_surface.py:34-98, tests/model_registry/test_freshness_policy.py:30-37, and tests/typecheck/local_response_generation_with_cache_reuse.py:20-58 migrate the contract witnesses."
+
+path_authorization_check:
+  status: passed
+  detail: "The current implementation diff is limited to the topic plan artifacts and the Created, Modified, or Deleted paths in the executable inventory."
+  readonly_paths:
+    - path: "tests/response_cache/test_entry.py"
+      status: preserved
+      evidence: "No diff is present for this required ReadOnly path."
+    - path: "response-cache cache/store/invalidation and registry/runtime ReadOnly production paths"
+      status: preserved
+      evidence: "No changed production path falls outside the five authorized production migration files."
+
+dynamic_loading_check:
+  status: passed
+  detail: "Changed topic tests use ordinary Python imports. No importlib, loader, runpy, exec-module, or equivalent dynamic module-loading mechanism appears; the plan grants no exception and none is needed."
+
+scope_creep_check:
+  - non_goal: "No storage, record, persistence, eviction, invalidation, or TTL migration."
+    violated: no
+    evidence: "The corresponding production paths are unchanged."
+  - non_goal: "No CacheKey compatibility adapter, key alias, dual-read, dual-write, or old-key fallback."
+    violated: no
+    evidence: "src/async_model_gateway/response_cache/compat.py:16-90 accepts supplied CacheKey values only and contains no alias, factory, fallback, or record migration."
+  - non_goal: "No orchestrator, predictor, result codec, remote execution, pandas, or complete target-workflow implementation."
+    violated: no
+    evidence: "Changed production files are limited to the authorized key, compatibility, and local-response projection files."
+  - non_goal: "No registry lookup/freshness/payload/identity-hasher change."
+    violated: no
+    evidence: "No model-registry production path changed; src/async_model_gateway/local_response/gateway.py:86-95 only consumes the existing freshness result."
+  - non_goal: "No dependency, documentation, version, release, commit, push, or PR change."
+    violated: no
+    evidence: "The current diff contains no dependency, documentation, metadata, release, or Git-history change."
+
+contract_check:
+  - item: "CacheKey(namespace, model_identity_hash, feature_hash, prediction_input_hash) is the exact frozen/slotted public replacement."
+    status: matches
+    detail: "src/async_model_gateway/response_cache/key.py:10-17 defines exactly the four ordered fields; tests/response_cache/test_key.py:13-63 covers construction, equality/hash separation, and removal of model_payload_hash."
+  - item: "LocalResponseGateway removes cache_key_deriver and retains only registry, response_cache, convert_onnx_result, and optional executor collaborators."
+    status: matches
+    detail: "src/async_model_gateway/local_response/gateway.py:55-71 and tests/local_response/test_local_response_package_surface.py:58-86 match the locked constructor."
+  - item: "LocalResponseRequest.features remains Mapping[str, str]; only invocation and the private executor narrow to the existing JSON-like vocabulary."
+    status: matches
+    detail: "src/async_model_gateway/local_response/request.py:5-34 declares Mapping[str, str] and ModelPayloadValue invocation material; tests/local_response/test_local_response_package_surface.py:48-98 locks both annotations."
+  - item: "Feature identity rejects every non-string key or value with TypeError before the first registry await."
+    status: matches
+    detail: "src/async_model_gateway/local_response/_identity_derivers.py:28-51 validates feature material; gateway.py:82-86 derives before resolve_freshness; tests/local_response/test_identity_derivers.py:54-66 and tests/local_response/test_gateway.py:255-276 cover direct and gateway behavior."
+  - item: "Local identity obtains complete model identity only from freshness.entry.model_identity_hash and reuses one shallow invocation snapshot."
+    status: matches
+    detail: "src/async_model_gateway/local_response/gateway.py:82-107 creates one shallow snapshot, hashes it, then passes that object to the executor. The default-adapter correction is verified by identity in tests/local_response/test_gateway.py:214-252; the custom-executor mutation regression remains at lines 186-210."
+  - item: "compat retains only the entry/error/operation bridge over opaque four-field keys and removes the retired key/hash/factory routes."
+    status: matches
+    detail: "src/async_model_gateway/response_cache/compat.py:16-90; tests/response_cache/test_response_cache_contract_migration.py:412-503; tests/response_cache/test_response_cache_package_surface.py:83-118."
+  - item: "Response-cache operations and direct-await semantics stay unchanged; Remembered, Skipped, and Failed remain local fail-open outcomes."
+    status: matches
+    detail: "src/async_model_gateway/local_response/gateway.py:86-119 preserves direct awaits and returns the generated response for all three outcomes; tests/local_response/test_gateway.py:278-307 verifies one execution and conversion."
+
+test_plan_check:
+  - case_type: "Happy path: four identities assemble a key; local hit/miss uses internal complete registry identity; all remember outcomes return fail-open."
+    status: present
+    location: "tests/local_response/test_identity_derivers.py:69-94; tests/local_response/test_gateway.py:167-183,278-307; tests/response_cache/test_key.py:13-32."
+  - case_type: "Invalid input: non-string feature keys/values and malformed invocation material fail before collaborators; retired compat imports fail while the bridge remains importable."
+    status: present
+    location: "tests/local_response/test_identity_derivers.py:32-66; tests/local_response/test_gateway.py:255-276; tests/response_cache/test_response_cache_package_surface.py:83-118."
+  - case_type: "Edge case: each literal key field changes identity; ordering-equivalent feature/input material is deterministic without raw-value leakage."
+    status: present
+    location: "tests/response_cache/test_key.py:35-54; tests/local_response/test_identity_derivers.py:10-29."
+  - case_type: "Regression: cache/store/invalidator behavior, registry shape, ONNX guard, shared snapshot, and three fail-open outcomes remain unchanged."
+    status: present
+    location: "tests/response_cache/test_cache.py; tests/response_cache/test_in_memory_store.py; tests/response_cache/test_response_cache_contract_migration.py:1-503; tests/model_registry/test_freshness_policy.py:16-37; tests/local_response/test_gateway.py:186-317."
+  - case_type: "Backward compatibility: preserved root exports and operation signatures; retained compat bridge operates on supplied opaque four-field keys; approved removals are absent."
+    status: present
+    location: "tests/response_cache/test_response_cache_package_surface.py:12-118; tests/response_cache/test_response_cache_contract_migration.py:412-503; tests/local_response/test_local_response_package_surface.py:19-98."
+
+validation:
+  - command: "git diff --check"
+    status: passed
+    detail: "No whitespace errors in the current diff."
+  - command: "uv run pytest"
+    status: not-rerun
+    detail: "Not rerun during this read-only review. The prior artifact records a passing full suite, but that recorded result is not represented as fresh execution evidence here."
+  - command: "uv run pyright"
+    status: not-rerun
+    detail: "Not rerun during this read-only review; static contract witnesses were inspected."
+  - command: "uv run ruff check src tests"
+    status: not-rerun
+    detail: "Not rerun during this read-only review."
+
+blocking_issues: []

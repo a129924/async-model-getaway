@@ -26,7 +26,7 @@ def _record(*, value: str, token: str, expires_at: datetime | None = None) -> ob
 def _key(*, feature_hash: str = "feature") -> object:
     from async_model_gateway.response_cache.key import CacheKey
 
-    return CacheKey("response-cache", "payload", feature_hash)
+    return CacheKey("response-cache", "model", feature_hash, "input")
 
 
 @pytest.mark.asyncio

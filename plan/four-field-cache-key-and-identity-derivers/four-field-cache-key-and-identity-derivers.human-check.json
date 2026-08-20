@@ -1,0 +1,7 @@
+{
+  "topic": "four-field-cache-key-and-identity-derivers",
+  "gate": "human-check",
+  "status": "cleared",
+  "decision": "approved-for-implementation",
+  "note": "fresh human decision：retained-compat corrective scope；保留 LegacyResponseCacheAdapter 與必要的 legacy operation／entry／error bridge；僅移除 ResponseCacheKey、FeatureHasher、CanonicalFeatureHasher、ResponseCacheKeyFactory 四個三欄 identity surfaces；維持 contract-migration bridge coverage、non-str feature 的 TypeError coverage 與 gateway fail-open outcome coverage；tests/response_cache/test_entry.py 維持 ReadOnly。"
+}

@@ -65,7 +65,7 @@ async def test_expiry_policy_defects_are_not_facade_outcomes() -> None:
 
     with pytest.raises(ValueError):
         await cache.remember(
-            key=CacheKey("response-cache", "payload", "feature"),
+            key=CacheKey("response-cache", "model", "feature", "input"),
             value="response",
             context=object(),
         )

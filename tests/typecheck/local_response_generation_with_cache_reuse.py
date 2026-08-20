@@ -2,32 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-
 from typing_extensions import assert_type
 
 from async_model_gateway.local_response import LocalResponseGateway, LocalResponseRequest
+from async_model_gateway.local_response.request import ModelPayloadValue
 from async_model_gateway.model_registry import ModelRegistry
 from async_model_gateway.model_registry.entry import ModelSourceKind
 from async_model_gateway.model_runtime.model_artifact import LoaderFamily, ModelArtifact
-from async_model_gateway.response_cache import CacheKey, ResponseCache
-
-
-def _derive_cache_key(
-    *,
-    model_name: str,
-    model_payload_hash: str,
-    features: Mapping[str, str],
-    model_artifact: ModelArtifact,
-    invocation: dict[str, object],
-) -> CacheKey:
-    """Supply the private, complete cache-identity callable shape."""
-    _ = model_name, features, model_artifact, invocation
-    return CacheKey(
-        namespace="typecheck-local-response-v1",
-        model_payload_hash=model_payload_hash,
-        feature_hash="typed-deriver",
-    )
+from async_model_gateway.response_cache import ResponseCache
 
 
 def _convert_onnx_result(result: list[object]) -> str:
@@ -37,7 +19,7 @@ def _convert_onnx_result(result: list[object]) -> str:
 
 async def _execute_local_response(
     artifact: ModelArtifact,
-    invocation: dict[str, object],
+    invocation: dict[str, ModelPayloadValue],
 ) -> list[object]:
     """Supply the frozen local-executor callable shape."""
     _ = artifact, invocation
@@ -68,7 +50,6 @@ async def check_public_gateway_preserves_the_frozen_typed_surface(
     gateway = LocalResponseGateway(
         registry=registry,
         response_cache=response_cache,
-        cache_key_deriver=_derive_cache_key,
         convert_onnx_result=_convert_onnx_result,
         executor=_execute_local_response,
     )
